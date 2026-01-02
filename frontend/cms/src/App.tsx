@@ -228,24 +228,61 @@ const WorkspaceContainer: React.FC = () => {
   const isHome = location.pathname === '/';
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden relative text-black font-bold">
+    <div className="h-[calc(100vh-64px)] overflow-hidden relative text-black font-bold bg-system-background">
       <FloatingFeedback />
       
-      {/* Sidebar Content */}
-      <div 
-        className={`${isHome ? 'flex-1' : ''} h-full transition-all duration-300 overflow-hidden shrink-0 relative`}
-        style={{ width: isHome ? '100%' : (sidebarOpen ? '450px' : '0') }}
-      >
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/agencies" element={<Agencies />} />
-          <Route path="/stops" element={<Stops />} />
-          <Route path="/routes" element={<RouteStudio />} />
-          <Route path="/trips" element={<Trips />} />
-        </Routes>
+      {/* Layer 0: The Map (Global Background) */}
+      {!isHome && (
+        <div className="absolute inset-0 z-0">
+          <MapHUD />
+          <QuickActionMenu />
+          <UnifiedMap />
+        </div>
+      )}
+
+      {/* Layer 10+: UI Elements */}
+      <div className={`relative h-full transition-all duration-300 ${isHome ? 'z-30' : 'z-10 pointer-events-none'}`}>
+        <div className={`h-full flex ${isHome ? '' : 'overflow-visible'}`}>
+          {/* Sidebar: Registry (Overlay) */}
+          {!isHome && (
+            <div 
+              className={`h-full transition-all duration-500 bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] border-r border-black/5 relative z-20 pointer-events-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+              style={{ width: '400px' }}
+            >
+              <Routes>
+                <Route path="/agencies" element={<Agencies />} />
+                <Route path="/stops" element={<Stops />} />
+                <Route path="/routes" element={<RouteStudio />} />
+                <Route path="/trips" element={<Trips />} />
+              </Routes>
+            </div>
+          )}
+
+          {/* Home Page Content */}
+          {isHome && (
+            <div className="flex-1 overflow-y-auto">
+              <Routes>
+                <Route path="/" element={<Home />} />
+              </Routes>
+            </div>
+          )}
+
+          {/* Empty space for Map Interactions */}
+          {!isHome && (
+            <div className="flex-1 relative overflow-visible pointer-events-none">
+              {/* This area allows clicks to pass through to the map unless a hub is here */}
+              <Routes>
+                <Route path="/agencies" element={<div className="pointer-events-none" />} />
+                <Route path="/stops" element={<div className="pointer-events-none" />} />
+                <Route path="/routes" element={<div className="pointer-events-none" />} />
+                <Route path="/trips" element={<div className="pointer-events-none" />} />
+              </Routes>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Unified Toggle Handle - Only visible when not on home */}
+      {/* Sidebar Toggle Handle */}
       {!isHome && (
         <div 
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -254,16 +291,6 @@ const WorkspaceContainer: React.FC = () => {
           {sidebarOpen ? <ChevronLeft size={18} className="text-system-gray group-hover:text-system-blue transition-colors" /> : <ChevronRight size={18} className="text-system-blue animate-pulse" />}
         </div>
       )}
-
-      {/* Persistent Map */}
-      <div 
-        className={`flex-1 relative border-l border-black/5 h-full ${isHome ? 'hidden' : 'block'}`}
-        style={{ minHeight: '100%' }}
-      >
-        <MapHUD />
-        <QuickActionMenu />
-        <UnifiedMap />
-      </div>
     </div>
   );
 };

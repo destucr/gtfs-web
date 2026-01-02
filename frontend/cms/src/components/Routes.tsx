@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
 import { Info, Map as MapIcon, MapPin, Plus, Save, RotateCcw, Zap, ChevronRight, Bus, Loader2, GripVertical, Undo2, Search, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Reorder } from 'framer-motion';
@@ -27,6 +27,8 @@ const RouteStudio: React.FC = () => {
     const [globalLoading, setGlobalLoading] = useState(true);
     const [autoRoute, setAutoRoute] = useState(true);
     const [isDirty, setIsDirty] = useState(false);
+
+    const initialDataRef = useRef<string>('');
 
     const refreshAllData = useCallback(async () => {
         const [rRes, sRes, aRes] = await Promise.all([
@@ -289,16 +291,16 @@ const RouteStudio: React.FC = () => {
     if (globalLoading) return <div className="flex h-screen items-center justify-center font-bold text-system-gray animate-pulse flex-col gap-4"><Loader2 className="animate-spin text-system-blue" size={32} /> INITIALIZING STUDIO...</div>;
 
     return (
-        <div className="flex h-full bg-system-background relative overflow-hidden font-bold">
+        <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
             {/* Sidebar: Route Picker */}
-            <div className="flex flex-col h-full bg-white shadow-2xl relative z-20 overflow-hidden font-bold text-black border-r border-black/5" style={{ width: 400 }}>
+            <div className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black pointer-events-auto shadow-2xl border-r border-black/5" style={{ width: 400 }}>
                 <SidebarHeader 
                     title="Studio" 
                     Icon={Bus} 
                     actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all"><Plus size={18} /></button>}
                 />
                 
-                <div className="p-4 px-6 border-b border-black/5 bg-white shrink-0 font-bold">
+                <div className="p-4 px-6 border-b border-black/5 bg-white shrink-0">
                     <div className="relative"><Search size={14} className="absolute left-3 top-3 text-system-gray" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search service lines..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
                 </div>
 
@@ -316,7 +318,7 @@ const RouteStudio: React.FC = () => {
             {/* Floating Editor Window */}
             {selectedRoute && (
                 <div 
-                    className="absolute top-6 z-[1500] w-[450px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col max-h-[calc(100vh-120px)] transition-all duration-500 animate-in fade-in slide-in-from-left-8"
+                    className="absolute top-6 z-[3000] w-[450px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col max-h-[calc(100vh-120px)] transition-all duration-500 animate-in fade-in slide-in-from-left-8 pointer-events-auto"
                     style={{ left: sidebarOpen ? '424px' : '24px' }}
                 >
                     {/* Floating Header */}
@@ -340,7 +342,7 @@ const RouteStudio: React.FC = () => {
                                 <button
                                     key={tab}
                                     onClick={() => setActiveSection(tab)}
-                                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSection === tab ? 'bg-white text-system-blue shadow-md scale-[1.02]' : 'text-system-gray hover:text-black hover:bg-white/50'}`}
+                                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSection === tab ? 'bg-white text-system-blue shadow-sm scale-[1.02]' : 'text-system-gray hover:text-black hover:bg-white/50'}`}
                                 >
                                     {tab === 'info' ? 'Specs' : tab === 'path' ? 'Geom' : 'Nodes'}
                                 </button>
@@ -349,7 +351,7 @@ const RouteStudio: React.FC = () => {
                     </div>
 
                     {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto p-8 pt-6">
+                    <div className="flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar">
                         {activeSection === 'info' && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div className="grid grid-cols-2 gap-4">
