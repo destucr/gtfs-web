@@ -145,6 +145,18 @@ const UnifiedMap: React.FC = () => {
                 />
             ))}
 
+            {/* Render Hover Preview Route */}
+            {mapLayers.previewRoute && (
+                <Polyline 
+                    positions={mapLayers.previewRoute.positions} 
+                    color={`#${mapLayers.previewRoute.color.replace('#', '')}`} 
+                    weight={6} 
+                    opacity={0.6} 
+                    dashArray="5, 10"
+                    lineCap="round"
+                />
+            )}
+
             {/* Render Static Stops */}
             {mapLayers.stops.map(stop => (
                 <Marker 

@@ -289,144 +289,153 @@ const RouteStudio: React.FC = () => {
     if (globalLoading) return <div className="flex h-screen items-center justify-center font-bold text-system-gray animate-pulse flex-col gap-4"><Loader2 className="animate-spin text-system-blue" size={32} /> INITIALIZING STUDIO...</div>;
 
     return (
-        <div className="flex flex-col h-full bg-white shadow-2xl relative z-20 overflow-hidden font-bold text-black" style={{ width: 450 }}>
-            <SidebarHeader 
-                title={selectedRoute ? 'Editor' : 'Studio'} 
-                Icon={Bus} 
-                onBack={selectedRoute ? () => setSelectedRoute(null) : undefined} 
-                actions={!selectedRoute && <button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all"><Plus size={18} /></button>}
-            />
+        <div className="flex h-full bg-system-background relative overflow-hidden font-bold">
+            {/* Sidebar: Route Picker */}
+            <div className="flex flex-col h-full bg-white shadow-2xl relative z-20 overflow-hidden font-bold text-black border-r border-black/5" style={{ width: 400 }}>
+                <SidebarHeader 
+                    title="Studio" 
+                    Icon={Bus} 
+                    actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all"><Plus size={18} /></button>}
+                />
+                
+                <div className="p-4 px-6 border-b border-black/5 bg-white shrink-0 font-bold">
+                    <div className="relative"><Search size={14} className="absolute left-3 top-3 text-system-gray" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search service lines..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
+                </div>
 
-            <div className="flex-1 overflow-y-auto">
-                {selectedRoute ? (
-                    <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                        {/* Section: Route Metadata */}
-                        <div className="border-b border-black/5">
-                            <button onClick={() => setActiveSection(activeSection === 'info' ? null : 'info')} className="w-full p-4 flex items-center justify-between hover:bg-black/[0.02]">
-                                <div className="flex items-center gap-3 text-xs uppercase tracking-widest font-black text-system-gray">
-                                    <Info size={14} className="text-system-blue" /> 1. Route Attributes
-                                </div>
-                                {activeSection === 'info' ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
-                            </button>
-                            {activeSection === 'info' && (
-                                <div className="p-6 bg-system-blue/[0.02] space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-[10px] font-black uppercase mb-1 block text-system-gray opacity-60">Operator</label>
-                                        <select className="hig-input text-sm font-bold" value={selectedRoute.agency_id} onChange={e => { setSelectedRoute({...selectedRoute, agency_id: parseInt(e.target.value)}); setIsDirty(true); }}>{agencies.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
-                                        <div><label className="text-[10px] font-black uppercase mb-1 block text-system-gray opacity-60">Route Type</label>
-                                        <select className="hig-input text-sm font-bold" value={selectedRoute.route_type} onChange={e => { setSelectedRoute({...selectedRoute, route_type: parseInt(e.target.value)}); setIsDirty(true); }}>
-                                            <option value={0}>Tram/Light Rail</option><option value={1}>Subway/Metro</option><option value={2}>Rail</option><option value={3}>Bus</option><option value={4}>Ferry</option><option value={5}>Cable Tram</option><option value={6}>Aerial Lift</option><option value={7}>Funicular</option><option value={11}>Trolleybus</option><option value={12}>Monorail</option>
-                                        </select></div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-[10px] font-black uppercase mb-1 block text-system-gray opacity-60">Short Name</label><input className="hig-input text-sm font-bold" value={selectedRoute.short_name} onChange={e => { setSelectedRoute({...selectedRoute, short_name: e.target.value}); setIsDirty(true); }} /></div>
-                                        <div><label className="text-[10px] font-black uppercase mb-1 block text-system-gray opacity-60">Route Color</label>
-                                        <div className="flex gap-2 items-center"><input type="color" className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-none p-0" value={`#${(selectedRoute.color || '007AFF').replace('#','')}`} onChange={e => { setSelectedRoute({...selectedRoute, color: e.target.value.replace('#','')}); setIsDirty(true); }} /><input className="hig-input font-mono text-xs p-2 h-10 uppercase" value={selectedRoute.color} onChange={e => { setSelectedRoute({...selectedRoute, color: e.target.value.replace('#','')}); setIsDirty(true); }} /></div></div>
-                                    </div>
-                                    <div><label className="text-[10px] font-black uppercase mb-1 block text-system-gray opacity-60">Public Name</label><input className="hig-input text-sm font-bold" value={selectedRoute.long_name} onChange={e => { setSelectedRoute({...selectedRoute, long_name: e.target.value}); setIsDirty(true); }} /></div>
-                                    <div><label className="text-[10px] font-black uppercase mb-1 block text-system-gray opacity-60">Description</label><textarea className="hig-input text-sm font-bold min-h-[80px] py-2" value={selectedRoute.route_desc || ''} onChange={e => { setSelectedRoute({...selectedRoute, route_desc: e.target.value}); setIsDirty(true); }} /></div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-[10px] font-black uppercase mb-1 block text-system-gray opacity-60">Text Color</label>
-                                        <div className="flex gap-2 items-center"><input type="color" className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-none p-0" value={`#${(selectedRoute.text_color || 'FFFFFF').replace('#','')}`} onChange={e => { setSelectedRoute({...selectedRoute, text_color: e.target.value.replace('#','')}); setIsDirty(true); }} /><input className="hig-input font-mono text-xs p-2 h-10 uppercase" value={selectedRoute.text_color || 'FFFFFF'} onChange={e => { setSelectedRoute({...selectedRoute, text_color: e.target.value.replace('#','')}); setIsDirty(true); }} /></div></div>
-                                        <div><label className="text-[10px] font-black uppercase mb-1 block text-system-gray opacity-60">Route URL</label><input className="hig-input text-sm font-bold" value={selectedRoute.route_url || ''} onChange={e => { setSelectedRoute({...selectedRoute, route_url: e.target.value}); setIsDirty(true); }} /></div>
-                                    </div>
-                                </div>
-                            )}
+                <div className="flex-1 overflow-y-auto divide-y divide-black/5">
+                    {filteredRoutes.map(r => (
+                        <div key={r.id} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-black/[0.02] cursor-pointer transition-all flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`}>
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm font-black text-[10px]" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#','')}` }}>{r.short_name}</div>
+                            <div className="flex-1 min-w-0"><div className="text-sm text-black truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-system-gray uppercase tracking-tighter">Line #{r.id}</div></div>
+                            <ChevronRight size={14} className={`transition-all ${selectedRoute?.id === r.id ? 'opacity-100 text-system-blue translate-x-1' : 'opacity-0 group-hover:opacity-100'}`} />
                         </div>
+                    ))}
+                </div>
+            </div>
 
-                        {/* Section: Path Geometry */}
-                        <div className="border-b border-black/5">
-                            <button onClick={() => setActiveSection(activeSection === 'path' ? null : 'path')} className="w-full p-4 flex items-center justify-between hover:bg-black/[0.02]">
-                                <div className="flex items-center gap-3 text-xs uppercase tracking-widest font-black text-system-gray">
-                                    <MapIcon size={14} className="text-system-blue" /> 2. Path Geometry
-                                </div>
-                                {activeSection === 'path' ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
-                            </button>
-                            {activeSection === 'path' && (
-                                <div className="p-6 bg-system-blue/[0.02] space-y-4">
-                                    <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-black/5 shadow-sm">
-                                        <div className="flex items-center gap-2"><Zap size={14} className={autoRoute ? "text-system-blue" : "text-system-gray"} /><span className="text-[10px] font-black uppercase tracking-tight">Follow Roads on Click</span></div>
-                                        <button onClick={() => setAutoRoute(!autoRoute)} className={`w-10 h-5 rounded-full transition-colors relative ${autoRoute ? 'bg-system-blue' : 'bg-black/10'}`}><div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${autoRoute ? 'left-6' : 'left-1'}`} /></button>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={snapToRoads} className="py-3 bg-system-blue text-white rounded-xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-blue-600 shadow-lg"><Zap size={12} /> SNAP FULL PATH</button>
-                                        <button onClick={snapPointsToRoads} className="py-3 bg-white border-2 border-system-blue text-system-blue rounded-xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-system-blue hover:text-white transition-all shadow-sm"><MapIcon size={12} /> SNAP ANCHORS</button>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={undo} disabled={history.length === 0} className="py-2 bg-white border border-black/10 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 disabled:opacity-30 transition-all hover:bg-black/5"><Undo2 size={12}/> UNDO</button>
-                                        <button onClick={() => { if(window.confirm('Clear all geometry for this route?')) pushToHistory([]); }} className="py-2 bg-white border border-black/10 rounded-lg text-[10px] font-black text-red-500 flex items-center justify-center gap-1.5 transition-all hover:bg-red-50"><Trash2 size={12}/> CLEAR ALL</button>
-                                    </div>
-                                    <p className="text-[10px] text-system-gray italic leading-relaxed">Click map to drop anchors. Click path to insert. Drag node to move. Right-click node to delete.</p>
-                                </div>
-                            )}
+            {/* Floating Editor Window */}
+            {selectedRoute && (
+                <div className="absolute top-6 right-6 z-[1500] w-[450px] bg-white rounded-3xl shadow-2xl border border-black/5 flex flex-col max-h-[calc(100vh-120px)] animate-in fade-in zoom-in-95 duration-300">
+                    {/* Floating Header */}
+                    <div className="p-6 border-b border-black/5 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0" style={{ backgroundColor: `#${(selectedRoute.color || '007AFF').replace('#','')}` }}>
+                                <Bus size={20} />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-lg font-black tracking-tight truncate leading-none mb-1">{selectedRoute.short_name || 'New Route'}</h2>
+                                <p className="text-[10px] font-black text-system-gray uppercase tracking-widest truncate">{selectedRoute.long_name || 'Pending Configuration'}</p>
+                            </div>
                         </div>
-
-                        {/* Section: Stop Sequence */}
-                        <div className="border-b border-black/5">
-                            <button onClick={() => setActiveSection(activeSection === 'sequence' ? null : 'sequence')} className="w-full p-4 flex items-center justify-between hover:bg-black/[0.02]">
-                                <div className="flex items-center gap-3 text-xs uppercase tracking-widest font-black text-system-gray">
-                                    <MapPin size={14} className="text-system-blue" /> 3. Stop Sequence
-                                </div>
-                                {activeSection === 'sequence' ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
-                            </button>
-                            {activeSection === 'sequence' && (
-                                <div className="p-6 bg-system-blue/[0.02] space-y-6">
-                                    <button onClick={snapStopsToPath} className="w-full py-3 border-2 border-system-blue text-system-blue rounded-xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-system-blue hover:text-white transition-all shadow-sm"><Zap size={12} /> SNAP STOPS TO PATH</button>
-                                    <Reorder.Group axis="y" values={assignedStops} onReorder={(newOrder) => { setAssignedStops(newOrder); setIsDirty(true); }} className="space-y-2">
-                                        {assignedStops.map((rs, i) => (
-                                            <Reorder.Item key={rs.stop_id} value={rs} className="flex items-center gap-3 p-3 bg-white rounded-xl cursor-grab border border-black/5 shadow-sm">
-                                                <GripVertical size={14} className="text-black/20" /><div className="w-6 h-6 rounded-full bg-system-blue/10 flex items-center justify-center text-[10px] font-extrabold text-system-blue shrink-0">{i+1}</div>
-                                                <div className="flex-1 font-bold text-[11px] truncate uppercase">{rs.stop?.name}</div>
-                                                <button onClick={() => { setAssignedStops(assignedStops.filter((_, idx) => idx !== i)); setIsDirty(true); }} className="text-red-400 font-bold px-1">&times;</button>
-                                            </Reorder.Item>
-                                        ))}
-                                    </Reorder.Group>
-                                    <div className="pt-4 border-t border-black/5">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <h4 className="text-[9px] font-black text-system-gray uppercase tracking-widest">Available Inventory</h4>
-                                            <div className="relative"><Search size={10} className="absolute left-2 top-2 text-system-gray" /><input className="hig-input text-[9px] pl-6 py-1 h-6 w-32 font-bold" placeholder="Filter inventory..." value={stopSearchQuery} onChange={e => setStopSearchQuery(e.target.value)} /></div>
-                                        </div>
-                                        <div className="space-y-1 max-h-48 overflow-y-auto pr-2">
-                                            {allStops
-                                                .filter(s => !assignedStops.find(rs => rs.stop_id === s.id))
-                                                .filter(s => s.name.toLowerCase().includes(stopSearchQuery.toLowerCase()))
-                                                .map(s => (
-                                                <div key={s.id} className="flex items-center justify-between p-3 hover:bg-black/5 rounded-xl cursor-pointer group transition-all border border-transparent hover:border-black/5 bg-white shadow-sm" onClick={() => { setAssignedStops([...assignedStops, {stop_id: s.id, stop: s, sequence: assignedStops.length+1, route_id: selectedRoute.id}]); setIsDirty(true); setStatus({ message: `Added ${s.name}`, type: 'success' }); setTimeout(()=>setStatus(null), 1000); }}>
-                                                    <span className="text-black/80 group-hover:text-system-blue text-[10px] font-black uppercase truncate mr-2">{s.name}</span>
-                                                    <Plus size={12} className="text-system-blue opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
-                                                </div>
-                                            ))}
-                                            {allStops.filter(s => !assignedStops.find(rs => rs.stop_id === s.id)).length === 0 && <div className="text-[10px] text-system-gray italic text-center py-4">No additional stops available</div>}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Save Actions */}
-                        <div className="p-6 bg-white border-t border-black/5 sticky bottom-0">
-                            <button onClick={() => saveChanges()} disabled={!isDirty} className="w-full py-4 bg-system-blue text-white rounded-2xl font-black text-xs shadow-2xl flex items-center justify-center gap-3 hover:bg-blue-600 transition-all disabled:opacity-30">
-                                <Save size={18}/> COMMIT CHANGES
-                            </button>
-                        </div>
+                        <button onClick={() => setSelectedRoute(null)} className="p-2 hover:bg-black/5 rounded-full text-system-gray transition-colors"><X size={20}/></button>
                     </div>
-                ) : (
-                    <div className="animate-in fade-in slide-in-from-left-4 duration-300">
-                        <div className="p-4 px-6 border-b border-black/5 bg-white shrink-0 font-bold">
-                            <div className="relative"><Search size={14} className="absolute left-3 top-3 text-system-gray" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search service lines..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
-                        </div>
-                        <div className="divide-y divide-black/5">
-                            {filteredRoutes.map(r => (
-                                <div key={r.id} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-black/[0.02] cursor-pointer transition-all flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`}>
-                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm font-black text-[10px]" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#','')}` }}>{r.short_name}</div>
-                                    <div className="flex-1 min-w-0"><div className="text-sm text-black truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-system-gray uppercase tracking-tighter">Line #{r.id}</div></div>
-                                    <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" />
-                                </div>
+
+                    {/* Segmented Control */}
+                    <div className="px-6 py-4 bg-black/[0.02] border-b border-black/5 shrink-0">
+                        <div className="bg-black/5 p-1 rounded-xl flex gap-1">
+                            {(['info', 'path', 'sequence'] as const).map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveSection(tab)}
+                                    className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${activeSection === tab ? 'bg-white text-system-blue shadow-sm scale-[1.02]' : 'text-system-gray hover:text-black'}`}
+                                >
+                                    {tab === 'info' ? 'Attributes' : tab === 'path' ? 'Geometry' : 'Stops'}
+                                </button>
                             ))}
                         </div>
                     </div>
-                )}
-            </div>
+
+                    {/* Scrollable Content */}
+                    <div className="flex-1 overflow-y-auto p-6">
+                        {activeSection === 'info' && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Operator</label>
+                                    <select className="hig-input text-sm font-bold" value={selectedRoute.agency_id} onChange={e => { setSelectedRoute({...selectedRoute, agency_id: parseInt(e.target.value)}); setIsDirty(true); }}>{agencies.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
+                                    <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Route Type</label>
+                                    <select className="hig-input text-sm font-bold" value={selectedRoute.route_type} onChange={e => { setSelectedRoute({...selectedRoute, route_type: parseInt(e.target.value)}); setIsDirty(true); }}>
+                                        <option value={0}>Tram/Light Rail</option><option value={1}>Subway/Metro</option><option value={2}>Rail</option><option value={3}>Bus</option><option value={4}>Ferry</option><option value={5}>Cable Tram</option><option value={6}>Aerial Lift</option><option value={7}>Funicular</option><option value={11}>Trolleybus</option><option value={12}>Monorail</option>
+                                    </select></div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Short Name</label><input className="hig-input text-sm font-bold" value={selectedRoute.short_name} onChange={e => { setSelectedRoute({...selectedRoute, short_name: e.target.value}); setIsDirty(true); }} /></div>
+                                    <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Route Color</label>
+                                    <div className="flex gap-2 items-center"><input type="color" className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-none p-0" value={`#${(selectedRoute.color || '007AFF').replace('#','')}`} onChange={e => { setSelectedRoute({...selectedRoute, color: e.target.value.replace('#','')}); setIsDirty(true); }} /><input className="hig-input font-mono text-xs p-2 h-10 uppercase" value={selectedRoute.color} onChange={e => { setSelectedRoute({...selectedRoute, color: e.target.value.replace('#','')}); setIsDirty(true); }} /></div></div>
+                                </div>
+                                <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Public Name</label><input className="hig-input text-sm font-bold" value={selectedRoute.long_name} onChange={e => { setSelectedRoute({...selectedRoute, long_name: e.target.value}); setIsDirty(true); }} /></div>
+                                <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Description</label><textarea className="hig-input text-sm font-bold min-h-[80px] py-2" value={selectedRoute.route_desc || ''} onChange={e => { setSelectedRoute({...selectedRoute, route_desc: e.target.value}); setIsDirty(true); }} /></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Text Color</label>
+                                    <div className="flex gap-2 items-center"><input type="color" className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-none p-0" value={`#${(selectedRoute.text_color || 'FFFFFF').replace('#','')}`} onChange={e => { setSelectedRoute({...selectedRoute, text_color: e.target.value.replace('#','')}); setIsDirty(true); }} /><input className="hig-input font-mono text-xs p-2 h-10 uppercase" value={selectedRoute.text_color || 'FFFFFF'} onChange={e => { setSelectedRoute({...selectedRoute, text_color: e.target.value.replace('#','')}); setIsDirty(true); }} /></div></div>
+                                    <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Route URL</label><input className="hig-input text-sm font-bold" value={selectedRoute.route_url || ''} onChange={e => { setSelectedRoute({...selectedRoute, route_url: e.target.value}); setIsDirty(true); }} /></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'path' && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="flex items-center justify-between p-4 bg-system-blue/5 rounded-2xl border border-system-blue/10">
+                                    <div className="flex items-center gap-3"><Zap size={16} className={autoRoute ? "text-system-blue" : "text-system-gray"} /><span className="text-[11px] font-black uppercase tracking-tight">Real-time Road Snap</span></div>
+                                    <button onClick={() => setAutoRoute(!autoRoute)} className={`w-10 h-5 rounded-full transition-colors relative ${autoRoute ? 'bg-system-blue' : 'bg-black/10'}`}><div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${autoRoute ? 'left-6' : 'left-1'}`} /></button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button onClick={snapToRoads} className="py-4 bg-system-blue text-white rounded-2xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-blue-600 shadow-xl transition-all"><Zap size={14} /> FULL PATH</button>
+                                    <button onClick={snapPointsToRoads} className="py-4 bg-white border-2 border-system-blue text-system-blue rounded-2xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-system-blue hover:text-white transition-all shadow-sm"><MapIcon size={14} /> ANCHORS</button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button onClick={undo} disabled={history.length === 0} className="py-3 bg-white border border-black/10 rounded-xl text-[10px] font-black flex items-center justify-center gap-2 disabled:opacity-30 transition-all hover:bg-black/5 uppercase"><Undo2 size={14}/> Undo</button>
+                                    <button onClick={() => { if(window.confirm('Clear all geometry?')) pushToHistory([]); }} className="py-3 bg-white border border-black/10 rounded-xl text-[10px] font-black text-red-500 flex items-center justify-center gap-2 transition-all hover:bg-red-50 uppercase"><Trash2 size={14}/> Clear</button>
+                                </div>
+                                <div className="p-4 bg-black/[0.03] rounded-2xl">
+                                    <p className="text-[10px] text-system-gray italic text-center leading-relaxed font-bold">Left-click map to extend path. Drag nodes to move. Right-click to delete. Click polyline to insert.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'sequence' && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <button onClick={snapStopsToPath} className="w-full py-4 border-2 border-system-blue text-system-blue rounded-2xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-system-blue hover:text-white transition-all shadow-md uppercase"><Zap size={14} /> Snap All Stops to Path</button>
+                                <div className="space-y-2">
+                                    <h4 className="text-[10px] font-black text-system-gray uppercase tracking-widest ml-1">Current Sequence</h4>
+                                    <Reorder.Group axis="y" values={assignedStops} onReorder={(newOrder) => { setAssignedStops(newOrder); setIsDirty(true); }} className="space-y-2">
+                                        {assignedStops.map((rs, i) => (
+                                            <Reorder.Item key={rs.stop_id} value={rs} className="flex items-center gap-3 p-4 bg-white rounded-2xl cursor-grab border border-black/5 shadow-sm hover:shadow-md transition-shadow">
+                                                <GripVertical size={14} className="text-black/20" /><div className="w-6 h-6 rounded-full bg-system-blue/10 flex items-center justify-center text-[10px] font-extrabold text-system-blue shrink-0">{i+1}</div>
+                                                <div className="flex-1 font-bold text-xs truncate uppercase text-black">{rs.stop?.name}</div>
+                                                <button onClick={() => { setAssignedStops(assignedStops.filter((_, idx) => idx !== i)); setIsDirty(true); }} className="p-1 hover:bg-red-50 rounded text-red-400 transition-colors"><X size={16}/></button>
+                                            </Reorder.Item>
+                                        ))}
+                                    </Reorder.Group>
+                                </div>
+                                <div className="pt-6 border-t border-black/5">
+                                    <div className="flex items-center justify-between mb-4 px-1">
+                                        <h4 className="text-[10px] font-black text-system-gray uppercase tracking-widest">Add from Inventory</h4>
+                                        <div className="relative"><Search size={12} className="absolute left-2.5 top-2.5 text-system-gray" /><input className="hig-input text-[10px] pl-8 py-2 h-8 w-40 font-bold" placeholder="Filter stops..." value={stopSearchQuery} onChange={e => setStopSearchQuery(e.target.value)} /></div>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto pr-2">
+                                        {allStops
+                                            .filter(s => !assignedStops.find(rs => rs.stop_id === s.id))
+                                            .filter(s => s.name.toLowerCase().includes(stopSearchQuery.toLowerCase()))
+                                            .map(s => (
+                                            <div key={s.id} className="flex items-center justify-between p-4 hover:bg-black/[0.02] rounded-2xl cursor-pointer group transition-all border border-black/5 bg-white shadow-sm" onClick={() => { setAssignedStops([...assignedStops, {stop_id: s.id, stop: s, sequence: assignedStops.length+1, route_id: selectedRoute.id}]); setIsDirty(true); setStatus({ message: `Added ${s.name}`, type: 'success' }); setTimeout(()=>setStatus(null), 1000); }}>
+                                                <span className="text-black font-bold text-xs uppercase truncate mr-2">{s.name}</span>
+                                                <Plus size={16} className="text-system-blue opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Persistent Save Bar */}
+                    <div className="p-6 bg-white border-t border-black/5 rounded-b-3xl sticky bottom-0">
+                        <button onClick={() => saveChanges()} disabled={!isDirty} className="w-full py-4 bg-system-blue text-white rounded-2xl font-black text-sm shadow-2xl flex items-center justify-center gap-3 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95">
+                            <Save size={20}/> COMMIT ALL CHANGES
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

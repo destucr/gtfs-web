@@ -24,6 +24,23 @@ const Stops: React.FC = () => {
     const [focusedRouteId, setFocusedRouteId] = useState<number | null>(null);
     const [selectedRouteIds, setSelectedRouteIds] = useState<number[]>([]);
     const [routeShapes, setRouteShapes] = useState<Record<number, [number, number][]>>({});
+    const [hoveredRouteId, setHoveredRouteId] = useState<number | null>(null);
+
+    const handleRouteHover = async (routeId: number | null) => {
+        setHoveredRouteId(routeId);
+        if (routeId && !routeShapes[routeId]) {
+            try {
+                const tripsRes: { data: Trip[] } = await api.get('/trips');
+                const routeTrips = tripsRes.data.filter(t => t.route_id === routeId);
+                if (routeTrips.length > 0 && routeTrips[0].shape_id) {
+                    const shapeRes = await api.get(`/shapes/${routeTrips[0].shape_id}`);
+                    const points: ShapePoint[] = shapeRes.data || [];
+                    const poly = points.sort((a,b)=>a.sequence-b.sequence).map(p=>[p.lat, p.lon] as [number, number]);
+                    setRouteShapes(prev => ({ ...prev, [routeId]: poly }));
+                }
+            } catch (e) { console.error("Preview geometry load error:", e); }
+        }
+    };
     
     const fetchInitialData = useCallback(async () => {
         setLoading(true);
@@ -184,9 +201,15 @@ const Stops: React.FC = () => {
             stops: stops.map(s => ({ ...s, isSmall: true, hidePopup: false })),
             focusedPoints: (formData.lat !== 0 && formData.lon !== 0) ? [[formData.lat, formData.lon]] : [],
             activeStop: (formData.lat !== 0 && formData.lon !== 0) ? { ...formData, isDraggable: true } : null,
-            activeShape: []
+            activeShape: [],
+            previewRoute: hoveredRouteId ? {
+                id: hoveredRouteId,
+                color: routes.find(r => r.id === hoveredRouteId)?.color || '007AFF',
+                positions: routeShapes[hoveredRouteId] || [],
+                isFocused: false
+            } : null
         }));
-    }, [stops, selectedRouteIds, routeShapes, formData, routes, focusedRouteId, setMapLayers]);
+    }, [stops, selectedRouteIds, routeShapes, formData, routes, focusedRouteId, hoveredRouteId, setMapLayers]);
 
     const filteredStops = stops.filter(s => {
         const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -241,6 +264,8 @@ const Stops: React.FC = () => {
                                             return (
                                                 <div 
                                                     key={r.id} 
+                                                    onMouseEnter={() => handleRouteHover(r.id)}
+                                                    onMouseLeave={() => handleRouteHover(null)}
                                                     onClick={async () => {
                                                         const currentIds = (stopRouteMap[selectedStop.id] || []).map(assigned => assigned.id);
                                                         const newIds = isAssigned 
