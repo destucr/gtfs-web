@@ -9,7 +9,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { Route, Stop, Agency, Trip, ShapePoint, RouteStop } from '../types';
 
 const RouteStudio: React.FC = () => {
-    const { setMapLayers, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert, setStatus, quickMode, setQuickMode } = useWorkspace();
+    const { setMapLayers, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert, setStatus, quickMode, setQuickMode, sidebarOpen } = useWorkspace();
     const [routes, setRoutes] = useState<Route[]>([]);
     const [allStops, setAllStops] = useState<Stop[]>([]);
     const [agencies, setAgencies] = useState<Agency[]>([]);
@@ -315,38 +315,41 @@ const RouteStudio: React.FC = () => {
 
             {/* Floating Editor Window */}
             {selectedRoute && (
-                <div className="absolute top-6 right-6 z-[1500] w-[450px] bg-white rounded-3xl shadow-2xl border border-black/5 flex flex-col max-h-[calc(100vh-120px)] animate-in fade-in zoom-in-95 duration-300">
+                <div 
+                    className="absolute top-6 z-[1500] w-[450px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col max-h-[calc(100vh-120px)] transition-all duration-500 animate-in fade-in slide-in-from-left-8"
+                    style={{ left: sidebarOpen ? '424px' : '24px' }}
+                >
                     {/* Floating Header */}
-                    <div className="p-6 border-b border-black/5 flex items-center justify-between shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0" style={{ backgroundColor: `#${(selectedRoute.color || '007AFF').replace('#','')}` }}>
-                                <Bus size={20} />
+                    <div className="p-8 pb-6 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-system-blue/20 shrink-0 transition-transform hover:rotate-12" style={{ backgroundColor: `#${(selectedRoute.color || '007AFF').replace('#','')}` }}>
+                                <Bus size={24} />
                             </div>
                             <div className="min-w-0">
-                                <h2 className="text-lg font-black tracking-tight truncate leading-none mb-1">{selectedRoute.short_name || 'New Route'}</h2>
-                                <p className="text-[10px] font-black text-system-gray uppercase tracking-widest truncate">{selectedRoute.long_name || 'Pending Configuration'}</p>
+                                <h2 className="text-xl font-black tracking-tight truncate leading-none mb-1.5">{selectedRoute.short_name || 'New Route'}</h2>
+                                <p className="text-[10px] font-black text-system-gray uppercase tracking-[0.2em] truncate opacity-60">{selectedRoute.long_name || 'Draft Configuration'}</p>
                             </div>
                         </div>
-                        <button onClick={() => setSelectedRoute(null)} className="p-2 hover:bg-black/5 rounded-full text-system-gray transition-colors"><X size={20}/></button>
+                        <button onClick={() => setSelectedRoute(null)} className="p-2.5 hover:bg-black/5 rounded-full text-system-gray transition-all hover:rotate-90 active:scale-90"><X size={20}/></button>
                     </div>
 
                     {/* Segmented Control */}
-                    <div className="px-6 py-4 bg-black/[0.02] border-b border-black/5 shrink-0">
-                        <div className="bg-black/5 p-1 rounded-xl flex gap-1">
+                    <div className="px-8 py-2 shrink-0">
+                        <div className="bg-black/5 p-1.5 rounded-[1.25rem] flex gap-1 border border-black/5">
                             {(['info', 'path', 'sequence'] as const).map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveSection(tab)}
-                                    className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${activeSection === tab ? 'bg-white text-system-blue shadow-sm scale-[1.02]' : 'text-system-gray hover:text-black'}`}
+                                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSection === tab ? 'bg-white text-system-blue shadow-md scale-[1.02]' : 'text-system-gray hover:text-black hover:bg-white/50'}`}
                                 >
-                                    {tab === 'info' ? 'Attributes' : tab === 'path' ? 'Geometry' : 'Stops'}
+                                    {tab === 'info' ? 'Specs' : tab === 'path' ? 'Geom' : 'Nodes'}
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto p-6">
+                    <div className="flex-1 overflow-y-auto p-8 pt-6">
                         {activeSection === 'info' && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div className="grid grid-cols-2 gap-4">
@@ -373,53 +376,79 @@ const RouteStudio: React.FC = () => {
                         )}
 
                         {activeSection === 'path' && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex items-center justify-between p-4 bg-system-blue/5 rounded-2xl border border-system-blue/10">
-                                    <div className="flex items-center gap-3"><Zap size={16} className={autoRoute ? "text-system-blue" : "text-system-gray"} /><span className="text-[11px] font-black uppercase tracking-tight">Real-time Road Snap</span></div>
-                                    <button onClick={() => setAutoRoute(!autoRoute)} className={`w-10 h-5 rounded-full transition-colors relative ${autoRoute ? 'bg-system-blue' : 'bg-black/10'}`}><div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${autoRoute ? 'left-6' : 'left-1'}`} /></button>
+                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="flex items-center justify-between p-5 bg-system-blue/5 rounded-3xl border border-system-blue/10 shadow-inner">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-2 rounded-xl transition-all ${autoRoute ? 'bg-system-blue text-white shadow-lg' : 'bg-black/5 text-system-gray'}`}>
+                                            <Zap size={18} className={autoRoute ? "animate-pulse" : ""} />
+                                        </div>
+                                        <div>
+                                            <span className="text-[11px] font-black uppercase tracking-widest block mb-0.5">Continuous Routing</span>
+                                            <p className="text-[9px] font-bold text-system-gray uppercase opacity-60">Automatic Road Snapping</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setAutoRoute(!autoRoute)} className={`w-12 h-6 rounded-full transition-all relative ${autoRoute ? 'bg-system-blue shadow-lg shadow-system-blue/20' : 'bg-black/10'}`}>
+                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${autoRoute ? 'left-7' : 'left-1'}`} />
+                                    </button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button onClick={snapToRoads} className="py-4 bg-system-blue text-white rounded-2xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-blue-600 shadow-xl transition-all"><Zap size={14} /> FULL PATH</button>
-                                    <button onClick={snapPointsToRoads} className="py-4 bg-white border-2 border-system-blue text-system-blue rounded-2xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-system-blue hover:text-white transition-all shadow-sm"><MapIcon size={14} /> ANCHORS</button>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button onClick={snapToRoads} className="group relative py-5 bg-white border border-black/5 rounded-3xl font-black text-[10px] flex flex-col items-center gap-2 hover:bg-system-blue hover:text-white hover:border-system-blue transition-all shadow-sm hover:shadow-xl hover:shadow-system-blue/20 active:scale-95 uppercase tracking-widest">
+                                        <div className="p-2 bg-system-blue/5 rounded-lg group-hover:bg-white/20 transition-colors"><Zap size={16} /></div>
+                                        Full Trace
+                                    </button>
+                                    <button onClick={snapPointsToRoads} className="group relative py-5 bg-white border border-black/5 rounded-3xl font-black text-[10px] flex flex-col items-center gap-2 hover:bg-system-blue hover:text-white hover:border-system-blue transition-all shadow-sm hover:shadow-xl hover:shadow-system-blue/20 active:scale-95 uppercase tracking-widest">
+                                        <div className="p-2 bg-system-blue/5 rounded-lg group-hover:bg-white/20 transition-colors"><MapIcon size={16} /></div>
+                                        Snap Anchors
+                                    </button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button onClick={undo} disabled={history.length === 0} className="py-3 bg-white border border-black/10 rounded-xl text-[10px] font-black flex items-center justify-center gap-2 disabled:opacity-30 transition-all hover:bg-black/5 uppercase"><Undo2 size={14}/> Undo</button>
-                                    <button onClick={() => { if(window.confirm('Clear all geometry?')) pushToHistory([]); }} className="py-3 bg-white border border-black/10 rounded-xl text-[10px] font-black text-red-500 flex items-center justify-center gap-2 transition-all hover:bg-red-50 uppercase"><Trash2 size={14}/> Clear</button>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button onClick={undo} disabled={history.length === 0} className="py-4 bg-white border border-black/5 rounded-2xl text-[10px] font-black flex items-center justify-center gap-3 disabled:opacity-30 transition-all hover:bg-black/5 uppercase tracking-widest shadow-sm"><Undo2 size={16}/> Undo Edit</button>
+                                    <button onClick={() => { if(window.confirm('Wipe all geometry data for this route?')) pushToHistory([]); }} className="py-4 bg-white border border-black/5 rounded-2xl text-[10px] font-black text-red-500 flex items-center justify-center gap-3 transition-all hover:bg-red-50 uppercase tracking-widest shadow-sm"><Trash2 size={16}/> Clear Data</button>
                                 </div>
-                                <div className="p-4 bg-black/[0.03] rounded-2xl">
-                                    <p className="text-[10px] text-system-gray italic text-center leading-relaxed font-bold">Left-click map to extend path. Drag nodes to move. Right-click to delete. Click polyline to insert.</p>
+
+                                <div className="p-6 bg-black/[0.03] rounded-[2rem] border border-black/5">
+                                    <div className="flex items-center gap-3 mb-3 text-black/40"><Info size={14}/><span className="text-[9px] font-black uppercase tracking-widest text-black/60">GIS Instructions</span></div>
+                                    <p className="text-[10px] text-system-gray leading-relaxed font-bold">Left-click map to append nodes. Drag existing nodes to relocate. Right-click any node to remove. Click on any path segment to insert an anchor point.</p>
                                 </div>
                             </div>
                         )}
 
                         {activeSection === 'sequence' && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <button onClick={snapStopsToPath} className="w-full py-4 border-2 border-system-blue text-system-blue rounded-2xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-system-blue hover:text-white transition-all shadow-md uppercase"><Zap size={14} /> Snap All Stops to Path</button>
-                                <div className="space-y-2">
-                                    <h4 className="text-[10px] font-black text-system-gray uppercase tracking-widest ml-1">Current Sequence</h4>
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <button onClick={snapStopsToPath} className="w-full py-4 bg-white border border-system-blue/20 text-system-blue rounded-2xl font-black text-[10px] flex items-center justify-center gap-3 hover:bg-system-blue hover:text-white transition-all shadow-sm active:scale-95 uppercase tracking-widest"><Zap size={14} /> Snap Sequence to Path</button>
+                                
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between px-1">
+                                        <h4 className="text-[10px] font-black text-system-gray uppercase tracking-[0.2em]">Active Timeline</h4>
+                                        <span className="text-[9px] font-black text-system-blue bg-system-blue/5 px-2 py-0.5 rounded-full">{assignedStops.length} NODES</span>
+                                    </div>
                                     <Reorder.Group axis="y" values={assignedStops} onReorder={(newOrder) => { setAssignedStops(newOrder); setIsDirty(true); }} className="space-y-2">
                                         {assignedStops.map((rs, i) => (
-                                            <Reorder.Item key={rs.stop_id} value={rs} className="flex items-center gap-3 p-4 bg-white rounded-2xl cursor-grab border border-black/5 shadow-sm hover:shadow-md transition-shadow">
-                                                <GripVertical size={14} className="text-black/20" /><div className="w-6 h-6 rounded-full bg-system-blue/10 flex items-center justify-center text-[10px] font-extrabold text-system-blue shrink-0">{i+1}</div>
-                                                <div className="flex-1 font-bold text-xs truncate uppercase text-black">{rs.stop?.name}</div>
-                                                <button onClick={() => { setAssignedStops(assignedStops.filter((_, idx) => idx !== i)); setIsDirty(true); }} className="p-1 hover:bg-red-50 rounded text-red-400 transition-colors"><X size={16}/></button>
+                                            <Reorder.Item key={rs.stop_id} value={rs} className="flex items-center gap-4 p-4 bg-white/50 border border-black/5 rounded-2xl cursor-grab border-transparent hover:border-black/10 hover:bg-white hover:shadow-xl hover:shadow-black/5 transition-all group">
+                                                <GripVertical size={14} className="text-black/10 group-hover:text-black/30 transition-colors" />
+                                                <div className="w-7 h-7 rounded-full bg-system-blue/5 flex items-center justify-center text-[10px] font-black text-system-blue shrink-0 group-hover:bg-system-blue group-hover:text-white transition-all">{i+1}</div>
+                                                <div className="flex-1 font-black text-[11px] truncate uppercase tracking-tight text-black">{rs.stop?.name}</div>
+                                                <button onClick={() => { setAssignedStops(assignedStops.filter((_, idx) => idx !== i)); setIsDirty(true); }} className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 opacity-0 group-hover:opacity-100 transition-all"><X size={16}/></button>
                                             </Reorder.Item>
                                         ))}
                                     </Reorder.Group>
                                 </div>
-                                <div className="pt-6 border-t border-black/5">
+
+                                <div className="pt-8 border-t border-black/5">
                                     <div className="flex items-center justify-between mb-4 px-1">
-                                        <h4 className="text-[10px] font-black text-system-gray uppercase tracking-widest">Add from Inventory</h4>
-                                        <div className="relative"><Search size={12} className="absolute left-2.5 top-2.5 text-system-gray" /><input className="hig-input text-[10px] pl-8 py-2 h-8 w-40 font-bold" placeholder="Filter stops..." value={stopSearchQuery} onChange={e => setStopSearchQuery(e.target.value)} /></div>
+                                        <h4 className="text-[10px] font-black text-system-gray uppercase tracking-[0.2em]">Available Nodes</h4>
+                                        <div className="relative"><Search size={12} className="absolute left-3 top-2.5 text-system-gray opacity-40" /><input className="hig-input text-[10px] pl-9 py-2 h-9 w-44 font-black bg-black/5 border-none focus:bg-white focus:ring-2 focus:ring-system-blue/20 transition-all" placeholder="FILTER INVENTORY..." value={stopSearchQuery} onChange={e => setStopSearchQuery(e.target.value)} /></div>
                                     </div>
-                                    <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto pr-2">
+                                    <div className="grid grid-cols-1 gap-2 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
                                         {allStops
                                             .filter(s => !assignedStops.find(rs => rs.stop_id === s.id))
                                             .filter(s => s.name.toLowerCase().includes(stopSearchQuery.toLowerCase()))
                                             .map(s => (
-                                            <div key={s.id} className="flex items-center justify-between p-4 hover:bg-black/[0.02] rounded-2xl cursor-pointer group transition-all border border-black/5 bg-white shadow-sm" onClick={() => { setAssignedStops([...assignedStops, {stop_id: s.id, stop: s, sequence: assignedStops.length+1, route_id: selectedRoute.id}]); setIsDirty(true); setStatus({ message: `Added ${s.name}`, type: 'success' }); setTimeout(()=>setStatus(null), 1000); }}>
-                                                <span className="text-black font-bold text-xs uppercase truncate mr-2">{s.name}</span>
-                                                <Plus size={16} className="text-system-blue opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+                                            <div key={s.id} className="flex items-center justify-between p-4 hover:bg-white rounded-2xl cursor-pointer group transition-all border border-transparent hover:border-black/5 hover:shadow-lg shadow-black/5" onClick={() => { setAssignedStops([...assignedStops, {stop_id: s.id, stop: s, sequence: assignedStops.length+1, route_id: selectedRoute.id}]); setIsDirty(true); setStatus({ message: `Linked ${s.name}`, type: 'success' }); setTimeout(()=>setStatus(null), 1000); }}>
+                                                <span className="text-black font-black text-[11px] uppercase truncate mr-2 tracking-tight">{s.name}</span>
+                                                <Plus size={16} className="text-system-blue opacity-40 group-hover:opacity-100 group-hover:scale-110 transition-all shrink-0" />
                                             </div>
                                         ))}
                                     </div>
@@ -429,9 +458,9 @@ const RouteStudio: React.FC = () => {
                     </div>
 
                     {/* Persistent Save Bar */}
-                    <div className="p-6 bg-white border-t border-black/5 rounded-b-3xl sticky bottom-0">
-                        <button onClick={() => saveChanges()} disabled={!isDirty} className="w-full py-4 bg-system-blue text-white rounded-2xl font-black text-sm shadow-2xl flex items-center justify-center gap-3 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95">
-                            <Save size={20}/> COMMIT ALL CHANGES
+                    <div className="p-8 bg-white/50 backdrop-blur-md border-t border-black/5 rounded-b-[2.5rem] sticky bottom-0">
+                        <button onClick={() => saveChanges()} disabled={!isDirty} className="w-full py-5 bg-system-blue text-white rounded-2xl font-black text-[11px] shadow-2xl shadow-system-blue/30 flex items-center justify-center gap-3 hover:bg-blue-600 hover:scale-[1.02] transition-all disabled:opacity-30 active:scale-95 tracking-[0.1em]">
+                            <Save size={20}/> COMMIT BUNDLE CHANGES
                         </button>
                     </div>
                 </div>
