@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import { Info, Map as MapIcon, MapPin, Plus, Save, RotateCcw, Zap, ChevronRight, Bus, Loader2 } from 'lucide-react';
 import api from '../api';
 import axios from 'axios';
@@ -11,6 +11,15 @@ const BusStopIcon = L.icon({
     iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
     iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32]
 });
+
+const MapEvents = ({ onMapClick }) => {
+    useMapEvents({
+        click(e) {
+            onMapClick(e.latlng);
+        },
+    });
+    return null;
+};
 
 const RecenterMap = ({ center }) => {
     const map = useMap();
