@@ -192,7 +192,13 @@ const Stops: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
-            <div className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-black/5 pointer-events-auto shadow-2xl" style={{ width: 400 }}>
+            {/* Sidebar: Registry */}
+            <motion.div 
+                animate={{ x: sidebarOpen ? 0 : -400 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-black/5 pointer-events-auto shadow-2xl" 
+                style={{ width: 400 }}
+            >
                 <SidebarHeader title="Inventory" Icon={MapPin} actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all"><Plus size={18} /></button>} />
                 <div className="p-4 px-6 border-b border-black/5 bg-white shrink-0">
                     <div className="relative"><Search size={14} className="absolute left-3 top-3 text-system-gray" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search inventory..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
@@ -230,7 +236,7 @@ const Stops: React.FC = () => {
                         {routes.map(r => ( <button key={r.id} onClick={() => { if(focusedRouteId === r.id) setFocusedRouteId(null); else setFocusedRouteId(r.id); }} className={`px-3 py-1.5 rounded-full text-[10px] font-black transition-all border ${focusedRouteId === r.id ? 'bg-black text-white border-black shadow-xl scale-105' : 'bg-white text-system-gray border-black/10 hover:border-black/20'}`}>{r.short_name}</button> ))}
                     </div>
                 </div>
-            </div>
+            </motion.div>
 
             {selectedStop && (
                 <motion.div 

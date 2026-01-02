@@ -69,7 +69,7 @@ const Home: React.FC = () => {
   ];
 
   return (
-    <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-700">
+    <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-700 pointer-events-auto">
       <header className="mb-10 flex justify-between items-start">
         <div>
           <h1 className="text-4xl font-black tracking-tight text-black mb-2 text-primary">Transit Control Center</h1>
@@ -124,7 +124,7 @@ const FloatingFeedback: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[3000] animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[5000] animate-in slide-in-from-bottom-4 duration-300">
       <div className={`px-6 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 font-black text-xs uppercase tracking-widest ${colors[status.type]}`}>
         {status.type === 'loading' && <Loader2 size={16} className="animate-spin" />}
         {status.type === 'success' && <ShieldCheck size={16} />}
@@ -136,12 +136,33 @@ const FloatingFeedback: React.FC = () => {
 };
 
 const MapHUD: React.FC = () => {
-  const { mapLayers, status, quickMode, setQuickMode } = useWorkspace();
+  const { mapLayers, status, quickMode, setQuickMode, sidebarOpen } = useWorkspace();
   const location = useLocation();
   if (location.pathname === '/') return null;
 
   return (
-    <div className="absolute top-6 left-6 z-[1000] pointer-events-none flex flex-col gap-3">
+    <div 
+      className="absolute top-6 z-[1000] pointer-events-none flex flex-col gap-3 transition-all duration-500"
+      style={{ left: sidebarOpen ? 424 : 24 }}
+    >
+      {/* Persistence Indicator */}
+      {(status?.isDirty || mapLayers.activeShape.length > 0) && (
+        <div className="bg-black/80 backdrop-blur-xl text-white px-5 py-3 rounded-2xl border border-white/10 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500 pointer-events-auto">
+          <div className="relative flex h-3 w-3">
+            <div className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status?.isDirty ? 'bg-orange-400' : 'bg-green-400'}`} />
+            <div className={`relative inline-flex rounded-full h-3 w-3 ${status?.isDirty ? 'bg-orange-500' : 'bg-green-500'}`} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-[0.15em]">
+              {status?.isDirty ? 'Workspace Dirty' : 'Manifest Integrity'}
+            </span>
+            <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">
+              {status?.isDirty ? 'Pending Local Buffer' : 'Cloud Synchronized'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Quick Mode Indicator */}
       {quickMode && (
         <div className="bg-system-blue/90 backdrop-blur-xl text-white px-6 py-3 rounded-2xl border border-blue-400/30 shadow-[0_20px_50px_rgba(0,122,255,0.3)] flex items-center justify-between gap-8 animate-in zoom-in slide-in-from-top-4 duration-500 pointer-events-auto">
@@ -159,30 +180,12 @@ const MapHUD: React.FC = () => {
           <button onClick={() => setQuickMode(null)} className="hover:bg-white/20 p-2 rounded-xl transition-all active:scale-90"><X size={16}/></button>
         </div>
       )}
-
-      {/* Persistence Indicator */}
-      {(status?.isDirty || mapLayers.activeShape.length > 0) && (
-        <div className="bg-black/80 backdrop-blur-xl text-white px-5 py-3 rounded-2xl border border-white/10 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
-          <div className="relative flex h-3 w-3">
-            <div className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status?.isDirty ? 'bg-orange-400' : 'bg-green-400'}`} />
-            <div className={`relative inline-flex rounded-full h-3 w-3 ${status?.isDirty ? 'bg-orange-500' : 'bg-green-500'}`} />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-[0.15em]">
-              {status?.isDirty ? 'Workspace Dirty' : 'Manifest Integrity'}
-            </span>
-            <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">
-              {status?.isDirty ? 'Pending Local Buffer' : 'Cloud Synchronized'}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
 const QuickActionMenu: React.FC = () => {
-  const { setQuickMode, quickMode } = useWorkspace();
+  const { setQuickMode, quickMode, sidebarOpen } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -199,23 +202,26 @@ const QuickActionMenu: React.FC = () => {
   };
 
   return (
-    <div className="absolute top-6 right-6 z-[1000] flex flex-col gap-3 animate-in slide-in-from-right-4 duration-500">
-      <div className="bg-white/80 backdrop-blur-xl p-2 rounded-[2rem] shadow-2xl border border-black/5 flex flex-col gap-2">
+    <div 
+      className="absolute bottom-10 z-[1000] flex flex-col gap-3 transition-all duration-500 pointer-events-none"
+      style={{ left: sidebarOpen ? 424 : 24 }}
+    >
+      <div className="bg-white/80 backdrop-blur-xl p-2 rounded-[2rem] shadow-2xl border border-black/5 flex flex-col gap-2 pointer-events-auto">
         <button 
           onClick={() => handleAction('add-stop')}
           className={`group flex items-center gap-4 p-4 rounded-[1.5rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-stop' ? 'bg-orange-500 shadow-xl shadow-orange-500/30 text-white' : 'hover:bg-black/5 text-orange-600'}`}
           title="Drop Station Node"
         >
-          <span className={`text-[10px] font-black uppercase tracking-[0.1em] transition-all overflow-hidden whitespace-nowrap ${quickMode === 'add-stop' ? 'w-24 opacity-100' : 'w-0 opacity-0 group-hover:w-24 group-hover:opacity-100'}`}>Drop Node</span>
           <MapPin size={20} />
+          <span className={`text-[10px] font-black uppercase tracking-[0.1em] transition-all overflow-hidden whitespace-nowrap ${quickMode === 'add-stop' ? 'w-24 opacity-100' : 'w-0 opacity-0 group-hover:w-24 group-hover:opacity-100'}`}>Drop Node</span>
         </button>
         <button 
           onClick={() => handleAction('add-route')}
-          className={`group flex items-center gap-4 p-4 rounded-[1.5rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-route' ? 'bg-system-blue shadow-xl shadow-system-blue/30 text-white' : 'hover:bg-black/5 text-system-blue'}`}
+          className={`group flex items-center gap-4 p-4 rounded-[1.5rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-route' ? 'bg-system-blue shadow-xl shadow-system-blue/20 text-white' : 'hover:bg-black/5 text-system-blue'}`}
           title="Trace Route Geometry"
         >
-          <span className={`text-[10px] font-black uppercase tracking-[0.1em] transition-all overflow-hidden whitespace-nowrap ${quickMode === 'add-route' ? 'w-24 opacity-100' : 'w-0 opacity-0 group-hover:w-24 group-hover:opacity-100'}`}>Trace Path</span>
           <RouteIcon size={20} />
+          <span className={`text-[10px] font-black uppercase tracking-[0.1em] transition-all overflow-hidden whitespace-nowrap ${quickMode === 'add-route' ? 'w-24 opacity-100' : 'w-0 opacity-0 group-hover:w-24 group-hover:opacity-100'}`}>Trace Path</span>
         </button>
       </div>
     </div>
@@ -234,59 +240,34 @@ const WorkspaceContainer: React.FC = () => {
       {/* Layer 0: The Map (Global Background) */}
       {!isHome && (
         <div className="absolute inset-0 z-0">
-          <MapHUD />
-          <QuickActionMenu />
           <UnifiedMap />
         </div>
       )}
 
-      {/* Layer 10+: UI Elements */}
-      <div className={`relative h-full transition-all duration-300 ${isHome ? 'z-30' : 'z-10 pointer-events-none'}`}>
-        <div className={`h-full flex ${isHome ? '' : 'overflow-visible'}`}>
-          {/* Sidebar: Registry (Overlay) */}
-          {!isHome && (
-            <div 
-              className={`h-full transition-all duration-500 bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] border-r border-black/5 relative z-20 pointer-events-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-              style={{ width: '400px' }}
-            >
-              <Routes>
-                <Route path="/agencies" element={<Agencies />} />
-                <Route path="/stops" element={<Stops />} />
-                <Route path="/routes" element={<RouteStudio />} />
-                <Route path="/trips" element={<Trips />} />
-              </Routes>
-            </div>
-          )}
+      {/* Layer 10: Map Overlay UI (HUD & Actions) */}
+      {!isHome && (
+        <>
+          <MapHUD />
+          <QuickActionMenu />
+        </>
+      )}
 
-          {/* Home Page Content */}
-          {isHome && (
-            <div className="flex-1 overflow-y-auto">
-              <Routes>
-                <Route path="/" element={<Home />} />
-              </Routes>
-            </div>
-          )}
-
-          {/* Empty space for Map Interactions */}
-          {!isHome && (
-            <div className="flex-1 relative overflow-visible pointer-events-none">
-              {/* This area allows clicks to pass through to the map unless a hub is here */}
-              <Routes>
-                <Route path="/agencies" element={<div className="pointer-events-none" />} />
-                <Route path="/stops" element={<div className="pointer-events-none" />} />
-                <Route path="/routes" element={<div className="pointer-events-none" />} />
-                <Route path="/trips" element={<div className="pointer-events-none" />} />
-              </Routes>
-            </div>
-          )}
-        </div>
+      {/* Layer 20+: UI Elements (Registry & Hubs) */}
+      <div className={`absolute inset-0 transition-all duration-300 ${isHome ? 'z-30 pointer-events-auto' : 'z-20 pointer-events-none'}`}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/agencies" element={<Agencies />} />
+          <Route path="/stops" element={<Stops />} />
+          <Route path="/routes" element={<RouteStudio />} />
+          <Route path="/trips" element={<Trips />} />
+        </Routes>
       </div>
 
-      {/* Sidebar Toggle Handle */}
+      {/* Sidebar Toggle Handle (Always Top) */}
       {!isHome && (
         <div 
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className={`absolute top-1/2 -translate-y-1/2 z-[2000] w-7 h-28 bg-white/80 backdrop-blur-md shadow-2xl border border-black/5 rounded-[1.5rem] flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 group shadow-system-blue/10 ${sidebarOpen ? 'left-[386px]' : 'left-4'}`}
+          className={`absolute top-1/2 -translate-y-1/2 z-[4000] w-7 h-28 bg-white/80 backdrop-blur-md shadow-2xl border border-black/5 rounded-[1.5rem] flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 group shadow-system-blue/10 ${sidebarOpen ? 'left-[386px]' : 'left-4'}`}
         >
           {sidebarOpen ? <ChevronLeft size={18} className="text-system-gray group-hover:text-system-blue transition-colors" /> : <ChevronRight size={18} className="text-system-blue animate-pulse" />}
         </div>
