@@ -11,6 +11,8 @@ The platform follows a natural data lifecycle. For a fully functional network, f
 3.  **Routes**: Design the service lines and paths.
 4.  **Trips**: Bind the paths to specific service schedules.
 
+**Note on Navigation**: The map workspace is persistent. When you switch between modules (e.g., from Stops to Routes), the map stays active and simply updates its layers, ensuring a zero-flicker experience.
+
 ---
 
 ## 🛠 CMS Modules (GTFS Studio)

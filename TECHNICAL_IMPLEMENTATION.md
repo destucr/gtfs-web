@@ -111,6 +111,7 @@ The codebase is organized to support splitting into two repositories in the futu
 
 ### Jan 2, 2026 - Advanced Workspace & Auto-Save
 - **GIS Workspace Overhaul**: Standardized all CMS modules to a professional fullscreen layout with collapsible sidebars and floating HUDs.
+- **Persistent Map Architecture**: Migrated the `MapContainer` to a shared parent layout (`App.jsx`) using React Context (`WorkspaceContext`). This ensures the map instance never unmounts during navigation, eliminating flickering and providing a seamless "GIS Desktop" feel.
 - **Live Persistence**: Implemented an auto-save engine in Route Studio that synchronizes changes (Geometry, Metadata, Sequences) in the background with a debounced 2s delay.
 - **Improved Navigation**: Added global keybindings (`Cmd+1-4`) and direct line switching in Route Studio without context loss.
 - **Automated Documentation**: Created Playwright-based screenshot utility to programmatically update project visuals.
