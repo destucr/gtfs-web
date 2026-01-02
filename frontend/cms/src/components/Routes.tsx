@@ -362,40 +362,40 @@ const RouteStudio: React.FC = () => {
                     dragMomentum={false}
                     onMouseEnter={() => setIsHovered(true)}
                     onMouseLeave={() => setIsHovered(false)}
-                    className={`absolute top-6 z-[3000] w-[450px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`}
+                    className={`absolute top-6 z-[3000] w-[380px] bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`}
                     style={{ right: 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: (quickMode && !isHovered ? 0.2 : 1), x: 0 }}
                 >
                     {/* Floating Header (Drag Handle) */}
-                    <div className="p-8 pb-6 flex items-center justify-between shrink-0 cursor-move">
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-system-blue/20 shrink-0" style={{ backgroundColor: `#${(selectedRoute.color || '007AFF').replace('#','')}` }}>
-                                <Bus size={24} />
+                    <div className="p-6 pb-4 flex items-center justify-between shrink-0 cursor-move">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shadow-system-blue/20 shrink-0" style={{ backgroundColor: `#${(selectedRoute.color || '007AFF').replace('#','')}` }}>
+                                <Bus size={20} />
                             </div>
                             <div className="min-w-0">
-                                <h2 className="text-xl font-black tracking-tight truncate leading-none mb-1.5">{selectedRoute.short_name || 'New Route'}</h2>
-                                <p className="text-[10px] font-black text-system-gray uppercase tracking-[0.2em] truncate opacity-60">{selectedRoute.long_name || 'Draft Configuration'}</p>
+                                <h2 className="text-lg font-black tracking-tight truncate leading-none mb-1">{selectedRoute.short_name || 'New Route'}</h2>
+                                <p className="text-[9px] font-black text-system-gray uppercase tracking-[0.15em] truncate opacity-60">{selectedRoute.long_name || 'Draft'}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
-                            <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-2 hover:bg-black/5 rounded-full text-system-gray transition-all">
-                                {isCollapsed ? <Maximize2 size={18}/> : <Minimize2 size={18}/>}
+                            <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-black/5 rounded-full text-system-gray transition-all">
+                                {isCollapsed ? <Maximize2 size={16}/> : <Minimize2 size={16}/>}
                             </button>
-                            <button onClick={() => setSelectedRoute(null)} className="p-2 hover:bg-black/5 rounded-full text-system-gray transition-all hover:rotate-90"><X size={20}/></button>
+                            <button onClick={() => setSelectedRoute(null)} className="p-1.5 hover:bg-black/5 rounded-full text-system-gray transition-all hover:rotate-90"><X size={18}/></button>
                         </div>
                     </div>
 
                     {!isCollapsed && (
                         <>
                             {/* Segmented Control */}
-                            <div className="px-8 py-2 shrink-0">
-                                <div className="bg-black/5 p-1.5 rounded-[1.25rem] flex gap-1 border border-black/5">
+                            <div className="px-6 py-1 shrink-0">
+                                <div className="bg-black/5 p-1 rounded-xl flex gap-1 border border-black/5">
                                     {(['info', 'path', 'sequence'] as const).map((tab) => (
                                         <button
                                             key={tab}
                                             onClick={() => setActiveSection(tab)}
-                                            className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSection === tab ? 'bg-white text-system-blue shadow-sm scale-[1.02]' : 'text-system-gray hover:text-black hover:bg-white/50'}`}
+                                            className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${activeSection === tab ? 'bg-white text-system-blue shadow-sm scale-[1.02]' : 'text-system-gray hover:text-black hover:bg-white/50'}`}
                                         >
                                             {tab === 'info' ? 'Specs' : tab === 'path' ? 'Geom' : 'Nodes'}
                                         </button>
@@ -404,7 +404,7 @@ const RouteStudio: React.FC = () => {
                             </div>
 
                             {/* Scrollable Content */}
-                            <div className="flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar">
+                            <div className="flex-1 overflow-y-auto p-6 pt-4 custom-scrollbar">
                                 {activeSection === 'info' && (
                                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                         <div className="grid grid-cols-2 gap-4">
@@ -523,9 +523,9 @@ const RouteStudio: React.FC = () => {
                             </div>
 
                             {/* Persistent Save Bar */}
-                            <div className="p-8 bg-white/50 backdrop-blur-md border-t border-black/5 rounded-b-[2.5rem] sticky bottom-0">
-                                <button onClick={() => saveChanges()} disabled={!isDirty} className="w-full py-5 bg-system-blue text-white rounded-2xl font-black text-[11px] shadow-2xl shadow-system-blue/30 flex items-center justify-center gap-3 hover:bg-blue-600 hover:scale-[1.02] transition-all disabled:opacity-30 active:scale-95 tracking-[0.1em]">
-                                    <Save size={20}/> COMMIT BUNDLE CHANGES
+                            <div className="p-6 bg-white/50 backdrop-blur-md border-t border-black/5 rounded-b-[2rem] sticky bottom-0">
+                                <button onClick={() => saveChanges()} disabled={!isDirty} className="w-full py-4 bg-system-blue text-white rounded-2xl font-black text-[10px] shadow-2xl shadow-system-blue/30 flex items-center justify-center gap-3 hover:bg-blue-600 hover:scale-[1.02] transition-all disabled:opacity-30 active:scale-95 tracking-[0.1em]">
+                                    <Save size={18}/> COMMIT BUNDLE
                                 </button>
                             </div>
                         </>

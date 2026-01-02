@@ -151,30 +151,30 @@ const Trips: React.FC = () => {
                     dragMomentum={false}
                     onMouseEnter={() => setIsHovered(true)}
                     onMouseLeave={() => setIsHovered(false)}
-                    className={`absolute top-6 z-[3000] w-[450px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`}
+                    className={`absolute top-6 z-[3000] w-[380px] bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`}
                     style={{ right: 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }}
-                    initial={{ opacity: 0, x: 20 }}
+                    initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: (quickMode && !isHovered ? 0.2 : 1), x: 0 }}
                 >
-                    <div className="p-8 pb-6 flex items-center justify-between shrink-0 cursor-move">
+                    <div className="p-6 pb-4 flex items-center justify-between shrink-0 cursor-move">
                         <div className="flex items-center gap-4 flex-1 min-w-0">
-                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-system-blue text-white shadow-xl shadow-system-blue/20 shrink-0"><Database size={24} /></div>
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-system-blue text-white shadow-xl shadow-system-blue/20 shrink-0"><Database size={20} /></div>
                             <div className="min-w-0">
-                                <h2 className="text-xl font-black tracking-tight truncate leading-none mb-1.5">{formData.headsign || 'New Binding'}</h2>
-                                <p className="text-[10px] font-black text-system-gray uppercase tracking-[0.2em] truncate opacity-60">Manifest ID: {selectedTrip.id || 'NEW_ENTRY'}</p>
+                                <h2 className="text-xl font-black tracking-tight truncate leading-none mb-1">{formData.headsign || 'New Binding'}</h2>
+                                <p className="text-[9px] font-black text-system-gray uppercase tracking-[0.15em] truncate opacity-60">ID: {selectedTrip.id || 'RESERVED'}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
-                            <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-2 hover:bg-black/5 rounded-full text-system-gray transition-all">
-                                {isCollapsed ? <Maximize2 size={18}/> : <Minimize2 size={18}/>}
+                            <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-black/5 rounded-full text-system-gray transition-all">
+                                {isCollapsed ? <Maximize2 size={16}/> : <Minimize2 size={16}/>}
                             </button>
-                            <button onClick={() => setSelectedTrip(null)} className="p-2.5 hover:bg-black/5 rounded-full text-system-gray transition-all hover:rotate-90"><X size={20}/></button>
+                            <button onClick={() => setSelectedTrip(null)} className="p-2.5 hover:bg-black/5 rounded-full text-system-gray transition-all hover:rotate-90"><X size={18}/></button>
                         </div>
                     </div>
 
                     {!isCollapsed && (
                         <>
-                            <div className="flex-1 overflow-y-auto p-8 pt-2 custom-scrollbar">
+                            <div className="flex-1 overflow-y-auto p-6 pt-2 custom-scrollbar">
                                 <form onSubmit={handleSave} className="space-y-6">
                                     <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60 tracking-widest">Master Route</label>
                                     <select className="hig-input text-sm font-bold" value={formData.route_id} onChange={e => setFormData({...formData, route_id: e.target.value})} required>
@@ -188,9 +188,9 @@ const Trips: React.FC = () => {
                                     <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60 tracking-widest">Linked Geometry Hash</label>
                                     <div className="relative"><input className="hig-input text-sm font-mono font-black uppercase" placeholder="SHP_ID" value={formData.shape_id} onChange={e => setFormData({...formData, shape_id: e.target.value})} required /><div className="absolute right-3 top-2.5 text-[9px] bg-black/5 px-2 py-1 rounded font-black opacity-40">GEO_ID</div></div></div>
 
-                                    <div className="p-6 bg-system-blue/5 rounded-[2rem] border border-system-blue/10">
+                                    <div className="p-4 bg-system-blue/5 rounded-2xl border border-system-blue/10">
                                         <div className="flex items-center gap-3 mb-2 text-system-blue"><Navigation size={14}/><span className="text-[9px] font-black uppercase tracking-widest">Topology Integrity</span></div>
-                                        <div className="text-xs font-bold text-black/70 leading-relaxed">{activePoints.length > 0 ? `Detected ${activePoints.length} verified coordinate vertices in linked geometry.` : 'No geometry associated with this Shape ID.'}</div>
+                                        <div className="text-[10px] font-bold text-black/70 leading-relaxed">{activePoints.length > 0 ? `Detected ${activePoints.length} verified coordinate vertices.` : 'No geometry found.'}</div>
                                     </div>
 
                                     {selectedTrip.id && (
@@ -199,8 +199,8 @@ const Trips: React.FC = () => {
                                 </form>
                             </div>
 
-                            <div className="p-8 bg-white/50 backdrop-blur-md border-t border-black/5 rounded-b-[2.5rem] sticky bottom-0">
-                                <button onClick={handleSave} disabled={!isDirty} className="w-full py-5 bg-system-blue text-white rounded-2xl font-black text-[11px] shadow-2xl shadow-system-blue/30 transition-all disabled:opacity-30 active:scale-95 uppercase tracking-widest">Sync Trip Mapping</button>
+                            <div className="p-6 bg-white/50 backdrop-blur-md border-t border-black/5 rounded-b-[2rem] sticky bottom-0">
+                                <button onClick={handleSave} disabled={!isDirty} className="w-full py-4 bg-system-blue text-white rounded-2xl font-black text-[10px] shadow-2xl shadow-system-blue/30 transition-all disabled:opacity-30 active:scale-95 uppercase tracking-widest">Sync Trip Mapping</button>
                             </div>
                         </>
                     )}
