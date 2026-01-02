@@ -167,7 +167,13 @@ const Trips = () => {
                     <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="&copy; CARTO" />
                     {activePoints.length > 0 && (
                         <>
-                            <Polyline positions={activePoints} color={trips.find(t=>t.id===editingId)?.route?.color ? `#${trips.find(t=>t.id===editingId).route.color}` : '#007AFF'} weight={8} opacity={0.8} />
+                            <Polyline 
+                                key={`trip-path-${editingId}-${trips.find(t=>t.id===editingId)?.route?.color}`}
+                                positions={activePoints} 
+                                color={trips.find(t=>t.id===editingId)?.route?.color ? `#${trips.find(t=>t.id===editingId).route.color.replace('#', '')}` : '#007AFF'} 
+                                weight={8} 
+                                opacity={0.8} 
+                            />
                             <RecenterMap points={activePoints} />
                         </>
                     )}
