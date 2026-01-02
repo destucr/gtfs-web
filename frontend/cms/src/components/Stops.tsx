@@ -25,9 +25,6 @@ const Stops: React.FC = () => {
     const [selectedRouteIds, setSelectedRouteIds] = useState<number[]>([]);
     const [routeShapes, setRouteShapes] = useState<Record<number, [number, number][]>>({});
     
-    const [showAssignModal, setShowAssignModal] = useState(false);
-    const [activeAssignment, setActiveAssignment] = useState<{ stop: Stop | null, routeIds: number[] }>({ stop: null, routeIds: [] });
-
     const fetchInitialData = useCallback(async () => {
         setLoading(true);
         setStatus({ message: 'Syncing Inventory...', type: 'loading' });
@@ -234,17 +231,40 @@ const Stops: React.FC = () => {
                         {selectedStop.id !== 0 && (
                             <div className="p-6 space-y-6">
                                 <div>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h4 className="text-[10px] font-black text-system-gray uppercase tracking-widest">Active Line Bindings</h4>
-                                        <button onClick={() => { setActiveAssignment({ stop: selectedStop, routeIds: (stopRouteMap[selectedStop.id] || []).map(r=>r.id) }); setShowAssignModal(true); }} className="text-[10px] font-black text-system-blue hover:underline uppercase">Manage</button>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h4 className="text-[10px] font-black text-system-gray uppercase tracking-widest">Route Bindings</h4>
+                                        <div className="text-[9px] font-black text-system-blue bg-system-blue/5 px-2 py-0.5 rounded">AUTO-SYNC</div>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {(stopRouteMap[selectedStop.id] || []).map(r => (
-                                            <span key={r.id} className="px-3 py-1 bg-white border border-black/10 rounded-lg text-[10px] font-black text-black shadow-sm flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: `#${r.color}` }} /> {r.short_name}
-                                            </span>
-                                        ))}
-                                        {(stopRouteMap[selectedStop.id] || []).length === 0 && <div className="text-[10px] text-system-gray italic">No active bindings</div>}
+                                    <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                                        {routes.map(r => {
+                                            const isAssigned = (stopRouteMap[selectedStop.id] || []).some(assigned => assigned.id === r.id);
+                                            return (
+                                                <div 
+                                                    key={r.id} 
+                                                    onClick={async () => {
+                                                        const currentIds = (stopRouteMap[selectedStop.id] || []).map(assigned => assigned.id);
+                                                        const newIds = isAssigned 
+                                                            ? currentIds.filter(id => id !== r.id) 
+                                                            : [...currentIds, r.id];
+                                                        
+                                                        setStatus({ message: isAssigned ? `Removing Line ${r.short_name}...` : `Adding Line ${r.short_name}...`, type: 'loading' });
+                                                        try {
+                                                            await api.put(`/stops/${selectedStop.id}/routes`, newIds);
+                                                            setStatus({ message: isAssigned ? 'Binding Removed' : 'Binding Added', type: 'success' });
+                                                            setTimeout(() => setStatus(null), 2000);
+                                                            fetchInitialData();
+                                                        } catch (e) { setStatus({ message: 'Update failed', type: 'error' }); }
+                                                    }}
+                                                    className={`p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all border ${isAssigned ? 'border-system-blue bg-system-blue/5' : 'border-black/5 bg-white hover:border-black/10'}`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: `#${r.color}` }} />
+                                                        <span className="font-bold text-[11px] tracking-tight text-black">{r.short_name} &mdash; {r.long_name}</span>
+                                                    </div>
+                                                    {isAssigned ? <CheckCircle2 size={16} className="text-system-blue" /> : <Plus size={16} className="text-system-gray opacity-20" />}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                                 <div className="pt-6 border-t border-black/5 flex justify-between items-center">
@@ -315,39 +335,6 @@ const Stops: React.FC = () => {
                     </div>
                 )}
             </div>
-
-            {showAssignModal && activeAssignment.stop && (
-                <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                    <div className="hig-card w-full max-w-md shadow-2xl p-8 bg-white animate-in fade-in zoom-in duration-200 relative">
-                        <button onClick={() => setShowAssignModal(false)} className="absolute top-6 right-6 p-2 hover:bg-black/5 rounded-lg text-system-gray"><X size={20}/></button>
-                        <h3 className="text-2xl font-black mb-2 text-black">Line Assignment</h3>
-                        <p className="text-system-gray text-sm mb-8 font-medium">Toggle lines passing through <span className="text-black font-black underline">{activeAssignment.stop.name}</span>.</p>
-                        <div className="space-y-2 mb-2 max-h-80 overflow-y-auto pr-2">
-                            {routes.map(r => {
-                                const isAssigned = activeAssignment.routeIds.includes(r.id);
-                                return (
-                                    <div 
-                                        key={r.id} 
-                                        onClick={async () => {
-                                            const newIds = isAssigned 
-                                                ? activeAssignment.routeIds.filter(id => id !== r.id) 
-                                                : [...activeAssignment.routeIds, r.id];
-                                            setActiveAssignment({ ...activeAssignment, routeIds: newIds });
-                                            // Immediate API call for "one click" feel
-                                            await api.put(`/stops/${activeAssignment.stop!.id}/routes`, newIds);
-                                            fetchInitialData();
-                                        }} 
-                                        className={`p-4 rounded-xl flex items-center justify-between cursor-pointer transition-all border-2 ${isAssigned ? 'border-system-blue bg-system-blue/5' : 'border-transparent bg-black/5 hover:bg-black/10'}`}
-                                    >
-                                        <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }}></div><span className="font-black text-sm tracking-tight">{r.short_name} - {r.long_name}</span></div>
-                                        {isAssigned ? <CheckCircle2 size={20} className="text-system-blue" /> : <Plus size={18} className="text-system-gray opacity-40" />}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
