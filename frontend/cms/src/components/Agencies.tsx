@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { Globe, Plus, Trash2, Search, ChevronLeft, ChevronRight, Landmark, RotateCcw, ExternalLink, Clock } from 'lucide-react';
+import { Globe, Plus, Trash2, Search, ChevronLeft, Landmark, RotateCcw, ExternalLink, Clock } from 'lucide-react';
 import api from '../api';
 import { Agency, Route, Stop, RouteStop, Trip, ShapePoint } from '../types';
 
 const Agencies: React.FC = () => {
-    const { setMapLayers } = useWorkspace();
+    const { setMapLayers, sidebarOpen, setSidebarOpen } = useWorkspace();
     const [agencies, setAgencies] = useState<Agency[]>([]);
     const [allRoutes, setAllRoutes] = useState<Route[]>([]);
     const [allStops, setAllStops] = useState<Stop[]>([]);
@@ -17,7 +17,6 @@ const Agencies: React.FC = () => {
     const [formData, setFormData] = useState<Agency>({ name: '', url: '', timezone: '' });
     const [editingId, setEditingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
-    const [sidebarOpen, setSidebarOpen] = useState(true);
     const [agencyStats, setAgencyStats] = useState<Record<number, { routes: number, stops: number }>>({});
 
     const fetchInitialData = useCallback(async () => {
@@ -146,9 +145,9 @@ const Agencies: React.FC = () => {
                 <button onClick={fetchInitialData} className="p-2 bg-black/5 rounded-lg text-system-gray hover:text-black transition-colors" title="Sync Data"><RotateCcw size={18} /></button>
             </div>
 
-            <div className="flex-1 overflow-y-auto divide-y divide-black/5">
+            <div className="flex-1 overflow-y-auto divide-y divide-black/5 font-bold text-black">
                 {filteredAgencies.map(agency => (
-                    <div key={agency.id} className={`p-6 hover:bg-black/[0.02] cursor-pointer transition-all group ${selectedAgency?.id === agency.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} onClick={() => handleSelectAgency(agency)}>
+                    <div key={agency.id} className={`p-6 hover:bg-black/[0.02] cursor-pointer transition-all group ${selectedAgency?.id === agency.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} onClick={() => setSelectedAgency(agency)}>
                         <div className="flex justify-between items-start mb-3">
                             <div><div className="font-black text-lg tracking-tight text-black leading-none mb-2">{agency.name}</div><div className="flex items-center gap-2 text-[10px] font-black text-system-blue uppercase bg-system-blue/5 w-fit px-2 py-0.5 rounded tracking-tighter"><Globe size={10} /> {agency.timezone}</div></div>
                             <button onClick={(e) => { e.stopPropagation(); if(agency.id !== undefined && window.confirm('Remove agency?')) api.delete(`/agencies/${agency.id}`).then(fetchInitialData); }} className="p-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>

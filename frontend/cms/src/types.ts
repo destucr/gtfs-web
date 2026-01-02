@@ -17,6 +17,10 @@ export interface Route {
   short_name: string;
   long_name: string;
   color: string;
+  text_color?: string;
+  route_type?: number;
+  route_desc?: string;
+  route_url?: string;
   agency_id: number;
 }
 
@@ -56,4 +60,5 @@ export interface MapLayers {
   stops: (Stop & { isSmall?: boolean; hidePopup?: boolean; isCustom?: boolean; icon?: any })[];
   focusedPoints: [number, number][];
   activeShape: ShapePoint[];
+  activeStop: (Stop & { isDraggable?: boolean }) | null;
 }

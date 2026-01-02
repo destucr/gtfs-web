@@ -10,6 +10,10 @@ export interface Route {
   short_name: string;
   long_name: string;
   color: string;
+  text_color?: string;
+  route_type?: number;
+  route_desc?: string;
+  route_url?: string;
   agency_id: number;
 }
 

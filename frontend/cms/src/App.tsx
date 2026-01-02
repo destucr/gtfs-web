@@ -7,10 +7,11 @@ import RouteStudio from './components/Routes';
 import Trips from './components/Trips';
 import api from './api';
 import { WorkspaceProvider } from './context/WorkspaceContext';
+import { useWorkspace } from './context/useWorkspace';
 import UnifiedMap from './components/UnifiedMap';
 import { 
   LayoutDashboard, Globe, MapPin, Route as RouteIcon, Database, 
-  ArrowRight, Activity, ShieldCheck, Zap, AlertCircle, Loader2, TrendingUp 
+  ArrowRight, Activity, ShieldCheck, Zap, AlertCircle, Loader2, TrendingUp, ChevronRight
 } from 'lucide-react';
 
 const ShortcutManager: React.FC = () => {
@@ -82,14 +83,14 @@ const Home: React.FC = () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 font-bold">
         {cards.map((c, i) => (
           <Link key={c.path} to={c.path} className="hig-card p-6 group hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer relative overflow-hidden">
             <div className="flex justify-between items-start relative z-10">
                 <div className={`p-3 rounded-xl ${c.bg} ${c.color} shadow-inner`}><c.icon size={24} /></div>
                 <span className="text-[9px] font-black text-system-gray bg-black/5 px-2 py-1 rounded uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">Shortcut ^ {i+1}</span>
             </div>
-            <div className="mt-6 relative z-10 font-bold">
+            <div className="mt-6 relative z-10">
                 <div className="text-3xl font-black text-black tracking-tight leading-none mb-1">{loading ? <Loader2 size={20} className="animate-spin text-system-gray" /> : c.value}</div>
                 <div className="text-xs font-bold text-black uppercase tracking-wide">{c.name}</div>
                 <div className="text-[10px] font-medium text-system-gray uppercase mt-1 tracking-widest">{c.desc}</div>
@@ -113,11 +114,23 @@ const Home: React.FC = () => {
 
 const WorkspaceContainer: React.FC = () => {
   const location = useLocation();
+  const { sidebarOpen, setSidebarOpen } = useWorkspace();
   const isHome = location.pathname === '/';
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden">
-      <div className={`${isHome ? 'flex-1' : ''} h-full transition-all duration-300 overflow-hidden`}>
+    <div className="flex h-[calc(100vh-64px)] overflow-hidden relative text-black font-bold">
+      {/* Floating Toggle Button - Always on top */}
+      {!isHome && !sidebarOpen && (
+        <button 
+          onClick={() => setSidebarOpen(true)} 
+          className="absolute left-4 top-4 z-[2000] p-3 bg-white shadow-2xl rounded-full border border-black/5 hover:scale-110 active:scale-95 transition-all text-system-blue shadow-system-blue/20"
+        >
+          <ChevronRight size={24}/>
+        </button>
+      )}
+
+      {/* Sidebar Content */}
+      <div className={`${isHome ? 'flex-1' : ''} h-full transition-all duration-300 overflow-hidden shrink-0`}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/agencies" element={<Agencies />} />
@@ -127,6 +140,7 @@ const WorkspaceContainer: React.FC = () => {
         </Routes>
       </div>
 
+      {/* Persistent Map */}
       <div 
         className={`flex-1 relative border-l border-black/5 h-full ${isHome ? 'hidden' : 'block'}`}
         style={{ minHeight: '100%' }}
@@ -137,7 +151,7 @@ const WorkspaceContainer: React.FC = () => {
   );
 };
 
-const App: React.FC = () => {
+function App() {
   return (
     <Router>
       <WorkspaceProvider>

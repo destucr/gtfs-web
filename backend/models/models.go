@@ -19,6 +19,10 @@ type Route struct {
 	ShortName string `json:"short_name"`
 	LongName  string `json:"long_name"`
 	Color     string `json:"color"`
+	TextColor string `json:"text_color"`
+	RouteType int    `json:"route_type"`
+	RouteDesc string `json:"route_desc"`
+	RouteUrl  string `json:"route_url"`
 	AgencyID  uint   `json:"agency_id"`
 }
 

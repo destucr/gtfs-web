@@ -89,7 +89,18 @@ const Trips: React.FC = () => {
     if (loading && trips.length === 0) return <div className="flex h-screen items-center justify-center font-bold text-system-gray animate-pulse flex-col gap-4">SYNCING BINDINGS...</div>;
 
     return (
-        <div className="flex flex-col h-full bg-white shadow-2xl relative z-20 overflow-hidden font-bold" style={{ width: sidebarOpen ? '450px' : '0', transition: 'width 0.3s ease' }}>
+        <div className="flex h-full bg-system-background relative overflow-hidden font-bold">
+            {/* Toggle Sidebar Button (Floating when closed) */}
+            {!sidebarOpen && (
+                <button 
+                    onClick={() => setSidebarOpen(true)} 
+                    className="absolute left-4 top-4 z-[1001] p-3 bg-white shadow-xl rounded-full border border-black/5 hover:scale-110 active:scale-95 transition-all text-system-blue shadow-system-blue/20"
+                >
+                    <ChevronRight size={24}/>
+                </button>
+            )}
+
+            <div className="flex flex-col h-full bg-white shadow-2xl relative z-20 overflow-hidden font-bold" style={{ width: sidebarOpen ? '450px' : '0', transition: 'width 0.3s ease' }}>
             <div className="p-6 border-b border-black/5 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3"><div className="w-8 h-8 bg-system-blue rounded-lg flex items-center justify-center text-white shadow-lg"><Database size={18}/></div><h1 className="text-xl font-black tracking-tight text-black">Trip Mapping</h1></div>
                 <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-black/5 rounded-lg text-system-gray"><ChevronLeft size={20}/></button>
@@ -109,19 +120,19 @@ const Trips: React.FC = () => {
                 <div className="relative font-bold"><Search size={14} className="absolute left-3 top-3 text-system-gray" /><input className="hig-input text-sm pl-9 py-2" placeholder="Search service bindings..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
             </div>
 
-            <div className="flex-1 overflow-y-auto divide-y divide-black/5">
-                {filteredTrips.map(trip => (
-                    <div key={trip.id} className={`p-6 hover:bg-black/[0.02] cursor-pointer transition-all group ${editingId === trip.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} onClick={() => handleViewTrip(trip)}>
-                        <div className="flex justify-between items-start mb-3">
-                            <div className="flex items-center gap-4"><div className="w-2 h-10 rounded-full" style={{ backgroundColor: `#${trip.route?.color || 'ddd'}` }}></div><div><div className="font-black text-lg tracking-tight text-black leading-none mb-1">{trip.route?.short_name || '??'}</div><div className="text-[10px] font-black text-system-gray uppercase tracking-widest">{trip.headsign}</div></div></div>
-                            <button onClick={(e) => { e.stopPropagation(); if(window.confirm('Remove trip mapping?')) api.delete(`/trips/${trip.id}`).then(fetchInitialData); }} className="p-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
+                            <div className="flex-1 overflow-y-auto divide-y divide-black/5">
+                                {filteredTrips.map(trip => (
+                                    <div key={trip.id} className={`p-6 hover:bg-black/[0.02] cursor-pointer transition-all group ${editingId === trip.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} onClick={() => handleViewTrip(trip)}>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex items-center gap-4"><div className="w-2 h-10 rounded-full" style={{ backgroundColor: `#${trip.route?.color || 'ddd'}` }}></div><div><div className="font-black text-lg tracking-tight text-black leading-none mb-1">{trip.route?.short_name || '??'}</div><div className="text-[10px] font-black text-system-gray uppercase tracking-widest">{trip.headsign}</div></div></div>
+                                            <button onClick={(e) => { e.stopPropagation(); if(window.confirm('Remove trip mapping?')) api.delete(`/trips/${trip.id}`).then(fetchInitialData); }} className="p-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-[10px] font-black text-system-blue font-mono bg-system-blue/5 px-2 py-1 rounded w-fit uppercase"><MapIcon size={10} /> Link: {trip.shape_id}</div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] font-black text-system-blue font-mono bg-system-blue/5 px-2 py-1 rounded w-fit uppercase"><MapIcon size={10} /> Link: {trip.shape_id}</div>
                     </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
+                );
+            };
 export default Trips;
