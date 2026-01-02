@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { useWorkspace } from '../context/WorkspaceContext';
+import 'leaflet/dist/leaflet.css';
+import { useWorkspace } from '../context/useWorkspace';
 
 const BusStopIcon = L.icon({
     iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
@@ -23,7 +24,13 @@ const UnifiedMap = () => {
     const { mapLayers } = useWorkspace();
 
     return (
-        <MapContainer center={[-7.393, 109.360]} zoom={14} zoomControl={false} className="h-full w-full">
+        <MapContainer 
+            center={[-7.393, 109.360]} 
+            zoom={14} 
+            zoomControl={false} 
+            className="h-full w-full"
+            style={{ height: '100%', width: '100%' }}
+        >
             <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="&copy; CARTO" />
             
             <MapController focusedPoints={mapLayers.focusedPoints} />

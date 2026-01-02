@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import Agencies from './components/Agencies';
@@ -118,7 +118,7 @@ const WorkspaceContainer = () => {
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden">
       {/* Content Route (Sidebar / Home) */}
-      <div className={`${isHome ? 'flex-1 overflow-y-auto' : ''} transition-all duration-300`}>
+      <div className={`${isHome ? 'flex-1' : ''} h-full transition-all duration-300 overflow-hidden`}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/agencies" element={<Agencies />} />
@@ -128,12 +128,13 @@ const WorkspaceContainer = () => {
         </Routes>
       </div>
 
-      {/* Persistent Map: Only visible on transit routes */}
-      {!isHome && (
-        <div className="flex-1 relative border-l border-black/5">
-          <UnifiedMap />
-        </div>
-      )}
+      {/* Persistent Map: Always mounted, CSS hidden on Home */}
+      <div 
+        className={`flex-1 relative border-l border-black/5 h-full ${isHome ? 'hidden' : 'block'}`}
+        style={{ minHeight: '100%' }}
+      >
+        <UnifiedMap />
+      </div>
     </div>
   );
 };

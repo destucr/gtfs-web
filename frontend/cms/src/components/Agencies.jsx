@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useWorkspace } from '../context/WorkspaceContext';
+import { useWorkspace } from '../context/useWorkspace';
 import { Globe, Plus, Trash2, Search, ChevronLeft, ChevronRight, Landmark, RotateCcw, Landmark as LandmarkIcon, ExternalLink, Clock } from 'lucide-react';
 import api from '../api';
 

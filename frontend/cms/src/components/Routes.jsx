@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useWorkspace } from '../context/WorkspaceContext';
+import { useWorkspace } from '../context/useWorkspace';
 import { Info, Map as MapIcon, MapPin, Plus, Save, RotateCcw, Zap, ChevronRight, ChevronLeft, Bus, Loader2, GripVertical, Undo2, Layers, Settings2, Search, X, Maximize2, Minimize2, CheckCircle2 } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import api from '../api';
@@ -248,7 +248,16 @@ const RouteStudio = () => {
                                             </div>
                                         )}
                                     </div>
-                                    <div className="p-5 border-t border-black/5 bg-black/[0.02]"><button onClick={() => saveCurrentTask()} className="w-full py-4 bg-system-blue text-white rounded-2xl font-black text-xs shadow-2xl flex items-center justify-center gap-3 hover:bg-blue-600 transition-all"> <Save size={16}/> FORCE SYNC TO CLOUD </button></div>
+                                    <div className="p-5 border-t border-black/5 bg-black/[0.02]">
+                                        <button onClick={() => saveCurrentTask()} className="w-full py-4 bg-system-blue text-white rounded-2xl font-black text-xs shadow-2xl flex items-center justify-center gap-3 hover:bg-blue-600 transition-all"> 
+                                            <Save size={16}/> FORCE SYNC TO CLOUD 
+                                        </button>
+                                        {message && (
+                                            <div className={`mt-2 text-center text-[10px] font-black uppercase tracking-widest ${message.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                                                {message.text}
+                                            </div>
+                                        )}
+                                    </div>
                                 </>
                             )}
                         </div>

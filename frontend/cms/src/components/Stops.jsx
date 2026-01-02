@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useWorkspace } from '../context/WorkspaceContext';
-import { MapPin, Plus, Trash2, Search, Filter, Loader2, CheckCircle2, ChevronLeft, ChevronRight, LocateFixed, Save, X, Minimize2, Maximize2, Layers } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useWorkspace } from '../context/useWorkspace';
+import { MapPin, Plus, Trash2, Search, Filter, Loader2, CheckCircle2, ChevronLeft, ChevronRight, LocateFixed, Save, X, Layers } from 'lucide-react';
 import api from '../api';
-import axios from 'axios';
 import L from 'leaflet';
 
 const Stops = () => {
-    const { mapLayers, setMapLayers } = useWorkspace();
+    const { setMapLayers } = useWorkspace();
     const [stops, setStops] = useState([]);
     const [routes, setRoutes] = useState([]);
     const [stopRouteMap, setStopRouteMap] = useState({});
@@ -16,10 +15,9 @@ const Stops = () => {
     const [formData, setFormData] = useState({ name: '', lat: '', lon: '' });
     const [editingId, setEditingId] = useState(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [hudMinimized, setHudMinimized] = useState(false);
     
     const [loading, setLoading] = useState(true);
-    const [isNaming, setIsNaming] = useState(false);
+    const [isNaming] = useState(false);
     const [selectedRouteIds, setSelectedRouteIds] = useState([]);
     const [routeShapes, setRouteShapes] = useState({});
     
@@ -104,6 +102,8 @@ const Stops = () => {
     };
 
     const filteredStops = stops.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    if (loading && stops.length === 0) return <div className="flex h-screen items-center justify-center font-bold text-system-gray animate-pulse flex-col gap-4">SYNCING INVENTORY...</div>;
 
     return (
         <div className="flex flex-col h-full bg-white shadow-2xl relative z-20 overflow-hidden" style={{ width: sidebarOpen ? '450px' : '0', transition: 'width 0.3s ease' }}>
