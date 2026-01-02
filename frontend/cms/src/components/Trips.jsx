@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Table, Button, Form, Row, Col, Card, Badge } from 'react-bootstrap';
+import { Database, Plus, Edit3, Trash2, Route, Map as MapIcon, ChevronRight } from 'lucide-react';
 import api from '../api';
 
 const Trips = () => {
@@ -7,174 +7,174 @@ const Trips = () => {
     const [routes, setRoutes] = useState([]);
     const [formData, setFormData] = useState({ route_id: '', headsign: '', shape_id: '' });
     const [editingId, setEditingId] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchTrips();
-        fetchRoutes();
+        fetchInitialData();
     }, []);
 
-    // HIG Logic: Auto-suggest IDs to reduce user error
+    const fetchInitialData = async () => {
+        setLoading(true);
+        try {
+            const [tRes, rRes] = await Promise.all([api.get('/trips'), api.get('/routes')]);
+            setTrips(tRes.data || []);
+            setRoutes(rRes.data || []);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Auto-suggest IDs logic
     useEffect(() => {
         if (formData.route_id && !editingId) {
             const route = routes.find(r => r.id === parseInt(formData.route_id));
             if (route) {
-                const suggestedShapeId = `SHP_${route.short_name.toUpperCase()}`;
                 setFormData(prev => ({ 
                     ...prev, 
-                    shape_id: suggestedShapeId,
+                    shape_id: `SHP_${route.short_name.toUpperCase()}`,
                     headsign: prev.headsign || route.long_name 
                 }));
             }
         }
     }, [formData.route_id, routes, editingId]);
 
-    const fetchTrips = async () => {
-        try {
-            const res = await api.get('/trips');
-            setTrips(res.data);
-        } catch (error) {
-            console.error("Error fetching trips", error);
-        }
-    };
-
-    const fetchRoutes = async () => {
-        try {
-            const res = await api.get('/routes');
-            setRoutes(res.data);
-        } catch (error) {
-            console.error("Error fetching routes", error);
-        }
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-        try {
-            const payload = { ...formData, route_id: parseInt(formData.route_id) };
-            if (editingId) {
-                await api.put(`/trips/${editingId}`, payload);
-            } else {
-                await api.post('/trips', payload);
-            }
-            setFormData({ route_id: '', headsign: '', shape_id: '' });
-            setEditingId(null);
-            fetchTrips();
-        } catch (error) {
-            console.error("Save error", error);
-        }
+        const payload = { ...formData, route_id: parseInt(formData.route_id) };
+        if (editingId) await api.put(`/trips/${editingId}`, payload);
+        else await api.post('/trips', payload);
+        setFormData({ route_id: '', headsign: '', shape_id: '' });
+        setEditingId(null);
+        fetchInitialData();
     };
 
-    return (
-        <Container className="mt-4" fluid>
-            <div className="mb-4 px-3">
-                <h2 className="fw-bold mb-1">Trips & Schedules</h2>
-                <p className="text-muted">Link routes to their specific geographic paths and headsigns.</p>
-            </div>
+    if (loading && trips.length === 0) return <div className="flex h-screen items-center justify-center text-system-gray font-medium">Loading Trip Mappings...</div>;
 
-            <Row className="g-4">
-                <Col lg={4}>
-                    <div className="hig-card shadow-sm">
-                        <h6 className="small text-muted text-uppercase fw-bold mb-4">
-                            {editingId ? "Edit Trip Mapping" : "New Trip Assignment"}
-                        </h6>
-                        <Form onSubmit={handleSubmit}>
-                            <Form.Group className="mb-4">
-                                <label className="small fw-bold mb-2">Select Route</label>
-                                <Form.Select 
-                                    className="form-control"
+    return (
+        <div className="p-8 max-w-7xl mx-auto">
+            <header className="mb-8">
+                <h1 className="text-3xl font-bold tracking-tight text-black">Trip Mappings</h1>
+                <p className="text-system-gray mt-1">Bind logical routes to specific physical paths and directions.</p>
+            </header>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Form Card */}
+                <div className="lg:col-span-4">
+                    <div className="hig-card p-6 shadow-sm sticky top-24">
+                        <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                            <Database size={20} className="text-system-blue" />
+                            {editingId ? 'Edit Mapping' : 'New Assignment'}
+                        </h3>
+                        
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div>
+                                <label className="text-xs font-bold text-system-gray uppercase mb-2 block">Reference Route</label>
+                                <select 
+                                    className="hig-input"
                                     value={formData.route_id} 
                                     onChange={(e) => setFormData({...formData, route_id: e.target.value})} 
                                     required
                                 >
-                                    <option value="">-- Choose Route --</option>
+                                    <option value="">Choose a route...</option>
                                     {routes.map(r => (
                                         <option key={r.id} value={r.id}>{r.short_name} - {r.long_name}</option>
                                     ))}
-                                </Form.Select>
-                            </Form.Group>
+                                </select>
+                            </div>
 
-                            <Form.Group className="mb-4">
-                                <label className="small fw-bold mb-2">Headsign (Destination)</label>
-                                <Form.Control 
-                                    className="form-control"
-                                    placeholder="e.g. To Central Terminal"
+                            <div>
+                                <label className="text-xs font-bold text-system-gray uppercase mb-2 block">Headsign (Target)</label>
+                                <input 
+                                    className="hig-input"
+                                    placeholder="e.g. Bukateja Terminal"
                                     value={formData.headsign} 
                                     onChange={(e) => setFormData({...formData, headsign: e.target.value})} 
                                     required 
                                 />
-                            </Form.Group>
+                            </div>
 
-                            <Form.Group className="mb-4">
-                                <label className="small fw-bold mb-2 d-flex justify-content-between">
-                                    Shape Identifier 
-                                    <Badge bg="light" text="dark" style={{fontSize: '10px'}}>GTFS SHAPE_ID</Badge>
+                            <div>
+                                <label className="text-xs font-bold text-system-gray uppercase mb-2 block flex justify-between">
+                                    Shape Identifier
+                                    <span className="text-[9px] bg-black/5 px-1 rounded text-black/40">GTFS_ID</span>
                                 </label>
-                                <Form.Control 
-                                    className="form-control font-monospace"
-                                    placeholder="SHP_ID"
+                                <input 
+                                    className="hig-input font-mono"
+                                    placeholder="SHP_K1"
                                     value={formData.shape_id} 
                                     onChange={(e) => setFormData({...formData, shape_id: e.target.value})} 
                                     required 
                                 />
-                                <Form.Text className="text-muted small">
-                                    Recommended: SHP_[ROUTE_NAME]
-                                </Form.Text>
-                            </Form.Group>
+                            </div>
 
-                            <div className="d-grid gap-2">
-                                <Button variant="primary" type="submit" className="py-2">
-                                    {editingId ? "Update Mapping" : "Create Trip Mapping"}
-                                </Button>
+                            <div className="pt-2">
+                                <button type="submit" className="w-full bg-system-blue text-white py-3 rounded-lg font-bold shadow-lg shadow-system-blue/20 hover:bg-blue-600 transition-all active:scale-[0.98]">
+                                    {editingId ? 'Update Trip' : 'Create Mapping'}
+                                </button>
                                 {editingId && (
-                                    <Button variant="light" onClick={() => {setEditingId(null); setFormData({route_id: '', headsign: '', shape_id: ''})}}>
+                                    <button type="button" onClick={() => {setEditingId(null); setFormData({route_id: '', headsign: '', shape_id: ''})}} className="w-full mt-3 text-system-gray font-medium py-2 hover:text-black">
                                         Cancel
-                                    </Button>
+                                    </button>
                                 )}
                             </div>
-                        </Form>
+                        </form>
                     </div>
-                </Col>
+                </div>
 
-                <Col lg={8}>
-                    <div className="hig-card p-0 overflow-hidden shadow-sm">
-                        <Table hover responsive className="mb-0 align-middle">
+                {/* Table Area */}
+                <div className="lg:col-span-8">
+                    <div className="hig-card overflow-hidden shadow-sm">
+                        <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr>
-                                    <th style={{width: '80px'}}>ID</th>
-                                    <th>Route</th>
-                                    <th>Headsign</th>
-                                    <th>Shape ID</th>
-                                    <th className="text-end">Actions</th>
+                                <tr className="bg-black/[0.02] border-b border-black/5">
+                                    <th className="px-6 py-4 text-xs font-bold text-system-gray uppercase tracking-wider">Service Line</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-system-gray uppercase tracking-wider">Destination</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-system-gray uppercase tracking-wider">Geometry ID</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-system-gray uppercase tracking-wider text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-black/5">
                                 {trips.map(trip => (
-                                    <tr key={trip.id}>
-                                        <td className="text-muted">#{trip.id}</td>
-                                        <td>
-                                            <div className="d-flex align-items-center">
-                                                <Badge style={{backgroundColor: `#${trip.route?.color || 'ddd'}`, marginRight: '10px'}} pill>&nbsp;</Badge>
-                                                <span className="fw-bold">{trip.route?.short_name || trip.route_id}</span>
+                                    <tr key={trip.id} className="group hover:bg-black/[0.01] transition-colors">
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-2 h-8 rounded-full" style={{ backgroundColor: `#${trip.route?.color || 'ddd'}` }}></div>
+                                                <div>
+                                                    <div className="font-bold text-black">{trip.route?.short_name || '??'}</div>
+                                                    <div className="text-[10px] font-bold text-system-gray uppercase">Route #{trip.route_id}</div>
+                                                </div>
                                             </div>
                                         </td>
-                                        <td>{trip.headsign}</td>
-                                        <td><code className="text-primary">{trip.shape_id}</code></td>
-                                        <td className="text-end">
-                                            <Button variant="link" className="text-primary p-0 me-3 text-decoration-none small fw-bold" onClick={() => {
-                                                setFormData({ route_id: trip.route_id, headsign: trip.headsign, shape_id: trip.shape_id });
-                                                setEditingId(trip.id);
-                                            }}>Edit</Button>
-                                            <Button variant="link" className="text-danger p-0 text-decoration-none small" onClick={() => {
-                                                if(window.confirm('Delete this trip?')) api.delete(`/trips/${trip.id}`).then(fetchTrips);
-                                            }}>Delete</Button>
+                                        <td className="px-6 py-5 font-medium text-black">{trip.headsign}</td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-2 text-system-blue font-mono text-xs bg-system-blue/5 px-2 py-1 rounded w-fit">
+                                                <MapIcon size={12} /> {trip.shape_id}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 text-right">
+                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button 
+                                                    onClick={() => {setEditingId(trip.id); setFormData({ route_id: trip.route_id, headsign: trip.headsign, shape_id: trip.shape_id });}}
+                                                    className="p-2 text-system-blue hover:bg-system-blue/10 rounded-md transition-colors"
+                                                >
+                                                    <Edit3 size={18} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => {if(window.confirm('Remove this trip?')) api.delete(`/trips/${trip.id}`).then(fetchInitialData)}}
+                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
-                        </Table>
+                        </table>
                     </div>
-                </Col>
-            </Row>
-        </Container>
+                </div>
+            </div>
+        </div>
     );
 };
 

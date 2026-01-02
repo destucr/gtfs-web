@@ -1,107 +1,52 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
 
-:root {
-  /* HIG Color Palette */
-  --system-blue: #007AFF;
-  --system-blue-hover: #0060C7;
-  --system-blue-active: #004A99;
-  --system-gray: #8E8E93;
-  --system-background: #F2F2F7;
-  --system-grouped-bg: #FFFFFF;
-  --system-separator: #C6C6C8;
+@theme {
+  --color-system-blue: #007AFF;
+  --color-system-blue-hover: #0060C7;
+  --color-system-blue-active: #004A99;
+  --color-system-gray: #8E8E93;
+  --color-system-background: #F2F2F7;
+  --color-system-grouped-bg: #FFFFFF;
+  --color-system-separator: #C6C6C8;
   
-  /* Interaction Variables */
-  --border-radius-lg: 12px;
-  --border-radius-md: 8px;
-  --transition-speed: 0.15s;
+  --radius-hig: 12px;
 }
 
-body {
-  font-family: 'Inter', -apple-system, sans-serif;
-  background-color: var(--system-background);
-  color: #000000;
-  letter-spacing: -0.011em;
+@layer base {
+  body {
+    @apply bg-system-background text-black antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.011em;
+  }
 }
 
-/* --- Interactive Components --- */
+@layer components {
+  .hig-card {
+    @apply bg-white rounded-hig shadow-sm border border-black/5;
+  }
+  
+  .segmented-control {
+    @apply bg-black/5 p-0.5 rounded-lg flex;
+  }
+  
+  .segmented-item {
+    @apply flex-1 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer text-center;
+  }
+  
+  .segmented-item.active {
+    @apply bg-white shadow-sm text-black;
+  }
 
-/* Standard Buttons */
-.btn {
-  border-radius: var(--border-radius-md);
-  font-weight: 500;
-  transition: all var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
-  border: none;
+  .hig-input {
+    @apply w-full px-3 py-2 bg-black/5 border-transparent border rounded-lg focus:bg-white focus:border-system-blue focus:ring-4 focus:ring-system-blue/10 outline-none transition-all;
+  }
+  
+  /* Legacy bootstrap bridge if needed */
+  .btn {
+    @apply rounded-lg font-medium transition-all duration-150 border-none;
+  }
+  
+  .btn-primary {
+    @apply bg-system-blue text-white hover:bg-system-blue-hover active:scale-[0.98];
+  }
 }
-
-.btn-primary {
-  background-color: var(--system-blue);
-}
-
-.btn-primary:hover {
-  background-color: var(--system-blue-hover);
-  transform: scale(1.02);
-}
-
-.btn-primary:active {
-  background-color: var(--system-blue-active);
-  transform: scale(0.98);
-}
-
-/* Segmented Control (HIG signature) */
-.segmented-control {
-  background: rgba(118, 118, 128, 0.12);
-  padding: 2px;
-  border-radius: 9px;
-  display: flex;
-  margin-bottom: 1rem;
-}
-
-.segmented-item {
-  flex: 1;
-  text-align: center;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  border-radius: 7px;
-  transition: all 0.2s;
-  color: #3a3a3c;
-}
-
-.segmented-item.active {
-  background: #FFFFFF;
-  box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.12), 0px 3px 1px rgba(0, 0, 0, 0.04);
-  color: #000000;
-}
-
-/* Form Inputs */
-.form-control {
-  background-color: rgba(118, 118, 128, 0.05);
-  border: 1px solid transparent;
-  padding: 12px;
-  font-size: 15px;
-}
-
-.form-control:focus {
-  background-color: #FFFFFF;
-  border-color: var(--system-blue);
-  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15);
-}
-
-/* Cards */
-.hig-card {
-  background: var(--system-grouped-bg);
-  border-radius: var(--border-radius-lg);
-  padding: 20px;
-  margin-bottom: 24px;
-}
-
-.list-group-item {
-  border-left: none;
-  border-right: none;
-  padding: 12px 16px;
-  border-color: var(--system-separator);
-}
-
-.list-group-item:first-child { border-top: none; }
-.list-group-item:last-child { border-bottom: none; }

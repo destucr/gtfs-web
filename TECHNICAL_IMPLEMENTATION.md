@@ -108,7 +108,13 @@ The codebase is organized to support splitting into two repositories in the futu
 - **Human-Readable IDs**: Implemented auto-generation of `shape_id` based on Route short names (e.g., `SHP_K1`) for easier database analysis.
 - **Route-Stop Relationship**: Added `RouteStop` model and logic to link stops to specific routes in a defined sequence.
 - **Reverse Geocoding**: Integrated smart stop creation—clicking the map now automatically suggests stop names using OpenStreetMap data.
-- **Modern UI**: Completed full HIG (Human Interface Guidelines) overhaul across all CMS modules (Agencies, Stops, Trips, Route Studio).
+
+### [Date] - UI Migration (Tailwind CSS & HIG)
+- **Framework Shift**: Migrated the entire CMS from Bootstrap to **Tailwind CSS**.
+- **Design System**: Implemented a professional **HIG (Human Interface Guidelines)** aesthetic using system colors, frosted glass effects, and soft shadows.
+- **Unified Workspace**: Consolidated Route metadata, Path (Shape) editing, and Stop Assignments into a high-performance **Route Studio**.
+- **Iconography**: Integrated **Lucide React** for consistent, modern visual language.
+- **Interactive States**: Added tactile feedback (hover/active/focus) to all components for a native-app feel.
 
 ### [Date] - Security & Environment Configuration
 - Removed hardcoded sensitive credentials from `docker-compose.yml`.

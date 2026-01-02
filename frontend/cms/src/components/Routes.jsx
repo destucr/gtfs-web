@@ -1,344 +1,262 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Container, Button, Form, Row, Col, Alert, Table, Card, Spinner, ListGroup, Badge } from 'react-bootstrap';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { Info, Map as MapIcon, MapPin, Plus, Save, RotateCcw, Zap, ChevronRight, Bus, Loader2 } from 'lucide-react';
 import api from '../api';
 import axios from 'axios';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-// --- Icons ---
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-const DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
-
+// --- Assets & Icons ---
 const BusStopIcon = L.icon({
     iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
+    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32]
 });
-
-// --- Map Helpers ---
-
-const MapEvents = ({ onMapClick }) => {
-    useMapEvents({ click(e) { onMapClick(e.latlng); } });
-    return null;
-};
 
 const RecenterMap = ({ center }) => {
     const map = useMap();
-    useEffect(() => {
-        if (center && center[0] && center[1]) {
-            map.setView(center, map.getZoom());
-        }
-    }, [center, map]);
+    useEffect(() => { if (center) map.setView(center, map.getZoom()); }, [center]);
     return null;
 };
 
 const RouteStudio = () => {
-    // Data States
     const [routes, setRoutes] = useState([]);
-    const [agencies, setAgencies] = useState([]);
     const [allStops, setAllStops] = useState([]);
-    
-    // Selection States
+    const [agencies, setAgencies] = useState([]);
     const [selectedRoute, setSelectedRoute] = useState(null);
     const [shapePoints, setShapePoints] = useState([]);
-    const [assignedStops, setAssignedStops] = useState([]); // [{id, stop_id, sequence, stop: {}}]
+    const [assignedStops, setAssignedStops] = useState([]);
     
-    // UI States
-    const [isLoading, setIsLoading] = useState(false);
-    const [isRouting, setIsRouting] = useState(false);
-    const [message, setMessage] = useState(null);
+    const [activeTab, setActiveTab] = useState('metadata'); // metadata | shape | stops
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [routing, setRouting] = useState(false);
     const [mapCenter, setMapCenter] = useState([-7.393, 109.360]);
-    const [activeTab, setActiveTab] = useState('metadata'); // metadata, shape, stops
 
-    const [globalLoading, setGlobalLoading] = useState(true);
-
-    useEffect(() => {
-        refreshAll();
-    }, []);
+    useEffect(() => { refreshData(); }, []);
 
     const refreshAll = async () => {
-        setGlobalLoading(true);
-        try {
-            const [rRes, aRes, sRes] = await Promise.all([
-                api.get('/routes'),
-                api.get('/agencies'),
-                api.get('/stops')
-            ]);
-            setRoutes(rRes.data || []);
-            setAgencies(aRes.data || []);
-            setAllStops(sRes.data || []);
-        } catch (e) {
-            console.error("Refresh failed", e);
-        } finally {
-            setGlobalLoading(false);
-        }
+        const [rRes, aRes, sRes] = await Promise.all([
+            api.get('/routes'), api.get('/agencies'), api.get('/stops')
+        ]);
+        setRoutes(rRes.data || []);
+        setAgencies(aRes.data || []);
+        setAllStops(sRes.data || []);
     };
 
-    if (globalLoading) {
-        return (
-            <Container className="mt-5 text-center">
-                <Spinner animation="border" variant="primary" />
-                <p className="mt-2 text-muted">Loading Studio...</p>
-            </Container>
-        );
-    }
+    const refreshData = async () => {
+        setLoading(true);
+        await refreshAll();
+        setLoading(false);
+    };
 
     const handleSelectRoute = async (route) => {
         setSelectedRoute(route);
-        setMessage(null);
         setActiveTab('metadata');
-        
-        // Load Shape & Assigned Stops
         try {
             const [tripsRes, stopsRes] = await Promise.all([
-                api.get('/trips'),
-                api.get(`/routes/${route.id}/stops`)
+                api.get('/trips'), api.get(`/routes/${route.id}/stops`)
             ]);
-            
-            setAssignedStops(stopsRes.data);
-            
+            setAssignedStops(stopsRes.data || []);
             const trip = tripsRes.data.find(t => t.route_id === route.id);
-            if (trip && trip.shape_id) {
+            if (trip?.shape_id) {
                 const shapeRes = await api.get(`/shapes/${trip.shape_id}`);
-                const sorted = shapeRes.data.sort((a, b) => a.sequence - b.sequence);
+                const sorted = (shapeRes.data || []).sort((a, b) => a.sequence - b.sequence);
                 setShapePoints(sorted);
                 if (sorted.length > 0) setMapCenter([sorted[0].lat, sorted[0].lon]);
-            } else {
-                setShapePoints([]);
-            }
+            } else { setShapePoints([]); }
         } catch (e) { console.error(e); }
     };
 
-    // --- Actions: Metadata ---
-    const handleSaveMetadata = async () => {
+    const saveMetadata = async () => {
+        setSaving(true);
         try {
             await api.put(`/routes/${selectedRoute.id}`, selectedRoute);
-            setMessage({ type: 'success', text: 'Route details updated' });
-            refreshAll();
-        } catch (e) { setMessage({ type: 'danger', text: 'Update failed' }); }
+            await refreshAll();
+        } finally { setSaving(false); }
     };
 
-    // --- Actions: Shape ---
-    const handleSnapToRoads = async () => {
-        if (shapePoints.length < 2) return;
-        setIsRouting(true);
-        const coords = shapePoints.map(p => `${p.lon},${p.lat}`).join(';');
-        try {
-            const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
-            const geo = res.data.routes[0].geometry.coordinates;
-            const newPts = geo.map((c, i) => ({
-                shape_id: `SHP_${selectedRoute.id}`,
-                lat: c[1], lon: c[0], sequence: i + 1
-            }));
-            setShapePoints(newPts);
-        } catch (e) { console.error(e); } finally { setIsRouting(false); }
-    };
-
-    const handleSaveShape = async () => {
-        const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
+    const saveShape = async () => {
+        setSaving(true);
+        const sId = `SHP_${selectedRoute.short_name.toUpperCase()}`;
         try {
             await api.put(`/shapes/${sId}`, shapePoints.map(p => ({ ...p, shape_id: sId })));
-            // Ensure a trip exists for this route/shape
             const trips = await api.get('/trips');
             if (!trips.data.find(t => t.route_id === selectedRoute.id)) {
-                await api.post('/trips', { 
-                    route_id: selectedRoute.id, 
-                    headsign: selectedRoute.long_name, 
-                    shape_id: sId 
-                });
-            } else {
-                // Update existing trip shape_id if it differs
-                const trip = trips.data.find(t => t.route_id === selectedRoute.id);
-                if (trip.shape_id !== sId) {
-                    await api.put(`/trips/${trip.id}`, { ...trip, shape_id: sId });
-                }
+                await api.post('/trips', { route_id: selectedRoute.id, headsign: selectedRoute.long_name, shape_id: sId });
             }
-            setMessage({ type: 'success', text: `Path saved as ${sId}` });
-        } catch (e) { setMessage({ type: 'danger', text: 'Save failed' }); }
+        } finally { setSaving(false); }
     };
 
-    // --- Actions: Assigned Stops ---
-    const addStopToRoute = (stop) => {
-        const newRS = {
-            route_id: selectedRoute.id,
-            stop_id: stop.id,
-            stop: stop,
-            sequence: assignedStops.length + 1
-        };
-        setAssignedStops([...assignedStops, newRS]);
+    const saveStops = async () => {
+        setSaving(true);
+        try { await api.put(`/routes/${selectedRoute.id}/stops`, assignedStops); }
+        finally { setSaving(false); }
     };
 
-    const removeStopFromRoute = (index) => {
-        const filtered = assignedStops.filter((_, i) => i !== index);
-        setAssignedStops(filtered.map((s, i) => ({ ...s, sequence: i + 1 })));
-    };
-
-    const saveRouteStops = async () => {
-        try {
-            await api.put(`/routes/${selectedRoute.id}/stops`, assignedStops);
-            setMessage({ type: 'success', text: 'Stop sequence updated' });
-        } catch (e) { setMessage({ type: 'danger', text: 'Failed to update stops' }); }
-    };
+    if (loading) return <div className="flex h-screen items-center justify-center font-medium text-system-gray">Initializing Studio...</div>;
 
     return (
-        <Container fluid className="mt-4">
-            <Row className="g-4">
-                {/* Sidebar: Route List */}
-                <Col lg={3}>
-                    <div className="hig-card shadow-sm mb-4">
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                            <h5 className="fw-bold m-0">Route Studio</h5>
-                            <Button variant="primary" size="sm" pill onClick={() => setSelectedRoute({short_name: '', long_name: '', color: '007AFF', agency_id: agencies[0]?.id})}>+ New</Button>
+        <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+            {/* Sidebar */}
+            <div className="w-80 bg-white border-r border-black/5 flex flex-col">
+                <div className="p-6 border-b border-black/5 flex justify-between items-center">
+                    <h1 className="text-xl font-bold tracking-tight">Route Studio</h1>
+                    <button className="p-2 bg-system-blue text-white rounded-full hover:scale-105 active:scale-95 transition-transform">
+                        <Plus size={18} />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                    {routes.map(r => (
+                        <div 
+                            key={r.id} 
+                            onClick={() => handleSelectRoute(r)}
+                            className={`p-3 rounded-hig cursor-pointer flex items-center group transition-all ${selectedRoute?.id === r.id ? 'bg-system-blue text-white shadow-md' : 'hover:bg-black/5'}`}
+                        >
+                            <div className={`w-3 h-3 rounded-full mr-3 shadow-sm`} style={{ backgroundColor: selectedRoute?.id === r.id ? 'white' : `#${r.color}` }}></div>
+                            <div className="flex-1">
+                                <div className="font-semibold text-sm">{r.short_name}</div>
+                                <div className={`text-xs ${selectedRoute?.id === r.id ? 'text-white/80' : 'text-system-gray'}`}>{r.long_name}</div>
+                            </div>
+                            <ChevronRight size={14} className={selectedRoute?.id === r.id ? 'text-white' : 'text-black/20 group-hover:text-black/40'} />
                         </div>
-                        <ListGroup variant="flush" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                            {routes.map(r => (
-                                <ListGroup.Item 
-                                    key={r.id} 
-                                    action 
-                                    active={selectedRoute?.id === r.id}
-                                    onClick={() => handleSelectRoute(r)}
-                                    className="d-flex align-items-center"
-                                >
-                                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: `#${r.color}`, marginRight: '12px' }}></div>
-                                    <div>
-                                        <div className="fw-bold">{r.short_name}</div>
-                                        <div className="small text-muted">{r.long_name}</div>
-                                    </div>
-                                </ListGroup.Item>
-                            ))}
-                        </ListGroup>
-                    </div>
-                </Col>
+                    ))}
+                </div>
+            </div>
 
-                {/* Main Content: Unified Editor */}
-                <Col lg={9}>
-                    {!selectedRoute ? (
-                        <div className="hig-card d-flex flex-column align-items-center justify-content-center text-center shadow-sm" style={{ height: '80vh' }}>
-                            <img src="https://cdn-icons-png.flaticon.com/512/854/854878.png" width="120" className="mb-4 opacity-50" />
-                            <h4 className="fw-bold">Welcome to Route Studio</h4>
-                            <p className="text-muted">Select a route from the sidebar to edit its information, path, and stops.</p>
+            {/* Editor Area */}
+            <div className="flex-1 bg-system-background flex flex-col overflow-hidden">
+                {!selectedRoute ? (
+                    <div className="flex-1 flex flex-col items-center justify-center opacity-40">
+                        <Zap size={64} className="mb-4" />
+                        <p className="text-lg font-medium">Select a route to begin editing</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="p-6 flex items-center justify-between bg-white border-b border-black/5 shadow-sm z-10">
+                            <div className="segmented-control w-[480px]">
+                                <div onClick={() => setActiveTab('metadata')} className={`segmented-item flex items-center justify-center gap-2 ${activeTab === 'metadata' ? 'active' : ''}`}>
+                                    <Info size={14} /> Information
+                                </div>
+                                <div onClick={() => setActiveTab('shape')} className={`segmented-item flex items-center justify-center gap-2 ${activeTab === 'shape' ? 'active' : ''}`}>
+                                    <MapIcon size={14} /> Path Shape
+                                </div>
+                                <div onClick={() => setActiveTab('stops')} className={`segmented-item flex items-center justify-center gap-2 ${activeTab === 'stops' ? 'active' : ''}`}>
+                                    <MapPin size={14} /> Stop Sequence
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                {saving && <Loader2 size={16} className="animate-spin text-system-blue self-center" />}
+                                <button 
+                                    onClick={activeTab === 'metadata' ? saveMetadata : activeTab === 'shape' ? saveShape : saveStops}
+                                    className="px-5 py-2 bg-system-blue text-white rounded-lg font-semibold flex items-center gap-2 shadow-lg shadow-system-blue/20 hover:bg-blue-600 transition-colors"
+                                >
+                                    <Save size={16} /> Save Changes
+                                </button>
+                            </div>
                         </div>
-                    ) : (
-                        <div>
-                            {/* Segmented Control for Tabs */}
-                            <div className="segmented-control mb-4" style={{ maxWidth: '400px' }}>
-                                <div className={`segmented-item ${activeTab === 'metadata' ? 'active' : ''}`} onClick={() => setActiveTab('metadata')}>Info</div>
-                                <div className={`segmented-item ${activeTab === 'shape' ? 'active' : ''}`} onClick={() => setActiveTab('shape')}>Path (Shape)</div>
-                                <div className={`segmented-item ${activeTab === 'stops' ? 'active' : ''}`} onClick={() => setActiveTab('stops')}>Stops Assignment</div>
+
+                        <div className="flex-1 flex p-6 gap-6 overflow-hidden">
+                            {/* Control Panel */}
+                            <div className="w-96 flex flex-col gap-6 overflow-y-auto">
+                                {activeTab === 'metadata' && (
+                                    <div className="bg-white rounded-hig p-5 shadow-sm space-y-4">
+                                        <h3 className="text-sm font-bold text-system-gray uppercase tracking-wider">Metadata</h3>
+                                        <div>
+                                            <label className="text-xs font-semibold mb-1 block">Route Number</label>
+                                            <input className="hig-input" value={selectedRoute.short_name} onChange={e => setSelectedRoute({...selectedRoute, short_name: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold mb-1 block">Display Name</label>
+                                            <input className="hig-input" value={selectedRoute.long_name} onChange={e => setSelectedRoute({...selectedRoute, long_name: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold mb-1 block">System Color</label>
+                                            <div className="flex gap-2">
+                                                <input className="hig-input font-mono uppercase" value={selectedRoute.color} onChange={e => setSelectedRoute({...selectedRoute, color: e.target.value})} />
+                                                <div className="w-11 h-11 rounded-lg border shadow-inner" style={{backgroundColor: `#${selectedRoute.color}`}}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'shape' && (
+                                    <div className="bg-white rounded-hig p-5 shadow-sm space-y-4">
+                                        <h3 className="text-sm font-bold text-system-gray uppercase tracking-wider">Geometry Tools</h3>
+                                        <button 
+                                            onClick={async () => {
+                                                if (shapePoints.length < 2) return;
+                                                setRouting(true);
+                                                const coords = shapePoints.map(p => `${p.lon},${p.lat}`).join(';');
+                                                const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+                                                setShapePoints(res.data.routes[0].geometry.coordinates.map((c, i) => ({ lat: c[1], lon: c[0], sequence: i + 1 })));
+                                                setRouting(false);
+                                            }}
+                                            className="w-full py-2.5 bg-black text-white rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-zinc-800"
+                                        >
+                                            {routing ? "Calculating..." : <><Zap size={16} /> Snap to Roads</>}
+                                        </button>
+                                        <button onClick={() => setShapePoints([])} className="w-full py-2 text-red-500 font-medium flex items-center justify-center gap-2 hover:bg-red-50 rounded-lg transition-colors">
+                                            <RotateCcw size={16} /> Reset All Nodes
+                                        </button>
+                                        <p className="text-xs text-system-gray leading-relaxed">Click the map to add anchor points. "Snap to Roads" will fill the path using real street data.</p>
+                                    </div>
+                                )}
+
+                                {activeTab === 'stops' && (
+                                    <div className="flex flex-col gap-6 overflow-hidden">
+                                        <div className="bg-white rounded-hig p-5 shadow-sm flex-1 overflow-hidden flex flex-col">
+                                            <h3 className="text-sm font-bold text-system-gray uppercase tracking-wider mb-4">Route Stops</h3>
+                                            <div className="flex-1 overflow-y-auto pr-2 space-y-2">
+                                                {assignedStops.map((rs, i) => (
+                                                    <div key={i} className="flex items-center gap-3 p-2 bg-system-background rounded-lg group">
+                                                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[10px] font-bold shadow-sm">{i+1}</div>
+                                                        <div className="flex-1 font-semibold text-sm truncate">{rs.stop?.name}</div>
+                                                        <button onClick={() => setAssignedStops(assignedStops.filter((_, idx) => idx !== i).map((s, ix) => ({...s, sequence: ix+1})))} className="opacity-0 group-hover:opacity-100 text-red-500 hover:scale-110 transition-all text-lg">×</button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="bg-white rounded-hig p-5 shadow-sm flex-1 overflow-hidden flex flex-col">
+                                            <h3 className="text-sm font-bold text-system-gray uppercase tracking-wider mb-4">Inventory Picker</h3>
+                                            <div className="flex-1 overflow-y-auto pr-2 space-y-1">
+                                                {allStops.filter(s => !assignedStops.find(rs => rs.stop_id === s.id)).map(s => (
+                                                    <div key={s.id} className="flex items-center justify-between p-2 hover:bg-black/5 rounded-lg group cursor-pointer" onClick={() => setAssignedStops([...assignedStops, {stop_id: s.id, stop: s, sequence: assignedStops.length+1}])}>
+                                                        <span className="text-sm font-medium">{s.name}</span>
+                                                        <Plus size={14} className="text-system-blue" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            <Row className="g-4">
-                                <Col lg={4}>
-                                    <div className="hig-card shadow-sm">
-                                        {activeTab === 'metadata' && (
-                                            <div>
-                                                <h6 className="text-muted text-uppercase fw-bold small mb-3">Metadata</h6>
-                                                <Form.Group className="mb-3">
-                                                    <Form.Label className="small fw-bold">Short Name</Form.Label>
-                                                    <Form.Control value={selectedRoute.short_name} onChange={e => setSelectedRoute({...selectedRoute, short_name: e.target.value})} />
-                                                </Form.Group>
-                                                <Form.Group className="mb-3">
-                                                    <Form.Label className="small fw-bold">Long Name</Form.Label>
-                                                    <Form.Control value={selectedRoute.long_name} onChange={e => setSelectedRoute({...selectedRoute, long_name: e.target.value})} />
-                                                </Form.Group>
-                                                <Form.Group className="mb-3">
-                                                    <Form.Label className="small fw-bold">Color (HEX)</Form.Label>
-                                                    <div className="d-flex gap-2">
-                                                        <Form.Control value={selectedRoute.color} onChange={e => setSelectedRoute({...selectedRoute, color: e.target.value})} />
-                                                        <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: `#${selectedRoute.color}`, border: '1px solid #ddd' }}></div>
-                                                    </div>
-                                                </Form.Group>
-                                                <Button variant="primary" className="w-100" onClick={handleSaveMetadata}>Save Info</Button>
-                                            </div>
-                                        )}
+                            {/* Map Canvas */}
+                            <div className="flex-1 bg-white rounded-hig overflow-hidden shadow-xl relative ring-1 ring-black/5">
+                                <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
+                                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OSM" />
+                                    <RecenterMap center={mapCenter} />
+                                    
+                                    {activeTab === 'shape' && <MapEvents onMapClick={l => setShapePoints([...shapePoints, {lat: l.lat, lon: l.lng, sequence: shapePoints.length+1}])} />}
 
-                                        {activeTab === 'shape' && (
-                                            <div>
-                                                <h6 className="text-muted text-uppercase fw-bold small mb-3">Path Geometry</h6>
-                                                <div className="d-grid gap-2">
-                                                    <Button variant="outline-primary" onClick={handleSnapToRoads} disabled={shapePoints.length < 2 || isRouting}>
-                                                        {isRouting ? <Spinner size="sm" /> : 'Snap to Roads'}
-                                                    </Button>
-                                                    <Button variant="primary" onClick={handleSaveShape} disabled={shapePoints.length === 0}>Save Path</Button>
-                                                    <Button variant="light" className="text-danger" onClick={() => setShapePoints([])}>Clear Path</Button>
-                                                </div>
-                                                <div className="mt-3 small text-muted">
-                                                    Click the map to add nodes. Use Snap to Roads to align the path with real street geometry.
-                                                </div>
-                                            </div>
-                                        )}
+                                    <Polyline positions={shapePoints.map(p => [p.lat, p.lon])} color={`#${selectedRoute.color}`} weight={6} lineCap="round" lineJoin="round" opacity={0.8} />
+                                    
+                                    {activeTab === 'shape' && shapePoints.map((p, i) => (
+                                        <Marker key={`p-${i}`} position={[p.lat, p.lon]} icon={L.divIcon({ className: 'bg-white border-2 border-system-blue w-3 h-3 rounded-full shadow-md', iconSize: [12, 12] })} />
+                                    ))}
 
-                                        {activeTab === 'stops' && (
-                                            <div>
-                                                <h6 className="text-muted text-uppercase fw-bold small mb-3">Assigned Stops</h6>
-                                                <ListGroup className="mb-3 shadow-sm">
-                                                    {assignedStops.map((rs, i) => (
-                                                        <ListGroup.Item key={i} className="d-flex justify-content-between align-items-center">
-                                                            <div className="small fw-bold">{i+1}. {rs.stop?.name}</div>
-                                                            <Button variant="link" size="sm" className="text-danger p-0" onClick={() => removeStopFromRoute(i)}>×</Button>
-                                                        </ListGroup.Item>
-                                                    ))}
-                                                    {assignedStops.length === 0 && <div className="p-3 text-muted small text-center">No stops assigned.</div>}
-                                                </ListGroup>
-                                                <Button variant="primary" className="w-100 mb-4" onClick={saveRouteStops}>Update Sequence</Button>
-
-                                                <h6 className="text-muted text-uppercase fw-bold small mb-2">Inventory Picker</h6>
-                                                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                                                    {allStops.filter(s => !assignedStops.find(rs => rs.stop_id === s.id)).map(s => (
-                                                        <div key={s.id} className="d-flex justify-content-between align-items-center p-2 border-bottom">
-                                                            <span className="small">{s.name}</span>
-                                                            <Button variant="outline-primary" size="sm" onClick={() => addStopToRoute(s)}>+</Button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                        {message && <Alert variant={message.type} className="mt-3 border-0 shadow-sm">{message.text}</Alert>}
-                                    </div>
-                                </Col>
-
-                                <Col lg={8}>
-                                    <div className="hig-card p-0 overflow-hidden shadow-sm" style={{ height: '70vh' }}>
-                                        <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
-                                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OSM" />
-                                            <RecenterMap center={mapCenter} />
-                                            {activeTab === 'shape' && <MapEvents onMapClick={latlng => setShapePoints([...shapePoints, {lat: latlng.lat, lon: latlng.lng, sequence: shapePoints.length+1}])} />}
-
-                                            {/* Line */}
-                                            {shapePoints.length > 1 && <Polyline positions={shapePoints.map(p => [p.lat, p.lon])} color={`#${selectedRoute.color}`} weight={5} />}
-                                            
-                                            {/* Shape Points (only in shape tab) */}
-                                            {activeTab === 'shape' && shapePoints.map((p, i) => (
-                                                <Marker key={`shp-${i}`} position={[p.lat, p.lon]} icon={DefaultIcon} eventHandlers={{ contextmenu: () => setShapePoints(shapePoints.filter((_, idx) => idx !== i).map((pt, ix) => ({...pt, sequence: ix+1}))) }} />
-                                            ))}
-
-                                            {/* Assigned Stops */}
-                                            {assignedStops.map((rs, i) => (
-                                                <Marker key={`rs-${i}`} position={[rs.stop.lat, rs.stop.lon]} icon={BusStopIcon}>
-                                                    <Popup>
-                                                        <strong>Stop #{i+1}</strong><br/>{rs.stop.name}
-                                                    </Popup>
-                                                </Marker>
-                                            ))}
-                                        </MapContainer>
-                                    </div>
-                                </Col>
-                            </Row>
+                                    {assignedStops.map((rs, i) => (
+                                        <Marker key={`s-${i}`} position={[rs.stop.lat, rs.stop.lon]} icon={BusStopIcon}>
+                                            <Popup><strong>{i+1}. {rs.stop.name}</strong></Popup>
+                                        </Marker>
+                                    ))}
+                                </MapContainer>
+                            </div>
                         </div>
-                    )}
-                </Col>
-            </Row>
-        </Container>
+                    </>
+                )}
+            </div>
+        </div>
     );
 };
 

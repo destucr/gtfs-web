@@ -1,25 +1,57 @@
 import React from 'react';
-import { Navbar, Nav, Container } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
+import { Globe, MapPin, Route, LayoutDashboard, Database } from 'lucide-react';
 
 const Navigation = () => {
     const location = useLocation();
 
+    const links = [
+        { path: '/', name: 'Dashboard', icon: LayoutDashboard },
+        { path: '/agencies', name: 'Agencies', icon: Globe },
+        { path: '/stops', name: 'Stops & Routes', icon: MapPin },
+        { path: '/routes', name: 'Route Studio', icon: Route },
+        { path: '/trips', name: 'Trip Mapping', icon: Database },
+    ];
+
     return (
-        <Navbar bg="light" expand="lg" sticky="top" className="mb-4">
-            <Container>
-                <Navbar.Brand as={Link} to="/" className="text-primary">GTFS Studio</Navbar.Brand>
-                <Navbar.Toggle aria-controls="basic-navbar-nav" />
-                <Navbar.Collapse id="basic-navbar-nav">
-                    <Nav className="ms-auto">
-                        <Nav.Link as={Link} to="/agencies" active={location.pathname === '/agencies'}>Agencies</Nav.Link>
-                        <Nav.Link as={Link} to="/stops" active={location.pathname === '/stops'}>Stops & Routes</Nav.Link>
-                        <Nav.Link as={Link} to="/routes" active={location.pathname === '/routes'}>Route Studio</Nav.Link>
-                        <Nav.Link as={Link} to="/trips" active={location.pathname === '/trips'}>Trips</Nav.Link>
-                    </Nav>
-                </Navbar.Collapse>
-            </Container>
-        </Navbar>
+        <nav className="h-16 bg-white/80 backdrop-blur-md border-b border-black/5 sticky top-0 z-50 px-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-system-blue rounded-lg flex items-center justify-center text-white shadow-lg shadow-system-blue/20">
+                    <Route size={20} />
+                </div>
+                <span className="font-bold text-lg tracking-tight">GTFS Studio</span>
+            </div>
+
+            <div className="flex items-center gap-1">
+                {links.map(link => {
+                    const Icon = link.icon;
+                    const isActive = location.pathname === link.path;
+                    return (
+                        <Link 
+                            key={link.path} 
+                            to={link.path}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                isActive 
+                                ? 'bg-system-blue/10 text-system-blue' 
+                                : 'text-system-gray hover:bg-black/5 hover:text-black'
+                            }`}
+                        >
+                            <Icon size={16} />
+                            {link.name}
+                        </Link>
+                    );
+                })}
+            </div>
+
+            <div className="flex items-center gap-4">
+                <div className="h-8 w-px bg-black/5 mx-2"></div>
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-black/5 rounded-full flex items-center justify-center text-xs font-bold text-system-gray">
+                        JD
+                    </div>
+                </div>
+            </div>
+        </nav>
     );
 };
 

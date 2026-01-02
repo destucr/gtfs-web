@@ -1,24 +1,22 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Container, Table, Button, Form, Row, Col, Card, Badge, Spinner, Modal, ListGroup } from 'react-bootstrap';
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import { MapPin, Plus, Trash2, Search, Filter, Loader2, Map as MapIcon, CheckCircle2 } from 'lucide-react';
 import api from '../api';
 import axios from 'axios';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet icons
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
 let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
+    iconUrl: icon, shadowUrl: iconShadow,
+    iconSize: [25, 41], iconAnchor: [12, 41]
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// --- Components ---
+// --- Helper Components ---
 
 const LocationPicker = ({ onLocationSelect }) => {
     useMapEvents({ click(e) { onLocationSelect(e.latlng); } });
@@ -27,15 +25,10 @@ const LocationPicker = ({ onLocationSelect }) => {
 
 const RecenterMap = ({ center }) => {
     const map = useMap();
-    useEffect(() => {
-        if (center && center[0] && center[1]) {
-            map.setView(center, map.getZoom());
-        }
-    }, [center, map]);
+    useEffect(() => { if (center?.[0]) map.setView(center, map.getZoom()); }, [center, map]);
     return null;
 };
 
-// Draggable marker for the active form selection
 const EditMarker = ({ position, onDragEnd }) => {
     const markerRef = useRef(null);
     const eventHandlers = useMemo(() => ({
@@ -45,14 +38,7 @@ const EditMarker = ({ position, onDragEnd }) => {
         },
     }), [onDragEnd]);
 
-    return (
-        <Marker
-            draggable={true}
-            eventHandlers={eventHandlers}
-            position={position}
-            ref={markerRef}
-        />
-    );
+    return <Marker draggable={true} eventHandlers={eventHandlers} position={position} ref={markerRef} />;
 };
 
 const Stops = () => {
@@ -60,66 +46,48 @@ const Stops = () => {
     const [routes, setRoutes] = useState([]);
     const [stopRouteMap, setStopRouteMap] = useState({});
     
-    // Form State
     const [formData, setFormData] = useState({ name: '', lat: '', lon: '' });
     const [editingId, setEditingId] = useState(null);
-    
-    // UI State
     const [loading, setLoading] = useState(true);
     const [isNaming, setIsNaming] = useState(false);
     const [mapCenter, setMapCenter] = useState([-7.393, 109.360]);
     const [selectedRouteIds, setSelectedRouteIds] = useState([]);
     const [routeShapes, setRouteShapes] = useState({});
-    const [assignmentModal, setAssignmentModal] = useState({ show: false, stop: null, routeIds: [] });
+    
+    const [showModal, setShowModal] = useState(false);
+    const [activeAssignment, setActiveAssignment] = useState({ stop: null, routeIds: [] });
     const [inlineEdit, setInlineEdit] = useState(null);
 
-    useEffect(() => {
-        fetchInitialData();
-    }, []);
+    useEffect(() => { fetchInitialData(); }, []);
 
     const fetchInitialData = async () => {
         setLoading(true);
         try {
             const [sRes, rRes, srRes] = await Promise.all([
-                api.get('/stops'), 
-                api.get('/routes'),
-                api.get('/stop-routes')
+                api.get('/stops'), api.get('/routes'), api.get('/stop-routes')
             ]);
-            
-            const stopsData = sRes.data || [];
-            const routesData = rRes.data || [];
-            const associations = srRes.data || [];
-
-            setStops(stopsData);
-            setRoutes(routesData);
+            setStops(sRes.data || []);
+            setRoutes(rRes.data || []);
             
             const map = {};
-            associations.forEach(assoc => {
+            (srRes.data || []).forEach(assoc => {
                 if (!map[assoc.stop_id]) map[assoc.stop_id] = [];
-                const r = routesData.find(rt => rt.id === assoc.route_id);
+                const r = (rRes.data || []).find(rt => rt.id === assoc.route_id);
                 if (r) map[assoc.stop_id].push(r);
             });
             setStopRouteMap(map);
-        } catch (e) { 
-            console.error("Data fetch failed", e); 
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     const handleMapClick = async (latlng) => {
         setFormData(prev => ({ ...prev, lat: latlng.lat, lon: latlng.lng }));
-        if (!editingId) { // Only auto-name for NEW stops
+        if (!editingId) {
             setIsNaming(true);
             try {
                 const res = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latlng.lat}&lon=${latlng.lng}`);
                 if (res.data) setFormData(prev => ({ ...prev, name: res.data.name || res.data.display_name.split(',')[0] }));
-            } catch (e) { console.error(e); } finally { setIsNaming(false); }
+            } finally { setIsNaming(false); }
         }
-    };
-
-    const handleMarkerDrag = (latlng) => {
-        setFormData(prev => ({ ...prev, lat: latlng.lat, lon: latlng.lng }));
     };
 
     const toggleRouteFilter = async (routeId) => {
@@ -133,151 +101,207 @@ const Stops = () => {
                 const routeTrips = tripsRes.data.filter(t => t.route_id === id);
                 if (routeTrips.length > 0 && routeTrips[0].shape_id) {
                     const shapeRes = await api.get(`/shapes/${routeTrips[0].shape_id}`);
-                    const poly = shapeRes.data.sort((a, b) => a.sequence - b.sequence).map(p => [p.lat, p.lon]);
-                    setRouteShapes(prev => ({ ...prev, [id]: poly }));
+                    setRouteShapes(prev => ({ ...prev, [id]: shapeRes.data.sort((a,b)=>a.sequence-b.sequence).map(p=>[p.lat, p.lon]) }));
                 }
             }
         }
     };
 
-    const handleSubmit = async (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
-        try {
-            const payload = { ...formData, lat: parseFloat(formData.lat), lon: parseFloat(formData.lon) };
-            if (editingId) await api.put(`/stops/${editingId}`, payload);
-            else await api.post('/stops', payload);
-            setFormData({ name: '', lat: '', lon: '' });
-            setEditingId(null);
-            fetchInitialData();
-        } catch (e) { console.error(e); }
-    };
-
-    const startEdit = (stop) => {
-        setEditingId(stop.id);
-        setFormData({ name: stop.name, lat: stop.lat, lon: stop.lon });
-        setMapCenter([stop.lat, stop.lon]);
-        window.scrollTo(0, 0);
+        const payload = { ...formData, lat: parseFloat(formData.lat), lon: parseFloat(formData.lon) };
+        if (editingId) await api.put(`/stops/${editingId}`, payload);
+        else await api.post('/stops', payload);
+        setFormData({ name: '', lat: '', lon: '' });
+        setEditingId(null);
+        fetchInitialData();
     };
 
     const handleInlineSave = async (stop, field, value) => {
         const updatedStop = { ...stop, [field]: field === 'name' ? value : parseFloat(value) };
-        try {
-            await api.put(`/stops/${stop.id}`, updatedStop);
-            setStops(stops.map(s => s.id === stop.id ? updatedStop : s));
-            setInlineEdit(null);
-        } catch (e) { console.error(e); }
+        await api.put(`/stops/${stop.id}`, updatedStop);
+        setStops(stops.map(s => s.id === stop.id ? updatedStop : s));
+        setInlineEdit(null);
     };
 
-    if (loading) return <Container className="mt-5 text-center"><Spinner animation="border" variant="primary" /></Container>;
+    const saveAssignments = async () => {
+        await api.put(`/stops/${activeAssignment.stop.id}/routes`, activeAssignment.routeIds);
+        setShowModal(false);
+        fetchInitialData();
+    };
+
+    if (loading && stops.length === 0) return <div className="flex h-screen items-center justify-center text-system-gray font-medium">Initializing Inventory...</div>;
 
     return (
-        <Container className="mt-4" fluid>
-            <div className="d-flex justify-content-between align-items-end mb-4 px-3">
+        <div className="p-8 max-w-[1600px] mx-auto">
+            <header className="mb-8 flex justify-between items-end">
                 <div>
-                    <h2 className="fw-bold mb-1 text-primary">Stops & Route Assignments</h2>
-                    <p className="text-muted mb-0">Manage global bus stops and their route associations.</p>
+                    <h1 className="text-3xl font-bold tracking-tight text-black text-primary">Stops & Assignments</h1>
+                    <p className="text-system-gray mt-1 font-medium">Map-based inventory management for transit points.</p>
                 </div>
-                <Badge bg="primary" pill className="px-3 py-2 shadow-sm">Total: {stops.length} Stops</Badge>
-            </div>
+                <div className="flex items-center gap-3">
+                    <div className="text-right">
+                        <div className="text-xs font-bold text-system-gray uppercase">Database Status</div>
+                        <div className="text-sm font-semibold text-green-600 flex items-center gap-1 justify-end">
+                            <CheckCircle2 size={14} /> {stops.length} Points Synchronized
+                        </div>
+                    </div>
+                </div>
+            </header>
 
-            <Row className="g-4">
-                <Col lg={4}>
-                    <div className="hig-card shadow-sm">
-                        <label className="small text-muted text-uppercase fw-bold mb-3 d-block">{editingId ? "Adjust Stop Location" : "Create New Stop"}</label>
-                        <div style={{ height: '300px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #eee' }} className="mb-4 shadow-sm">
-                            <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Side Editor */}
+                <div className="lg:col-span-4 space-y-6">
+                    <div className="hig-card p-6 shadow-sm">
+                        <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                            <MapPin size={20} className="text-system-blue" />
+                            {editingId ? 'Adjust Location' : 'Drop New Stop'}
+                        </h3>
+                        
+                        <div className="h-64 rounded-xl overflow-hidden border border-black/5 mb-6 shadow-inner relative group">
+                            <MapContainer center={mapCenter} zoom={13} className="h-full w-full">
                                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OSM" />
                                 <LocationPicker onLocationSelect={handleMapClick} />
                                 <RecenterMap center={mapCenter} />
-                                
                                 {selectedRouteIds.map(rid => (
-                                    <Polyline key={`line-${rid}`} positions={routeShapes[rid] || []} color={`#${routes.find(r => r.id === rid)?.color}`} weight={3} opacity={0.4} dashArray="8, 8" />
+                                    <Polyline key={rid} positions={routeShapes[rid] || []} color={`#${routes.find(r => r.id === rid)?.color}`} weight={3} opacity={0.4} dashArray="8, 8" />
                                 ))}
-
-                                {formData.lat && formData.lon && (
-                                    <EditMarker position={[formData.lat, formData.lon]} onDragEnd={handleMarkerDrag} />
-                                )}
+                                {formData.lat && formData.lon && <EditMarker position={[formData.lat, formData.lon]} onDragEnd={l => setFormData(p=>({...p, lat: l.lat, lon: l.lng}))} />}
                             </MapContainer>
+                            <div className="absolute bottom-3 right-3 z-[1000] bg-white/90 backdrop-blur px-2 py-1 rounded text-[10px] font-bold text-system-gray shadow-sm">INTERACTIVE CANVAS</div>
                         </div>
 
-                        <Form onSubmit={handleSubmit}>
-                            <Form.Group className="mb-3">
-                                <label className="small fw-bold mb-2 d-flex justify-content-between">Stop Name {isNaming && <Spinner animation="border" size="sm" />}</label>
-                                <Form.Control placeholder="Name..." value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
-                            </Form.Group>
-                            <Row className="mb-4">
-                                <Col><Form.Group><label className="small text-muted fw-bold">LAT</label><Form.Control type="number" step="any" value={formData.lat} onChange={(e) => setFormData({...formData, lat: e.target.value})} required /></Form.Group></Col>
-                                <Col><Form.Group><label className="small text-muted fw-bold">LON</label><Form.Control type="number" step="any" value={formData.lon} onChange={(e) => setFormData({...formData, lon: e.target.value})} required /></Form.Group></Col>
-                            </Row>
-                            <div className="d-grid gap-2">
-                                <Button variant="primary" type="submit" className="py-2 shadow-sm">{editingId ? "Apply Map Adjustments" : "Add to Inventory"}</Button>
-                                {editingId && <Button variant="light" onClick={() => {setEditingId(null); setFormData({name:'', lat:'', lon:''})}}>Cancel</Button>}
+                        <form onSubmit={handleSave} className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-system-gray uppercase mb-2 flex justify-between">
+                                    Label {isNaming && <Loader2 size={12} className="animate-spin text-system-blue" />}
+                                </label>
+                                <input className="hig-input" placeholder="Point name..." value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
                             </div>
-                        </Form>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-system-gray uppercase mb-1 block">Latitude</label>
+                                    <input type="number" step="any" className="hig-input text-xs font-mono" value={formData.lat} onChange={e => setFormData({...formData, lat: e.target.value})} required />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-system-gray uppercase mb-1 block">Longitude</label>
+                                    <input type="number" step="any" className="hig-input text-xs font-mono" value={formData.lon} onChange={e => setFormData({...formData, lon: e.target.value})} required />
+                                </div>
+                            </div>
+                            <div className="pt-2 flex gap-2">
+                                <button type="submit" className="flex-1 bg-system-blue text-white py-3 rounded-lg font-bold shadow-lg shadow-system-blue/20 hover:bg-blue-600 transition-all active:scale-[0.98]">
+                                    {editingId ? 'Update Point' : 'Add to Database'}
+                                </button>
+                                {editingId && <button type="button" onClick={() => {setEditingId(null); setFormData({name:'', lat:'', lon:''})}} className="px-4 bg-black/5 rounded-lg text-system-gray hover:text-black">Cancel</button>}
+                            </div>
+                        </form>
                     </div>
 
-                    <div className="hig-card shadow-sm mt-4">
-                        <label className="small text-muted text-uppercase fw-bold mb-3 d-block">Overlay Reference Route</label>
-                        <div className="d-flex flex-wrap gap-2">
+                    <div className="hig-card p-6 shadow-sm">
+                        <h3 className="text-sm font-bold text-system-gray uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <Filter size={14} /> Overlay Reference
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
                             {routes.map(r => (
-                                <Button key={r.id} variant={selectedRouteIds.includes(r.id) ? "primary" : "light"} size="sm" onClick={() => toggleRouteFilter(r.id)} style={{ borderRadius: '20px', border: `1px solid #${r.color}` }}>{r.short_name}</Button>
+                                <button 
+                                    key={r.id} 
+                                    onClick={() => toggleRouteFilter(r.id)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${selectedRouteIds.includes(r.id) ? 'bg-system-blue text-white border-system-blue shadow-md' : 'bg-white text-system-gray border-black/10 hover:border-black/20'}`}
+                                    style={selectedRouteIds.includes(r.id) ? {} : { borderColor: `#${r.color}40` }}
+                                >
+                                    {r.short_name}
+                                </button>
                             ))}
                         </div>
                     </div>
-                </Col>
+                </div>
 
-                <Col lg={8}>
-                    <div className="hig-card p-0 overflow-hidden shadow-sm">
-                        <Table hover responsive className="mb-0 align-middle">
-                            <thead className="bg-light">
-                                <tr>
-                                    <th className="px-4">Stop Name / Coordinates</th>
-                                    <th>Assignments</th>
-                                    <th style={{width: '120px'}} className="text-end px-4">Actions</th>
+                {/* Main Table */}
+                <div className="lg:col-span-8">
+                    <div className="hig-card overflow-hidden shadow-sm">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-black/[0.02] border-b border-black/5">
+                                    <th className="px-6 py-4 text-xs font-bold text-system-gray uppercase tracking-wider">Point Metadata</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-system-gray uppercase tracking-wider">Assigned Routes</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-system-gray uppercase tracking-wider text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-black/5">
                                 {stops.map(stop => (
-                                    <tr key={stop.id} style={{cursor: 'pointer'}} onClick={() => { if(inlineEdit?.id !== stop.id) startEdit(stop); }}>
-                                        <td className="px-4">
+                                    <tr key={stop.id} className="group hover:bg-black/[0.01] transition-colors cursor-pointer" onClick={() => { if(inlineEdit?.id !== stop.id) { setEditingId(stop.id); setFormData({name: stop.name, lat: stop.lat, lon: stop.lon}); setMapCenter([stop.lat, stop.lon]); } }}>
+                                        <td className="px-6 py-4">
                                             <div onDoubleClick={(e) => { e.stopPropagation(); setInlineEdit({ id: stop.id, field: 'name', value: stop.name }); }}>
                                                 {inlineEdit?.id === stop.id && inlineEdit?.field === 'name' ? (
-                                                    <Form.Control autoFocus size="sm" value={inlineEdit.value} onClick={e => e.stopPropagation()} onChange={(e) => setInlineEdit({...inlineEdit, value: e.target.value})} onBlur={() => handleInlineSave(stop, 'name', inlineEdit.value)} onKeyDown={(e) => e.key === 'Enter' && handleInlineSave(stop, 'name', inlineEdit.value)} />
-                                                ) : ( <div className="fw-medium text-dark">{stop.name} <div className="small text-muted font-monospace" style={{fontSize: '10px'}}>{stop.lat.toFixed(6)}, {stop.lon.toFixed(6)}</div> </div> )}
+                                                    <input autoFocus className="hig-input py-1 h-8" value={inlineEdit.value} onClick={e => e.stopPropagation()} onChange={e => setInlineEdit({...inlineEdit, value: e.target.value})} onBlur={() => handleInlineSave(stop, 'name', inlineEdit.value)} onKeyDown={e => e.key === 'Enter' && handleInlineSave(stop, 'name', inlineEdit.value)} />
+                                                ) : (
+                                                    <div>
+                                                        <div className="font-bold text-black">{stop.name}</div>
+                                                        <div className="text-[10px] font-mono text-system-gray mt-0.5">{stop.lat.toFixed(6)}, {stop.lon.toFixed(6)}</div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
-                                        <td>
-                                            <div className="d-flex flex-wrap gap-1 align-items-center">
-                                                {(stopRouteMap[stop.id] || []).map(r => ( <Badge key={r.id} style={{backgroundColor: `#${r.color}`, fontSize: '10px'}}>{r.short_name}</Badge> ))}
-                                                <Button variant="link" className="p-0 text-decoration-none small ms-1" style={{fontSize: '18px', color: '#007AFF'}} onClick={(e) => { e.stopPropagation(); setAssignmentModal({ show: true, stop, routeIds: (stopRouteMap[stop.id] || []).map(r => r.id) }); }}>+</Button>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-wrap gap-1 items-center">
+                                                {(stopRouteMap[stop.id] || []).map(r => (
+                                                    <span key={r.id} className="px-2 py-0.5 rounded text-[9px] font-bold text-white shadow-sm" style={{ backgroundColor: `#${r.color}` }}>{r.short_name}</span>
+                                                ))}
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); setActiveAssignment({ stop, routeIds: (stopRouteMap[stop.id] || []).map(r=>r.id) }); setShowModal(true); }}
+                                                    className="w-5 h-5 rounded-full bg-system-blue/10 text-system-blue flex items-center justify-center text-sm font-bold hover:bg-system-blue hover:text-white transition-colors ms-1"
+                                                >+</button>
                                             </div>
                                         </td>
-                                        <td className="text-end px-4">
-                                            <Button variant="link" className="text-danger p-0 text-decoration-none small" onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete stop?')) api.delete(`/stops/${stop.id}`).then(fetchInitialData); }}>Delete</Button>
+                                        <td className="px-6 py-4 text-right">
+                                            <button onClick={(e) => { e.stopPropagation(); if(window.confirm('Remove stop?')) api.delete(`/stops/${stop.id}`).then(fetchInitialData); }} className="p-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all">
+                                                <Trash2 size={16} />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
-                        </Table>
+                        </table>
                     </div>
-                </Col>
-            </Row>
-
-            {/* Modal */}
-            <Modal show={assignmentModal.show} onHide={() => setAssignmentModal({ ...assignmentModal, show: false })} centered>
-                <div className="hig-card m-0" style={{border: 'none'}}>
-                    <h5 className="fw-bold mb-4">Routes for {assignmentModal.stop?.name}</h5>
-                    <ListGroup className="mb-4 shadow-sm border-0">
-                        {routes.map(r => (
-                            <ListGroup.Item key={r.id} action onClick={() => { const ids = assignmentModal.routeIds.includes(r.id) ? assignmentModal.routeIds.filter(id => id !== r.id) : [...assignmentModal.routeIds, r.id]; setAssignmentModal({ ...assignmentModal, routeIds: ids }); }} className={`d-flex justify-content-between align-items-center border-0 mb-1 rounded ${assignmentModal.routeIds.includes(r.id) ? 'bg-primary text-white' : 'bg-light'}`}>
-                                <span className="fw-bold">{r.short_name}</span>{assignmentModal.routeIds.includes(r.id) && <span>✓</span>}
-                            </ListGroup.Item>
-                        ))}
-                    </ListGroup>
-                    <Button variant="primary" onClick={async () => { await api.put(`/stops/${assignmentModal.stop.id}/routes`, assignmentModal.routeIds); setAssignmentModal({ ...assignmentModal, show: false }); fetchInitialData(); }} className="w-100 py-2">Update Assignments</Button>
                 </div>
-            </Modal>
-        </Container>
+            </div>
+
+            {/* Assignment Modal */}
+            {showModal && (
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="hig-card w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <h3 className="text-xl font-bold mb-2">Route Assignment</h3>
+                        <p className="text-system-gray text-sm mb-6 font-medium">Link <span className="text-black font-bold">{activeAssignment.stop?.name}</span> to active routes.</p>
+                        
+                        <div className="space-y-2 mb-8 max-h-80 overflow-y-auto pr-2">
+                            {routes.map(r => (
+                                <div 
+                                    key={r.id} 
+                                    onClick={() => {
+                                        const ids = activeAssignment.routeIds.includes(r.id) 
+                                            ? activeAssignment.routeIds.filter(id => id !== r.id) 
+                                            : [...activeAssignment.routeIds, r.id];
+                                        setActiveAssignment({ ...activeAssignment, routeIds: ids });
+                                    }}
+                                    className={`p-4 rounded-lg flex items-center justify-between cursor-pointer transition-all border-2 ${activeAssignment.routeIds.includes(r.id) ? 'border-system-blue bg-system-blue/5' : 'border-transparent bg-black/5 hover:bg-black-[0.08]'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: `#${r.color}` }}></div>
+                                        <span className="font-bold text-sm">{r.short_name} - {r.long_name}</span>
+                                    </div>
+                                    {activeAssignment.routeIds.includes(r.id) && <CheckCircle2 size={18} className="text-system-blue animate-in zoom-in" />}
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button onClick={saveAssignments} className="flex-1 bg-system-blue text-white py-3 rounded-lg font-bold shadow-lg shadow-system-blue/20">Apply Changes</button>
+                            <button onClick={() => setShowModal(false)} className="px-6 bg-black/5 text-system-gray font-bold rounded-lg">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 
