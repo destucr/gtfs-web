@@ -21,16 +21,16 @@ A professional, full-stack transit management ecosystem designed for designing, 
 ## 📸 Screenshots
 
 ### Dashboard Overview
-![Dashboard](./dashboard.png)
+![Dashboard](./assets/screenshots/dashboard.jpg)
 
 ### Stops & Route Assignments
-![Stops Inventory](./stop-and-routes.png)
+![Stops Inventory](./assets/screenshots/stop-and-routes.jpg)
 
 ### Route Studio - Geographic Path Construction
-![Route Studio Path](./route-studio-path.png)
+![Route Studio Path](./assets/screenshots/route-studio-path.jpg)
 
 ### Route Studio - Metadata Configuration
-![Route Studio Info](./route-studio-info.png)
+![Route Studio Info](./assets/screenshots/route-studio-info.jpg)
 
 ## 🏗 Architecture & Tech Stack
 
