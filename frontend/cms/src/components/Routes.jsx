@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
-import { Info, Map as MapIcon, MapPin, Plus, Save, RotateCcw, Zap, ChevronRight, Bus, Loader2, GripVertical } from 'lucide-react';
+import { Info, Map as MapIcon, MapPin, Plus, Save, RotateCcw, Zap, ChevronRight, ChevronLeft, Bus, Loader2, GripVertical, Undo2, Layers, Settings2, Search } from 'lucide-react';
 import { Reorder, AnimatePresence } from 'framer-motion';
 import api from '../api';
 import axios from 'axios';
@@ -14,7 +14,6 @@ const BusStopIcon = L.icon({
 });
 
 // --- Map Helpers ---
-
 const MapEvents = ({ onMapClick }) => {
     useMapEvents({ click(e) { onMapClick(e.latlng); } });
     return null;
@@ -25,7 +24,7 @@ const FitBounds = ({ points }) => {
     useEffect(() => {
         if (points && points.length > 0) {
             const bounds = L.latLngBounds(points.map(p => [p.lat, p.lon]));
-            map.fitBounds(bounds, { padding: [40, 40], animate: true });
+            map.fitBounds(bounds, { padding: [100, 100], animate: true });
         }
     }, [points, map]);
     return null;
@@ -44,33 +43,47 @@ const RecenterMap = ({ center }) => {
 const RouteStudio = () => {
     const [routes, setRoutes] = useState([]);
     const [allStops, setAllStops] = useState([]);
-    const [agencies, setAgencies] = useState([]);
     const [selectedRoute, setSelectedRoute] = useState(null);
     const [shapePoints, setShapePoints] = useState([]);
-    const [assignedStops, setAssignedStops] = useState([]); // [{stop_id, stop, sequence}]
+    const [assignedStops, setAssignedStops] = useState([]);
+    const [history, setHistory] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
     
-    const [activeTab, setActiveTab] = useState('metadata');
-    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('metadata'); // metadata, shape, stops
+    const [globalLoading, setGlobalLoading] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
     const [saving, setSaving] = useState(false);
     const [routing, setRouting] = useState(false);
     const [message, setMessage] = useState(null);
 
-    useEffect(() => { refreshData(); }, []);
+    // --- Undo Logic ---
+    const pushToHistory = (newPoints) => {
+        setHistory(prev => [...prev.slice(-19), shapePoints]);
+        setShapePoints(newPoints);
+    };
 
-    const refreshAllData = async () => {
-        const [rRes, aRes, sRes] = await Promise.all([
-            api.get('/routes'), api.get('/agencies'), api.get('/stops')
+    const undo = () => {
+        if (history.length === 0) return;
+        const lastState = history[history.length - 1];
+        setShapePoints(lastState);
+        setHistory(prev => prev.slice(0, -1));
+    };
+
+    const refreshAllData = useCallback(async () => {
+        const [rRes, sRes] = await Promise.all([
+            api.get('/routes'), api.get('/stops')
         ]);
         setRoutes(rRes.data || []);
-        setAgencies(aRes.data || []);
         setAllStops(sRes.data || []);
-    };
+    }, []);
 
-    const refreshData = async () => {
-        setLoading(true);
+    const refreshData = useCallback(async () => {
+        setGlobalLoading(true);
         await refreshAllData();
-        setLoading(false);
-    };
+        setGlobalLoading(false);
+    }, [refreshAllData]);
+
+    useEffect(() => { refreshData(); }, [refreshData]);
 
     const handleSelectRoute = async (route) => {
         setSelectedRoute(route);
@@ -89,202 +102,225 @@ const RouteStudio = () => {
         } catch (e) { console.error(e); }
     };
 
-    const saveMetadata = async () => {
+    const saveCurrentTask = async () => {
         setSaving(true);
         try {
-            await api.put(`/routes/${selectedRoute.id}`, selectedRoute);
-            await refreshAllData();
-            setMessage({ type: 'success', text: 'Info updated' });
-        } finally { setSaving(false); }
-    };
-
-    const saveShape = async () => {
-        setSaving(true);
-        const sId = `SHP_${selectedRoute.short_name.toUpperCase()}`;
-        try {
-            await api.put(`/shapes/${sId}`, shapePoints.map(p => ({ ...p, shape_id: sId })));
-            const trips = await api.get('/trips');
-            if (!trips.data.find(t => t.route_id === selectedRoute.id)) {
-                await api.post('/trips', { route_id: selectedRoute.id, headsign: selectedRoute.long_name, shape_id: sId });
+            if (activeTab === 'metadata') {
+                await api.put(`/routes/${selectedRoute.id}`, selectedRoute);
+                await refreshAllData();
+            } else if (activeTab === 'shape') {
+                const sId = `SHP_${selectedRoute.short_name.toUpperCase()}`;
+                await api.put(`/shapes/${sId}`, shapePoints.map(p => ({ ...p, shape_id: sId })));
+                const trips = await api.get('/trips');
+                if (!trips.data.find(t => t.route_id === selectedRoute.id)) {
+                    await api.post('/trips', { route_id: selectedRoute.id, headsign: selectedRoute.long_name, shape_id: sId });
+                }
+            } else {
+                const reordered = assignedStops.map((s, i) => ({ ...s, sequence: i + 1 }));
+                await api.put(`/routes/${selectedRoute.id}/stops`, reordered);
             }
-            setMessage({ type: 'success', text: 'Path saved' });
+            setMessage({ type: 'success', text: 'Changes synced to database' });
         } finally { setSaving(false); }
     };
 
-    const saveStops = async () => {
-        setSaving(true);
-        try { 
-            // Re-map sequences based on drag order
-            const reordered = assignedStops.map((s, i) => ({ ...s, sequence: i + 1 }));
-            await api.put(`/routes/${selectedRoute.id}/stops`, reordered);
-            setMessage({ type: 'success', text: 'Sequence updated' });
-        }
-        finally { setSaving(false); }
-    };
+    const filteredRoutes = routes.filter(r => 
+        r.short_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        r.long_name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
-    if (loading) return <div className="flex h-screen items-center justify-center font-medium text-system-gray">Initializing Route Studio...</div>;
+    if (globalLoading) return <div className="flex h-screen items-center justify-center font-bold text-system-gray animate-pulse flex-col gap-4"><Loader2 className="animate-spin" size={32} /> INITIALIZING STUDIO...</div>;
 
     return (
-        <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+        <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-system-background relative">
+            
             {/* Sidebar */}
-            <div className="w-80 bg-white border-r border-black/5 flex flex-col shrink-0">
-                <div className="p-6 border-b border-black/5 flex justify-between items-center">
-                    <h1 className="text-xl font-bold tracking-tight">Routes</h1>
-                    <button className="p-2 bg-system-blue text-white rounded-full hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-system-blue/20">
-                        <Plus size={18} />
-                    </button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                    {routes.map(r => (
-                        <div 
-                            key={r.id} 
-                            onClick={() => handleSelectRoute(r)}
-                            className={`p-3 rounded-hig cursor-pointer flex items-center group transition-all ${selectedRoute?.id === r.id ? 'bg-system-blue text-white shadow-md' : 'hover:bg-black/5'}`}
-                        >
-                            <div className={`w-3 h-3 rounded-full mr-3 border-2 border-white/20`} style={{ backgroundColor: selectedRoute?.id === r.id ? 'white' : `#${r.color}` }}></div>
-                            <div className="flex-1">
-                                <div className="font-bold text-sm leading-tight">{r.short_name}</div>
-                                <div className={`text-[11px] font-medium mt-0.5 ${selectedRoute?.id === r.id ? 'text-white/70' : 'text-system-gray'}`}>{r.long_name}</div>
-                            </div>
-                            <ChevronRight size={14} className={selectedRoute?.id === r.id ? 'text-white' : 'text-black/10 group-hover:text-black/30'} />
+            <div className={`${sidebarOpen ? 'w-[450px]' : 'w-0'} bg-white border-r border-black/5 flex flex-col transition-all duration-300 overflow-hidden shrink-0 shadow-2xl z-20`}>
+                <div className="p-6 border-b border-black/5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-system-blue rounded-lg flex items-center justify-center text-white shadow-lg shadow-system-blue/20">
+                            <Layers size={18}/>
                         </div>
-                    ))}
+                        <h1 className="text-xl font-black tracking-tight">Route Studio</h1>
+                    </div>
+                    <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-black/5 rounded-lg text-system-gray"><ChevronLeft size={20}/></button>
                 </div>
-            </div>
 
-            {/* Editor */}
-            <div className="flex-1 bg-system-background flex flex-col overflow-hidden">
-                {!selectedRoute ? (
-                    <div className="flex-1 flex flex-col items-center justify-center opacity-30 select-none">
-                        <Bus size={80} className="mb-4 text-system-blue" />
-                        <p className="text-lg font-bold">Select a route line to start mapping</p>
+                {selectedRoute ? (
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        {/* Contextual Editor Header */}
+                        <div className="p-6 bg-system-blue/5 border-b border-system-blue/10">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <div className="text-[10px] font-black text-system-blue uppercase tracking-widest mb-1">Editing Line</div>
+                                    <h2 className="text-lg font-black leading-tight">{selectedRoute.short_name} &mdash; {selectedRoute.long_name}</h2>
+                                </div>
+                                <button onClick={() => setSelectedRoute(null)} className="text-[10px] font-bold text-system-gray hover:text-black uppercase">Close</button>
+                            </div>
+                            
+                            <div className="segmented-control mb-4">
+                                <div onClick={() => setActiveTab('metadata')} className={`segmented-item ${activeTab === 'metadata' ? 'active' : ''}`}>Info</div>
+                                <div onClick={() => setActiveTab('shape')} className={`segmented-item ${activeTab === 'shape' ? 'active' : ''}`}>Path</div>
+                                <div onClick={() => setActiveTab('stops')} className={`segmented-item ${activeTab === 'stops' ? 'active' : ''}`}>Stops</div>
+                            </div>
+
+                            <button onClick={saveCurrentTask} disabled={saving} className="w-full py-3 bg-system-blue text-white rounded-xl font-bold text-xs shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all active:scale-95">
+                                {saving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>}
+                                {activeTab === 'metadata' ? 'UPDATE INFO' : activeTab === 'shape' ? 'SAVE GEOMETRY' : 'UPDATE SEQUENCE'}
+                            </button>
+                        </div>
+
+                        {/* Tab Specific Content */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {activeTab === 'metadata' && (
+                                <div className="space-y-5">
+                                    <div>
+                                        <label className="text-[10px] font-black text-system-gray uppercase tracking-widest mb-2 block">Route Identifier</label>
+                                        <input className="hig-input" value={selectedRoute.short_name} onChange={e => setSelectedRoute({...selectedRoute, short_name: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-system-gray uppercase tracking-widest mb-2 block">Display Description</label>
+                                        <input className="hig-input" value={selectedRoute.long_name} onChange={e => setSelectedRoute({...selectedRoute, long_name: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-system-gray uppercase tracking-widest mb-2 block">System Color</label>
+                                        <div className="flex gap-3">
+                                            <input className="hig-input font-mono uppercase" value={selectedRoute.color} onChange={e => setSelectedRoute({...selectedRoute, color: e.target.value})} />
+                                            <div className="w-12 h-12 rounded-xl border-2 border-white shadow-md shrink-0" style={{backgroundColor: `#${selectedRoute.color}`}}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'shape' && (
+                                <div className="space-y-6">
+                                    <div className="p-4 bg-black/5 rounded-xl border border-black/5">
+                                        <h4 className="text-[10px] font-black text-system-gray uppercase tracking-widest mb-3">Construction Tools</h4>
+                                        <button 
+                                            onClick={async () => {
+                                                if (shapePoints.length < 2) return;
+                                                setRouting(true);
+                                                const coords = shapePoints.map(p => `${p.lon},${p.lat}`).join(';');
+                                                const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+                                                pushToHistory(res.data.routes[0].geometry.coordinates.map((c, i) => ({ lat: c[1], lon: c[0], sequence: i + 1 })));
+                                                setRouting(false);
+                                            }}
+                                            className="w-full py-3 bg-black text-white rounded-lg font-bold text-[10px] flex items-center justify-center gap-2 hover:bg-zinc-800 transition-colors shadow-lg mb-2"
+                                        >
+                                            {routing ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                                            SMART SNAP TO ROAD NETWORK
+                                        </button>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button onClick={undo} disabled={history.length === 0} className="py-2 bg-white border border-black/10 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 disabled:opacity-30"><Undo2 size={12}/> UNDO</button>
+                                            <button onClick={() => pushToHistory([])} className="py-2 bg-white border border-black/10 rounded-lg text-[10px] font-black text-red-500 flex items-center justify-center gap-1.5"><RotateCcw size={12}/> RESET</button>
+                                        </div>
+                                    </div>
+                                    <p className="text-[11px] text-system-gray leading-relaxed font-medium">Click map to drop nodes. Right-click node to delete. Smart Snap calculates real street geometry.</p>
+                                </div>
+                            )}
+
+                            {activeTab === 'stops' && (
+                                <div className="space-y-8 flex flex-col h-full">
+                                    <div className="flex-1 flex flex-col overflow-hidden">
+                                        <h4 className="text-[10px] font-black text-system-gray uppercase tracking-widest mb-3">Active Sequence</h4>
+                                        <Reorder.Group axis="y" values={assignedStops} onReorder={setAssignedStops} className="flex-1 overflow-y-auto space-y-2 pr-2">
+                                            {assignedStops.map((rs, i) => (
+                                                <Reorder.Item key={rs.stop_id} value={rs} className="flex items-center gap-3 p-3 bg-system-background rounded-xl cursor-grab active:cursor-grabbing border border-black/5 hover:border-black/10 shadow-sm transition-all">
+                                                    <GripVertical size={14} className="text-black/20" />
+                                                    <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[10px] font-extrabold shadow-sm shrink-0">{i+1}</div>
+                                                    <div className="flex-1 font-bold text-xs truncate uppercase">{rs.stop?.name}</div>
+                                                    <button onClick={() => setAssignedStops(assignedStops.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-600 font-bold p-1">&times;</button>
+                                                </Reorder.Item>
+                                            ))}
+                                        </Reorder.Group>
+                                    </div>
+                                    <div className="flex-1 flex flex-col overflow-hidden border-t border-black/5 pt-6">
+                                        <h4 className="text-[10px] font-black text-system-gray uppercase tracking-widest mb-3">Library Picker</h4>
+                                        <div className="flex-1 overflow-y-auto space-y-1 pr-2 font-bold text-[11px]">
+                                            {allStops.filter(s => !assignedStops.find(rs => rs.stop_id === s.id)).map(s => (
+                                                <div key={s.id} className="flex items-center justify-between p-2 hover:bg-black/5 rounded-lg cursor-pointer group" onClick={() => setAssignedStops([...assignedStops, {stop_id: s.id, stop: s, sequence: assignedStops.length+1}])}>
+                                                    <span className="text-black/60 group-hover:text-system-blue uppercase">{s.name}</span>
+                                                    <Plus size={14} className="text-system-blue opacity-0 group-hover:opacity-100" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 ) : (
                     <>
-                        <div className="p-4 px-6 flex items-center justify-between bg-white/80 backdrop-blur border-b border-black/5 z-10">
-                            <div className="segmented-control w-[420px]">
-                                <div onClick={() => setActiveTab('metadata')} className={`segmented-item ${activeTab === 'metadata' ? 'active' : ''}`}>Metadata</div>
-                                <div onClick={() => setActiveTab('shape')} className={`segmented-item ${activeTab === 'shape' ? 'active' : ''}`}>Geometry</div>
-                                <div onClick={() => setActiveTab('stops')} className={`segmented-item ${activeTab === 'stops' ? 'active' : ''}`}>Stop Sequence</div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                {message && <span className={`text-xs font-bold ${message.type === 'success' ? 'text-green-600' : 'text-red-500'} animate-pulse`}>{message.text}</span>}
-                                <button 
-                                    onClick={activeTab === 'metadata' ? saveMetadata : activeTab === 'shape' ? saveShape : saveStops}
-                                    className="px-6 py-2 bg-system-blue text-white rounded-lg font-bold text-sm flex items-center gap-2 shadow-lg shadow-system-blue/30 hover:bg-blue-600 transition-all active:scale-[0.98]"
-                                >
-                                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                    Save changes
-                                </button>
+                        <div className="p-4 px-6 border-b border-black/5 bg-white flex items-center gap-4">
+                            <div className="relative flex-1 max-w-sm">
+                                <Search size={14} className="absolute left-3 top-3 text-system-gray" />
+                                <input className="hig-input text-sm pl-9 py-2" placeholder="Search service lines..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                             </div>
                         </div>
-
-                        <div className="flex-1 flex p-6 gap-6 overflow-hidden">
-                            {/* Panel */}
-                            <div className="w-96 flex flex-col gap-6 overflow-y-auto shrink-0">
-                                {activeTab === 'metadata' && (
-                                    <div className="hig-card p-5 space-y-5">
-                                        <h3 className="text-xs font-bold text-system-gray uppercase tracking-widest">Metadata Config</h3>
-                                        <div>
-                                            <label className="text-[11px] font-bold mb-1.5 block opacity-60">SHORT NAME</label>
-                                            <input className="hig-input" value={selectedRoute.short_name} onChange={e => setSelectedRoute({...selectedRoute, short_name: e.target.value})} />
+                        <div className="flex-1 overflow-y-auto divide-y divide-black/5">
+                            {filteredRoutes.map(r => (
+                                <div key={r.id} onClick={() => handleSelectRoute(r)} className="p-6 hover:bg-black/[0.02] cursor-pointer group transition-all flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: `#${r.color}` }}>
+                                            <Bus size={24}/>
                                         </div>
                                         <div>
-                                            <label className="text-[11px] font-bold mb-1.5 block opacity-60">FULL DESCRIPTION</label>
-                                            <input className="hig-input" value={selectedRoute.long_name} onChange={e => setSelectedRoute({...selectedRoute, long_name: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[11px] font-bold mb-1.5 block opacity-60">SYSTEM COLOR</label>
-                                            <div className="flex gap-3">
-                                                <input className="hig-input font-mono" value={selectedRoute.color} onChange={e => setSelectedRoute({...selectedRoute, color: e.target.value})} />
-                                                <div className="w-12 h-12 rounded-xl shrink-0 shadow-inner border-2 border-white" style={{backgroundColor: `#${selectedRoute.color}`}}></div>
-                                            </div>
+                                            <div className="text-lg font-black tracking-tight">{r.short_name}</div>
+                                            <div className="text-sm font-bold text-system-gray uppercase tracking-wider">{r.long_name}</div>
                                         </div>
                                     </div>
-                                )}
-
-                                {activeTab === 'shape' && (
-                                    <div className="hig-card p-5 space-y-5">
-                                        <h3 className="text-xs font-bold text-system-gray uppercase tracking-widest">Path Construction</h3>
-                                        <div className="space-y-2">
-                                            <button 
-                                                onClick={async () => {
-                                                    if (shapePoints.length < 2) return;
-                                                    setRouting(true);
-                                                    const coords = shapePoints.map(p => `${p.lon},${p.lat}`).join(';');
-                                                    const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
-                                                    setShapePoints(res.data.routes[0].geometry.coordinates.map((c, i) => ({ lat: c[1], lon: c[0], sequence: i + 1 })));
-                                                    setRouting(false);
-                                                }}
-                                                className="w-full py-3 bg-black text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-zinc-800 transition-colors shadow-lg"
-                                            >
-                                                {routing ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                                                SMART SNAP TO ROADS
-                                            </button>
-                                            <button onClick={() => setShapePoints([])} className="w-full py-2.5 text-red-500 font-bold text-xs border border-red-500/10 rounded-xl hover:bg-red-50 transition-colors">
-                                                RESET ALL PATH NODES
-                                            </button>
-                                        </div>
-                                        <p className="text-[11px] text-system-gray leading-relaxed font-medium bg-black/[0.03] p-3 rounded-lg border border-black/5">
-                                            Drop anchor nodes on the map. Smart Snap uses OSRM data to trace the exact road geometry between anchors.
-                                        </p>
-                                    </div>
-                                )}
-
-                                {activeTab === 'stops' && (
-                                    <div className="flex flex-col gap-6 flex-1 overflow-hidden">
-                                        <div className="hig-card p-5 flex-1 overflow-hidden flex flex-col">
-                                            <h3 className="text-xs font-bold text-system-gray uppercase tracking-widest mb-4">Sequence Layout</h3>
-                                            <Reorder.Group axis="y" values={assignedStops} onReorder={setAssignedStops} className="flex-1 overflow-y-auto pr-2 space-y-2">
-                                                {assignedStops.map((rs, i) => (
-                                                    <Reorder.Item key={rs.stop_id} value={rs} className="flex items-center gap-3 p-3 bg-system-background rounded-xl cursor-grab active:cursor-grabbing border border-black/5 hover:border-black/10 transition-colors">
-                                                        <GripVertical size={14} className="text-black/20" />
-                                                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[10px] font-extrabold shadow-sm shrink-0">{i+1}</div>
-                                                        <div className="flex-1 font-bold text-xs truncate uppercase tracking-tight">{rs.stop?.name}</div>
-                                                        <button onClick={() => setAssignedStops(assignedStops.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-600 font-bold p-1">&times;</button>
-                                                    </Reorder.Item>
-                                                ))}
-                                            </Reorder.Group>
-                                        </div>
-                                        <div className="hig-card p-5 flex-1 overflow-hidden flex flex-col">
-                                            <h3 className="text-xs font-bold text-system-gray uppercase tracking-widest mb-4">Stop Library</h3>
-                                            <div className="flex-1 overflow-y-auto pr-2 space-y-1">
-                                                {allStops.filter(s => !assignedStops.find(rs => rs.stop_id === s.id)).map(s => (
-                                                    <div key={s.id} className="flex items-center justify-between p-2.5 hover:bg-black/5 rounded-lg cursor-pointer group" onClick={() => setAssignedStops([...assignedStops, {stop_id: s.id, stop: s, sequence: assignedStops.length+1}])}>
-                                                        <span className="text-xs font-bold text-black/60 group-hover:text-system-blue transition-colors uppercase tracking-tight">{s.name}</span>
-                                                        <Plus size={14} className="text-system-blue opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Map */}
-                            <div className="flex-1 bg-white rounded-[24px] overflow-hidden shadow-2xl relative border-4 border-white ring-1 ring-black/5">
-                                <MapContainer center={[-7.393, 109.360]} zoom={13} zoomControl={false} style={{ height: '100%', width: '100%' }}>
-                                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OSM" />
-                                    <RecenterMap center={shapePoints.length > 0 ? [shapePoints[0].lat, shapePoints[0].lon] : [-7.393, 109.360]} />
-                                    {selectedRoute && <FitBounds points={shapePoints} />}
-                                    
-                                    {activeTab === 'shape' && <MapEvents onMapClick={l => setShapePoints([...shapePoints, {lat: l.lat, lon: l.lng, sequence: shapePoints.length+1}])} />}
-
-                                    <Polyline positions={shapePoints.map(p => [p.lat, p.lon])} color={`#${selectedRoute.color}`} weight={6} lineCap="round" lineJoin="round" opacity={0.8} />
-                                    
-                                    {activeTab === 'shape' && shapePoints.map((p, i) => (
-                                        <Marker key={`p-${i}`} position={[p.lat, p.lon]} icon={L.divIcon({ className: 'bg-white border-2 border-system-blue w-3 h-3 rounded-full shadow-lg', iconSize: [12, 12] })} />
-                                    ))}
-
-                                    {assignedStops.map((rs, i) => (
-                                        <Marker key={`s-${i}`} position={[rs.stop.lat, rs.stop.lon]} icon={BusStopIcon}>
-                                            <Popup><div className="font-bold text-xs">#{i+1} {rs.stop.name}</div></Popup>
-                                        </Marker>
-                                    ))}
-                                </MapContainer>
-                            </div>
+                                    <ChevronRight size={20} className="text-black/10 group-hover:text-system-blue transition-all group-hover:translate-x-1" />
+                                </div>
+                            ))}
                         </div>
                     </>
+                )}
+            </div>
+
+            {/* Immersive Map Content */}
+            <div className="flex-1 relative">
+                {!sidebarOpen && (
+                    <button onClick={() => setSidebarOpen(true)} className="absolute left-4 top-4 z-[1001] p-3 bg-white shadow-xl rounded-full border border-black/5 hover:scale-110 active:scale-95 transition-all text-system-blue">
+                        <ChevronRight size={24}/>
+                    </button>
+                )}
+
+                <MapContainer center={[-7.393, 109.360]} zoom={14} zoomControl={false} className="h-full w-full">
+                    <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="&copy; CARTO" />
+                    {activeTab === 'shape' && selectedRoute && <MapEvents onMapClick={l => pushToHistory([...shapePoints, {lat: l.lat, lon: l.lng, sequence: shapePoints.length+1}])} />}
+                    {selectedRoute && <FitBounds points={shapePoints} />}
+                    <RecenterMap center={shapePoints.length > 0 ? [shapePoints[0].lat, shapePoints[0].lon] : null} />
+
+                    {/* Polyline */}
+                    {shapePoints.length > 1 && (
+                        <Polyline positions={shapePoints.map(p => [p.lat, p.lon])} color={selectedRoute ? `#${selectedRoute.color}` : '#007AFF'} weight={6} lineCap="round" lineJoin="round" opacity={0.8} />
+                    )}
+
+                    {/* Path Nodes (only in shape tab) */}
+                    {activeTab === 'shape' && shapePoints.map((p, i) => (
+                        <Marker key={`p-${i}`} position={[p.lat, p.lon]} icon={L.divIcon({ className: 'bg-white border-2 border-system-blue w-3 h-3 rounded-full shadow-lg', iconSize: [12, 12] })} eventHandlers={{ contextmenu: () => pushToHistory(shapePoints.filter((_, idx) => idx !== i).map((pt, ix) => ({...pt, sequence: ix+1}))) }} />
+                    ))}
+
+                    {/* Assigned Stops */}
+                    {assignedStops.map((rs, i) => (
+                        <Marker key={`rs-${i}`} position={[rs.stop.lat, rs.stop.lon]} icon={BusStopIcon}>
+                            <Popup><div className="p-1 font-black text-[10px] uppercase">#{i+1} {rs.stop.name}</div></Popup>
+                        </Marker>
+                    ))}
+                </MapContainer>
+
+                {/* Info HUD */}
+                {selectedRoute && (
+                    <div className="absolute top-6 right-6 z-[1000] flex flex-col items-end gap-3">
+                        <div className="bg-black/90 text-white px-5 py-2 rounded-full text-[10px] font-black shadow-2xl border border-white/10 flex items-center gap-2 tracking-widest uppercase">
+                            <Settings2 size={12} className="text-system-blue" />
+                            {activeTab} MODE ACTIVE
+                        </div>
+                        {message && (
+                            <div className="bg-white px-4 py-2 rounded-xl text-[10px] font-black shadow-xl border border-black/5 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <span className={message.type === 'success' ? 'text-green-600' : 'text-red-500'}>&bull; {message.text.toUpperCase()}</span>
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
         </div>
