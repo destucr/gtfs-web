@@ -118,6 +118,7 @@ The codebase is organized to support splitting into two repositories in the futu
 
 ### [Date] - Web UI Overhaul (Mantine UI)
 - **Framework Upgrade**: Migrated `frontend/web` from plain React/Bootstrap to **Mantine UI v7**.
+- **Bundler Shift**: Replaced experimental `rolldown-vite` with standard **Vite v6** to resolve dependency conflicts and ensure React 18 hook stability (`useId`).
 - **UX Redesign**: 
     - Implemented a fullscreen immersive map experience.
     - Added a floating "Route Terminal" glassmorphism sidebar for route discovery and searching.
