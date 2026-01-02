@@ -25,6 +25,7 @@ const RouteStudio: React.FC = () => {
     const [globalLoading, setGlobalLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [routing, setRouting] = useState(false);
+    const [autoRoute, setAutoRoute] = useState(true);
     const [isDirty, setIsDirty] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'danger', text: string } | null>(null);
 
@@ -72,14 +73,45 @@ const RouteStudio: React.FC = () => {
         pushToHistory(newPoints);
     }, [shapePoints, pushToHistory]);
 
-    const handleShapePointInsert = useCallback((index: number, latlng: { lat: number, lng: number }) => {
+    const handleShapePointInsert = useCallback(async (index: number, latlng: { lat: number, lng: number }) => {
+        const sId = selectedRoute?.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute?.id}`;
+        
+        if (autoRoute && index > 0 && index < shapePoints.length) {
+            setRouting(true);
+            try {
+                const prev = shapePoints[index - 1];
+                const next = shapePoints[index];
+                // Route from prev -> new -> next
+                const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${prev.lon},${prev.lat};${latlng.lng},${latlng.lat};${next.lon},${next.lat}?overview=full&geometries=geojson`);
+                
+                if (res.data.routes && res.data.routes[0]) {
+                    const geometry: [number, number][] = res.data.routes[0].geometry.coordinates;
+                    // Replace the segment between prev and next with the new road-following points
+                    const newPoints = [...shapePoints];
+                    const intermediatePoints = geometry.slice(1, -1).map((c) => ({
+                        shape_id: sId,
+                        lat: c[1],
+                        lon: c[0],
+                        sequence: 0 // Will be re-indexed
+                    }));
+                    
+                    newPoints.splice(index, 0, ...intermediatePoints);
+                    const reordered = newPoints.map((p, i) => ({ ...p, sequence: i + 1 }));
+                    pushToHistory(reordered);
+                    return;
+                }
+            } catch (e) {
+                console.error("Auto-routing during insert failed:", e);
+            } finally {
+                setRouting(false);
+            }
+        }
+
         const newPoints = [...shapePoints];
-        const sId = selectedRoute?.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : '';
         newPoints.splice(index, 0, { lat: latlng.lat, lon: latlng.lng, sequence: index + 1, shape_id: sId });
-        // Update sequences
         const reordered = newPoints.map((p, i) => ({ ...p, sequence: i + 1 }));
         pushToHistory(reordered);
-    }, [shapePoints, selectedRoute, pushToHistory]);
+    }, [shapePoints, selectedRoute, autoRoute, pushToHistory]);
 
     const snapStopsToPath = useCallback(() => {
         if (shapePoints.length < 2 || assignedStops.length === 0) return;
@@ -168,12 +200,39 @@ const RouteStudio: React.FC = () => {
     }, [isDirty, shapePoints, assignedStops, selectedRoute, saveChanges]);
 
     // Map Click Handler
-    const handleMapClick = useCallback((latlng: { lat: number, lng: number }) => {
+    const handleMapClick = useCallback(async (latlng: { lat: number, lng: number }) => {
         if (selectedRoute && activeSection === 'path') {
-            const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : '';
-            pushToHistory([...shapePoints, { lat: latlng.lat, lon: latlng.lng, sequence: shapePoints.length + 1, shape_id: sId }]);
+            const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
+            const newPoint = { lat: latlng.lat, lon: latlng.lng, sequence: shapePoints.length + 1, shape_id: sId };
+
+            if (autoRoute && shapePoints.length > 0) {
+                setRouting(true);
+                try {
+                    const lastPoint = shapePoints[shapePoints.length - 1];
+                    const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${lastPoint.lon},${lastPoint.lat};${latlng.lng},${latlng.lat}?overview=full&geometries=geojson`);
+                    
+                    if (res.data.routes && res.data.routes[0]) {
+                        const geometry: [number, number][] = res.data.routes[0].geometry.coordinates;
+                        // Skip the first coordinate as it's the lastPoint we already have
+                        const intermediatePoints = geometry.slice(1).map((c, i) => ({
+                            shape_id: sId,
+                            lat: c[1],
+                            lon: c[0],
+                            sequence: shapePoints.length + i + 1
+                        }));
+                        pushToHistory([...shapePoints, ...intermediatePoints]);
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Auto-routing failed, falling back to straight line:", e);
+                } finally {
+                    setRouting(false);
+                }
+            }
+            
+            pushToHistory([...shapePoints, newPoint]);
         }
-    }, [activeSection, selectedRoute, shapePoints, pushToHistory]);
+    }, [activeSection, selectedRoute, shapePoints, autoRoute, pushToHistory]);
 
     useEffect(() => {
         setOnMapClick(() => handleMapClick);
@@ -335,6 +394,18 @@ const RouteStudio: React.FC = () => {
                             </button>
                             {activeSection === 'path' && (
                                 <div className="p-6 bg-system-blue/[0.02] space-y-4">
+                                    <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-black/5 shadow-sm">
+                                        <div className="flex items-center gap-2">
+                                            <Zap size={14} className={autoRoute ? "text-system-blue" : "text-system-gray"} />
+                                            <span className="text-[10px] font-black uppercase tracking-tight">Follow Roads on Click</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => setAutoRoute(!autoRoute)}
+                                            className={`w-10 h-5 rounded-full transition-colors relative ${autoRoute ? 'bg-system-blue' : 'bg-black/10'}`}
+                                        >
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${autoRoute ? 'left-6' : 'left-1'}`} />
+                                        </button>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <button onClick={snapToRoads} className="py-3 bg-system-blue text-white rounded-xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-blue-600 shadow-lg">{routing ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />} SNAP FULL PATH</button>
                                         <button onClick={snapPointsToRoads} className="py-3 bg-white border-2 border-system-blue text-system-blue rounded-xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-system-blue hover:text-white transition-all shadow-sm">{routing ? <Loader2 size={12} className="animate-spin" /> : <MapIcon size={12} />} SNAP ANCHORS</button>
