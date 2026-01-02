@@ -1,22 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { Globe, Plus, Trash2, Search, ChevronLeft, ChevronRight, Landmark, RotateCcw, Landmark as LandmarkIcon, ExternalLink, Clock } from 'lucide-react';
+import { Globe, Plus, Trash2, Search, ChevronLeft, ChevronRight, Landmark, RotateCcw, ExternalLink, Clock } from 'lucide-react';
 import api from '../api';
+import { Agency, Route, Stop, RouteStop, Trip, ShapePoint } from '../types';
 
-const Agencies = () => {
+const Agencies: React.FC = () => {
     const { setMapLayers } = useWorkspace();
-    const [agencies, setAgencies] = useState([]);
-    const [allRoutes, setAllRoutes] = useState([]);
-    const [allStops, setAllStops] = useState([]);
-    const [stopRouteMap, setStopRouteMap] = useState([]);
-    const [allTrips, setAllTrips] = useState([]);
+    const [agencies, setAgencies] = useState<Agency[]>([]);
+    const [allRoutes, setAllRoutes] = useState<Route[]>([]);
+    const [allStops, setAllStops] = useState<Stop[]>([]);
+    const [stopRouteMap, setStopRouteMap] = useState<RouteStop[]>([]);
+    const [allTrips, setAllTrips] = useState<Trip[]>([]);
     
-    const [selectedAgency, setSelectedAgency] = useState(null);
+    const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [formData, setFormData] = useState({ name: '', url: '', timezone: '' });
-    const [editingId, setEditingId] = useState(null);
+    const [formData, setFormData] = useState<Agency>({ name: '', url: '', timezone: '' });
+    const [editingId, setEditingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [agencyStats, setAgencyStats] = useState<Record<number, { routes: number, stops: number }>>({});
 
     const fetchInitialData = useCallback(async () => {
         setLoading(true);
@@ -24,18 +26,38 @@ const Agencies = () => {
             const [aRes, rRes, sRes, srRes, tRes] = await Promise.all([
                 api.get('/agencies'), api.get('/routes'), api.get('/stops'), api.get('/stop-routes'), api.get('/trips')
             ]);
-            setAgencies(aRes.data || []);
-            setAllRoutes(rRes.data || []);
-            setAllStops(sRes.data || []);
-            setStopRouteMap(srRes.data || []);
+            
+            const agenciesData: Agency[] = aRes.data || [];
+            const routesData: Route[] = rRes.data || [];
+            const stopsData: Stop[] = sRes.data || [];
+            const srData: RouteStop[] = srRes.data || [];
+            
+            setAgencies(agenciesData);
+            setAllRoutes(routesData);
+            setAllStops(stopsData);
+            setStopRouteMap(srData);
             setAllTrips(tRes.data || []);
+
+            // Calculate stats
+            const stats: Record<number, { routes: number, stops: number }> = {};
+            agenciesData.forEach(agency => {
+                if (agency.id === undefined) return;
+                const agencyRoutes = routesData.filter(r => r.agency_id === agency.id);
+                const routeIds = agencyRoutes.map(r => r.id);
+                const stopIds = [...new Set(srData.filter(sr => routeIds.includes(sr.route_id)).map(sr => sr.stop_id))];
+                stats[agency.id] = {
+                    routes: agencyRoutes.length,
+                    stops: stopIds.length
+                };
+            });
+            setAgencyStats(stats);
         } finally { setLoading(false); }
     }, []);
 
     useEffect(() => { fetchInitialData(); }, [fetchInitialData]);
 
     useEffect(() => {
-        if (!selectedAgency) {
+        if (!selectedAgency || selectedAgency.id === undefined) {
             setMapLayers({ routes: [], stops: [], focusedPoints: [], activeShape: [] });
             return;
         }
@@ -46,14 +68,18 @@ const Agencies = () => {
             const stopIds = [...new Set(stopRouteMap.filter(sr => routeIds.includes(sr.route_id)).map(sr => sr.stop_id))];
             const agencyStops = allStops.filter(s => stopIds.includes(s.id));
             const agencyTrips = allTrips.filter(t => routeIds.includes(t.route_id));
-            const shapeGeometries = [];
+            const shapeGeometries: { id: number, color: string, positions: [number, number][] }[] = [];
             
             await Promise.all(agencyTrips.map(async (trip) => {
                 if (trip.shape_id) {
                     try {
                         const res = await api.get(`/shapes/${trip.shape_id}`);
-                        const poly = res.data.sort((a,b) => a.sequence - b.sequence).map(p => [p.lat, p.lon]);
-                        shapeGeometries.push({ id: trip.id, color: agencyRoutes.find(r => r.id === trip.route_id)?.color, positions: poly });
+                        const points: ShapePoint[] = res.data;
+                        const poly = points.sort((a,b) => a.sequence - b.sequence).map(p => [p.lat, p.lon] as [number, number]);
+                        const route = agencyRoutes.find(r => r.id === trip.route_id);
+                        if (route) {
+                            shapeGeometries.push({ id: trip.id, color: route.color, positions: poly });
+                        }
                     } catch (e) { console.error(e); }
                 }
             }));
@@ -69,7 +95,7 @@ const Agencies = () => {
         updateGeometry();
     }, [selectedAgency, allRoutes, allStops, stopRouteMap, allTrips, setMapLayers]);
 
-    const handleSave = async (e) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             if (editingId) await api.put(`/agencies/${editingId}`, formData);
@@ -78,6 +104,12 @@ const Agencies = () => {
             setEditingId(null);
             fetchInitialData();
         } catch (error) { console.error(error); }
+    };
+
+    const handleSelectAgency = (agency: Agency) => {
+        setSelectedAgency(agency);
+        if (agency.id !== undefined) setEditingId(agency.id);
+        setFormData({ name: agency.name, url: agency.url, timezone: agency.timezone });
     };
 
     const filteredAgencies = agencies.filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -116,19 +148,19 @@ const Agencies = () => {
 
             <div className="flex-1 overflow-y-auto divide-y divide-black/5">
                 {filteredAgencies.map(agency => (
-                    <div key={agency.id} className={`p-6 hover:bg-black/[0.02] cursor-pointer transition-all group ${selectedAgency?.id === agency.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} onClick={() => setSelectedAgency(agency)}>
+                    <div key={agency.id} className={`p-6 hover:bg-black/[0.02] cursor-pointer transition-all group ${selectedAgency?.id === agency.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} onClick={() => handleSelectAgency(agency)}>
                         <div className="flex justify-between items-start mb-3">
                             <div><div className="font-black text-lg tracking-tight text-black leading-none mb-2">{agency.name}</div><div className="flex items-center gap-2 text-[10px] font-black text-system-blue uppercase bg-system-blue/5 w-fit px-2 py-0.5 rounded tracking-tighter"><Globe size={10} /> {agency.timezone}</div></div>
-                            <button onClick={(e) => { e.stopPropagation(); if(window.confirm('Remove agency?')) api.delete(`/agencies/${agency.id}`).then(fetchInitialData); }} className="p-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
+                            <button onClick={(e) => { e.stopPropagation(); if(agency.id !== undefined && window.confirm('Remove agency?')) api.delete(`/agencies/${agency.id}`).then(fetchInitialData); }} className="p-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
                         </div>
                         <a href={agency.url} target="_blank" rel="noreferrer" className="text-xs text-system-gray flex items-center gap-1 hover:underline mb-4 font-bold italic"><ExternalLink size={10} /> {agency.url}</a>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-white border border-black/5 p-3 rounded-xl shadow-sm text-center">
-                                <div className="text-xl font-black text-black leading-none mb-1">{allRoutes.filter(r => r.agency_id === agency.id).length}</div>
+                                <div className="text-xl font-black text-black leading-none mb-1">{agency.id !== undefined ? (agencyStats[agency.id]?.routes || 0) : 0}</div>
                                 <div className="text-[9px] font-black text-system-gray uppercase tracking-widest">Lines</div>
                             </div>
                             <div className="bg-white border border-black/5 p-3 rounded-xl shadow-sm text-center">
-                                <div className="text-xl font-black text-black leading-none mb-1">{[...new Set(stopRouteMap.filter(sr => allRoutes.filter(r => r.agency_id === agency.id).map(r => r.id).includes(sr.route_id)).map(sr => sr.stop_id))].length}</div>
+                                <div className="text-xl font-black text-black leading-none mb-1">{agency.id !== undefined ? (agencyStats[agency.id]?.stops || 0) : 0}</div>
                                 <div className="text-[9px] font-black text-system-gray uppercase tracking-widest">Nodes</div>
                             </div>
                         </div>

@@ -9,7 +9,7 @@ const BusStopIcon = L.icon({
     iconSize: [24, 24], iconAnchor: [12, 24], popupAnchor: [0, -24]
 });
 
-const MapController = ({ focusedPoints }) => {
+const MapController: React.FC<{ focusedPoints: [number, number][] }> = ({ focusedPoints }) => {
     const map = useMap();
     useEffect(() => {
         if (focusedPoints && focusedPoints.length > 0) {
@@ -20,7 +20,7 @@ const MapController = ({ focusedPoints }) => {
     return null;
 };
 
-const UnifiedMap = () => {
+const UnifiedMap: React.FC = () => {
     const { mapLayers } = useWorkspace();
 
     return (
@@ -65,7 +65,7 @@ const UnifiedMap = () => {
 
             {/* Active Drawing Layer */}
             {mapLayers.activeShape.length > 1 && (
-                <Polyline positions={mapLayers.activeShape.map(p => [p.lat, p.lon])} color="#007AFF" weight={6} />
+                <Polyline positions={mapLayers.activeShape.map(p => [p.lat, p.lon] as [number, number])} color="#007AFF" weight={6} />
             )}
             {mapLayers.activeShape.map((p, i) => (
                 <Marker key={`edit-${i}`} position={[p.lat, p.lon]} icon={L.divIcon({ className: 'bg-white border-2 border-system-blue w-3 h-3 rounded-full shadow-lg', iconSize: [12, 12] })} />

@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { Database, Plus, Trash2, Map as MapIcon, Search, ChevronLeft, ChevronRight, Loader2, Navigation } from 'lucide-react';
+import { Database, Plus, Trash2, Map as MapIcon, Search, ChevronLeft, ChevronRight, Navigation } from 'lucide-react';
 import api from '../api';
+import { Route, Trip, ShapePoint } from '../types';
 
-const Trips = () => {
+const Trips: React.FC = () => {
     const { setMapLayers } = useWorkspace();
-    const [trips, setTrips] = useState([]);
-    const [routes, setRoutes] = useState([]);
+    const [trips, setTrips] = useState<Trip[]>([]);
+    const [routes, setRoutes] = useState<Route[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [formData, setFormData] = useState({ route_id: '', headsign: '', shape_id: '' });
-    const [activePoints, setActivePoints] = useState([]);
+    const [activePoints, setActivePoints] = useState<[number, number][]>([]);
     
-    const [editingId, setEditingId] = useState(null);
+    const [editingId, setEditingId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -30,7 +31,7 @@ const Trips = () => {
         const route = routes.find(r => r.id === parseInt(formData.route_id));
         setMapLayers({
             routes: activePoints.length > 0 ? [{
-                id: editingId,
+                id: editingId || 0,
                 color: route?.color || '007AFF',
                 positions: activePoints,
                 isFocused: true
@@ -55,7 +56,7 @@ const Trips = () => {
         }
     }, [formData.route_id, routes, editingId]);
 
-    const handleSave = async (e) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         const payload = { ...formData, route_id: parseInt(formData.route_id) };
         try {
@@ -68,13 +69,14 @@ const Trips = () => {
         } catch (err) { console.error("Save error:", err); }
     };
 
-    const handleViewTrip = async (trip) => {
+    const handleViewTrip = async (trip: Trip) => {
         setEditingId(trip.id);
-        setFormData({ route_id: trip.route_id, headsign: trip.headsign, shape_id: trip.shape_id });
+        setFormData({ route_id: trip.route_id.toString(), headsign: trip.headsign, shape_id: trip.shape_id });
         if (trip.shape_id) {
             try {
                 const res = await api.get(`/shapes/${trip.shape_id}`);
-                setActivePoints((res.data || []).sort((a,b)=>a.sequence-b.sequence).map(p=>[p.lat, p.lon]));
+                const points: ShapePoint[] = res.data || [];
+                setActivePoints(points.sort((a,b)=>a.sequence-b.sequence).map(p=>[p.lat, p.lon] as [number, number]));
             } catch (err) { console.error("Load geometry error:", err); setActivePoints([]); }
         }
     };

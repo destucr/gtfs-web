@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, ReactNode } from 'react';
 import { WorkspaceContext } from './Context';
+import { MapLayers } from '../types';
 
-export const WorkspaceProvider = ({ children }) => {
-  const [mapLayers, setMapLayers] = useState({
+export const WorkspaceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [mapLayers, setMapLayers] = useState<MapLayers>({
     routes: [], 
     stops: [],  
     focusedPoints: [],

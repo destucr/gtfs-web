@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import Agencies from './components/Agencies';
@@ -13,10 +13,10 @@ import {
   ArrowRight, Activity, ShieldCheck, Zap, AlertCircle, Loader2, TrendingUp 
 } from 'lucide-react';
 
-const ShortcutManager = () => {
+const ShortcutManager: React.FC = () => {
   const navigate = useNavigate();
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
         switch (e.key) {
           case '1': e.preventDefault(); navigate('/agencies'); break;
@@ -34,12 +34,12 @@ const ShortcutManager = () => {
   return null;
 };
 
-const Home = () => {
+const Home: React.FC = () => {
   const [stats, setStats] = useState({ agencies: 0, stops: 0, routes: 0, trips: 0 });
   const [loading, setLoading] = useState(true);
-  const [health, setHealth] = useState('checking');
+  const [health, setHealth] = useState<'checking' | 'online' | 'error'>('checking');
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const [a, s, r, t] = await Promise.all([
         api.get('/agencies'), api.get('/stops'), api.get('/routes'), api.get('/trips')
@@ -56,9 +56,9 @@ const Home = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchStats(); }, []);
+  useEffect(() => { fetchStats(); }, [fetchStats]);
 
   const cards = [
     { name: 'Agencies', value: stats.agencies, icon: Globe, path: '/agencies', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Transit Operators' },
@@ -71,7 +71,7 @@ const Home = () => {
     <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-700">
       <header className="mb-10 flex justify-between items-start">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-black mb-2">Transit Control Center</h1>
+          <h1 className="text-4xl font-black tracking-tight text-black mb-2 text-primary">Transit Control Center</h1>
           <p className="text-lg text-system-gray font-semibold">Network Infrastructure & GTFS Lifecycle Management</p>
         </div>
         <div className="flex gap-3">
@@ -89,7 +89,7 @@ const Home = () => {
                 <div className={`p-3 rounded-xl ${c.bg} ${c.color} shadow-inner`}><c.icon size={24} /></div>
                 <span className="text-[9px] font-black text-system-gray bg-black/5 px-2 py-1 rounded uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">Shortcut ^ {i+1}</span>
             </div>
-            <div className="mt-6 relative z-10">
+            <div className="mt-6 relative z-10 font-bold">
                 <div className="text-3xl font-black text-black tracking-tight leading-none mb-1">{loading ? <Loader2 size={20} className="animate-spin text-system-gray" /> : c.value}</div>
                 <div className="text-xs font-bold text-black uppercase tracking-wide">{c.name}</div>
                 <div className="text-[10px] font-medium text-system-gray uppercase mt-1 tracking-widest">{c.desc}</div>
@@ -111,13 +111,12 @@ const Home = () => {
   );
 };
 
-const WorkspaceContainer = () => {
+const WorkspaceContainer: React.FC = () => {
   const location = useLocation();
   const isHome = location.pathname === '/';
 
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden">
-      {/* Content Route (Sidebar / Home) */}
       <div className={`${isHome ? 'flex-1' : ''} h-full transition-all duration-300 overflow-hidden`}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -128,7 +127,6 @@ const WorkspaceContainer = () => {
         </Routes>
       </div>
 
-      {/* Persistent Map: Always mounted, CSS hidden on Home */}
       <div 
         className={`flex-1 relative border-l border-black/5 h-full ${isHome ? 'hidden' : 'block'}`}
         style={{ minHeight: '100%' }}
@@ -139,7 +137,7 @@ const WorkspaceContainer = () => {
   );
 };
 
-function App() {
+const App: React.FC = () => {
   return (
     <Router>
       <WorkspaceProvider>

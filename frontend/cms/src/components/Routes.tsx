@@ -4,29 +4,30 @@ import { Info, Map as MapIcon, MapPin, Plus, Save, RotateCcw, Zap, ChevronRight,
 import { Reorder } from 'framer-motion';
 import api from '../api';
 import axios from 'axios';
+import { Route, Stop, Agency, Trip, ShapePoint, RouteStop } from '../types';
 
-const RouteStudio = () => {
+const RouteStudio: React.FC = () => {
     const { setMapLayers } = useWorkspace();
-    const [routes, setRoutes] = useState([]);
-    const [allStops, setAllStops] = useState([]);
-    const [agencies, setAgencies] = useState([]);
-    const [selectedRoute, setSelectedRoute] = useState(null);
-    const [shapePoints, setShapePoints] = useState([]);
-    const [assignedStops, setAssignedStops] = useState([]);
-    const [history, setHistory] = useState([]);
+    const [routes, setRoutes] = useState<Route[]>([]);
+    const [allStops, setAllStops] = useState<Stop[]>([]);
+    const [agencies, setAgencies] = useState<Agency[]>([]);
+    const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+    const [shapePoints, setShapePoints] = useState<ShapePoint[]>([]);
+    const [assignedStops, setAssignedStops] = useState<RouteStop[]>([]);
+    const [history, setHistory] = useState<ShapePoint[][]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     
-    const [activeTab, setActiveTab] = useState('metadata'); 
+    const [activeTab, setActiveTab] = useState<'metadata' | 'shape' | 'stops'>('metadata'); 
     const [globalLoading, setGlobalLoading] = useState(true);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [panelMinimized, setPanelMinimized] = useState(false);
     const [saving, setSaving] = useState(false);
     const [routing, setRouting] = useState(false);
-    const [message, setMessage] = useState(null);
+    const [message, setMessage] = useState<{ type: 'success' | 'danger', text: string } | null>(null);
     const [isDirty, setIsDirty] = useState(false);
 
     // --- Undo Logic ---
-    const pushToHistory = useCallback((newPoints) => {
+    const pushToHistory = useCallback((newPoints: ShapePoint[]) => {
         setHistory(prev => [...prev.slice(-19), shapePoints]);
         setShapePoints(newPoints);
         setIsDirty(true);
@@ -64,15 +65,15 @@ const RouteStudio = () => {
             routes: selectedRoute ? [{
                 id: selectedRoute.id,
                 color: selectedRoute.color,
-                positions: shapePoints.map(p => [p.lat, p.lon]),
+                positions: shapePoints.map(p => [p.lat, p.lon] as [number, number]),
                 isFocused: true
             }] : [],
             stops: assignedStops.map(rs => ({
-                ...rs.stop,
+                ...(rs.stop as Stop),
                 hidePopup: false
             })),
             activeShape: activeTab === 'shape' ? shapePoints : [],
-            focusedPoints: shapePoints.length > 0 ? shapePoints.map(p => [p.lat, p.lon]) : []
+            focusedPoints: shapePoints.length > 0 ? shapePoints.map(p => [p.lat, p.lon] as [number, number]) : []
         }));
     }, [selectedRoute, shapePoints, assignedStops, activeTab, setMapLayers]);
 
@@ -90,7 +91,7 @@ const RouteStudio = () => {
             } else if (activeTab === 'shape') {
                 const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
                 await api.put(`/shapes/${sId}`, shapePoints.map(p => ({ ...p, shape_id: sId })));
-                const trips = await api.get('/trips');
+                const trips: { data: Trip[] } = await api.get('/trips');
                 if (!trips.data.find(t => t.route_id === selectedRoute.id)) {
                     await api.post('/trips', { route_id: selectedRoute.id, headsign: selectedRoute.long_name, shape_id: sId });
                 }
@@ -111,17 +112,24 @@ const RouteStudio = () => {
     }, [isDirty, shapePoints, assignedStops, selectedRoute, saveCurrentTask]);
 
     const snapToRoads = useCallback(async () => {
-        if (shapePoints.length < 2) return;
+        if (shapePoints.length < 2 || !selectedRoute) return;
         setRouting(true);
         const coords = shapePoints.map(p => `${p.lon},${p.lat}`).join(';');
+        const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
         try {
             const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
-            pushToHistory(res.data.routes[0].geometry.coordinates.map((c, i) => ({ lat: c[1], lon: c[0], sequence: i + 1 })));
+            const geometry: [number, number][] = res.data.routes[0].geometry.coordinates;
+            pushToHistory(geometry.map((c, i) => ({ 
+                shape_id: sId,
+                lat: c[1], 
+                lon: c[0], 
+                sequence: i + 1 
+            })));
         } catch (e) { console.error(e); } finally { setRouting(false); }
-    }, [shapePoints, pushToHistory]);
+    }, [shapePoints, pushToHistory, selectedRoute]);
 
-    const handleSelectRoute = async (route) => {
-        if (isDirty) await saveCurrentTask(true);
+    const handleSelectRoute = async (route: Route) => {
+        // if (isDirty) await saveCurrentTask(true);
         setSelectedRoute(route);
         setActiveTab('metadata');
         setIsDirty(false);
@@ -130,10 +138,11 @@ const RouteStudio = () => {
                 api.get('/trips'), api.get(`/routes/${route.id}/stops`)
             ]);
             setAssignedStops(stopsRes.data || []);
-            const trip = tripsRes.data.find(t => t.route_id === route.id);
+            const trip: Trip | undefined = tripsRes.data.find((t: Trip) => t.route_id === route.id);
             if (trip?.shape_id) {
                 const shapeRes = await api.get(`/shapes/${trip.shape_id}`);
-                setShapePoints((shapeRes.data || []).sort((a, b) => a.sequence - b.sequence));
+                const points: ShapePoint[] = shapeRes.data || [];
+                setShapePoints(points.sort((a, b) => a.sequence - b.sequence));
             } else { setShapePoints([]); }
         } catch (e) { console.error(e); }
     };
@@ -144,7 +153,7 @@ const RouteStudio = () => {
     );
 
     const handleAddNew = () => {
-        setSelectedRoute({ short_name: '', long_name: '', color: '007AFF', agency_id: agencies[0]?.id || '' });
+        setSelectedRoute({ id: 0, short_name: '', long_name: '', color: '007AFF', agency_id: agencies[0]?.id || 0 });
         setShapePoints([]); setAssignedStops([]); setActiveTab('metadata'); setIsDirty(true);
     };
 
@@ -178,7 +187,6 @@ const RouteStudio = () => {
                     ))}
                 </div>
 
-                {/* Right Panel Integrated when visible */}
                 {selectedRoute && (
                     <div className={`absolute top-6 left-[340px] bottom-6 ${panelMinimized ? 'w-14 overflow-hidden' : 'w-[400px]'} z-[1000] flex flex-col pointer-events-none transition-all duration-500 ease-in-out font-bold`}>
                         <div className="hig-card shadow-2xl flex flex-col h-full pointer-events-auto overflow-hidden bg-white/95 backdrop-blur-xl border border-black/5">
@@ -196,9 +204,9 @@ const RouteStudio = () => {
                             {!panelMinimized && (
                                 <>
                                     <div className="px-5 py-4 border-b border-black/5"><div className="segmented-control">
-                                        <div onClick={() => { if (isDirty) saveCurrentTask(true); setActiveTab('metadata'); }} className={`segmented-item ${activeTab === 'metadata' ? 'active' : ''}`}>Info</div>
-                                        <div onClick={() => { if (isDirty) saveCurrentTask(true); setActiveTab('shape'); }} className={`segmented-item ${activeTab === 'shape' ? 'active' : ''}`}>Path</div>
-                                        <div onClick={() => { if (isDirty) saveCurrentTask(true); setActiveTab('stops'); }} className={`segmented-item ${activeTab === 'stops' ? 'active' : ''}`}>Sequence</div>
+                                        <div onClick={() => setActiveTab('metadata')} className={`segmented-item ${activeTab === 'metadata' ? 'active' : ''}`}>Info</div>
+                                        <div onClick={() => setActiveTab('shape')} className={`segmented-item ${activeTab === 'shape' ? 'active' : ''}`}>Path</div>
+                                        <div onClick={() => setActiveTab('stops')} className={`segmented-item ${activeTab === 'stops' ? 'active' : ''}`}>Sequence</div>
                                     </div></div>
                                     <div className="flex-1 overflow-y-auto p-5">
                                         {activeTab === 'metadata' && (
@@ -214,7 +222,7 @@ const RouteStudio = () => {
                                                 <div className="p-4 bg-system-blue/5 rounded-2xl border border-system-blue/10">
                                                     <button onClick={snapToRoads} className="w-full py-3 bg-system-blue text-white rounded-xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-blue-600 shadow-lg mb-3">{routing ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />} SNAP PATH TO ROADS</button>
                                                     <div className="grid grid-cols-2 gap-2">
-                                                        <button onClick={undo} disabled={history.length === 0} className="py-2.5 bg-white border border-black/10 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 disabled:opacity-30 hover:bg-black/5"><Undo2 size={12}/> UNDO</button>
+                                                        <button onClick={undo} disabled={history.length === 0} className="py-2.5 bg-white border border-black/10 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 disabled:opacity-30 hover:bg-black/5 transition-all"><Undo2 size={12}/> UNDO</button>
                                                         <button onClick={() => pushToHistory([])} className="py-2.5 bg-white border border-black/10 rounded-lg text-[10px] font-black text-red-500 flex items-center justify-center gap-1.5 hover:bg-red-50 transition-all"><RotateCcw size={12}/> RESET</button>
                                                     </div>
                                                 </div>
@@ -248,16 +256,7 @@ const RouteStudio = () => {
                                             </div>
                                         )}
                                     </div>
-                                    <div className="p-5 border-t border-black/5 bg-black/[0.02]">
-                                        <button onClick={() => saveCurrentTask()} className="w-full py-4 bg-system-blue text-white rounded-2xl font-black text-xs shadow-2xl flex items-center justify-center gap-3 hover:bg-blue-600 transition-all"> 
-                                            <Save size={16}/> FORCE SYNC TO CLOUD 
-                                        </button>
-                                        {message && (
-                                            <div className={`mt-2 text-center text-[10px] font-black uppercase tracking-widest ${message.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
-                                                {message.text}
-                                            </div>
-                                        )}
-                                    </div>
+                                    <div className="p-5 border-t border-black/5 bg-black/[0.02]"><button onClick={() => saveCurrentTask()} className="w-full py-4 bg-system-blue text-white rounded-2xl font-black text-xs shadow-2xl flex items-center justify-center gap-3 hover:bg-blue-600 transition-all"> <Save size={16}/> FORCE SYNC TO CLOUD </button></div>
                                 </>
                             )}
                         </div>

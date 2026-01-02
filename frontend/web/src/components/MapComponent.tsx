@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-import { Card, Text, Badge, Group, ActionIcon, Stack, ScrollArea, TextInput, Loader, Box, Button, useMantineColorScheme, Tooltip, ActionIcon as MActionIcon } from '@mantine/core';
-import { Search, MapPin, Bus, Navigation, Info, Sun, Moon, Target, Locate, Info as InfoIcon, Clock, Radio } from 'lucide-react';
+import { Card, Text, Badge, Group, ActionIcon, Stack, ScrollArea, TextInput, Loader, Box, Button, useMantineColorScheme, Tooltip } from '@mantine/core';
+import { Search, MapPin, Bus, Navigation, Sun, Moon, Target, Locate, Info as InfoIcon, Clock, Radio } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import L from 'leaflet';
+import { Route, Stop, Trip, ShapePoint } from '../types';
 
 // Internal API bridge
 const api = axios.create({ baseURL: 'http://localhost:8080/api' });
@@ -17,7 +18,7 @@ const busStopIcon = L.icon({
 
 // --- Map Logic Components ---
 
-const FitBounds = ({ points }) => {
+const FitBounds: React.FC<{ points: [number, number][] }> = ({ points }) => {
     const map = useMap();
     useEffect(() => {
         if (points && points.length > 0) {
@@ -28,17 +29,17 @@ const FitBounds = ({ points }) => {
     return null;
 };
 
-const MapComponent = () => {
+const MapComponent: React.FC = () => {
     const { colorScheme, toggleColorScheme } = useMantineColorScheme();
     const dark = colorScheme === 'dark';
 
-    const [routes, setRoutes] = useState([]);
-    const [stops, setStops] = useState([]);
-    const [shapes, setShapes] = useState({});
-    const [trips, setTrips] = useState([]);
+    const [routes, setRoutes] = useState<Route[]>([]);
+    const [stops, setStops] = useState<Stop[]>([]);
+    const [shapes, setShapes] = useState<Record<string, [number, number][]>>({});
+    const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedRouteId, setSelectedRouteId] = useState(null);
+    const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
     const [lastSync, setLastSync] = useState(new Date());
 
     const fetchData = async () => {
@@ -50,12 +51,13 @@ const MapComponent = () => {
             setRoutes(routesRes.data || []);
             setTrips(tripsRes.data || []);
 
-            const shapeIds = [...new Set((tripsRes.data || []).map(t => t.shape_id))];
-            const shapeData = {};
+            const shapeIds = [...new Set((tripsRes.data || []).map((t: Trip) => t.shape_id))];
+            const shapeData: Record<string, [number, number][]> = {};
             await Promise.all(shapeIds.map(async (id) => {
                 if (!id) return;
                 const res = await api.get(`/shapes/${id}`);
-                shapeData[id] = (res.data || []).map(p => [p.lat, p.lon]);
+                const points: ShapePoint[] = res.data || [];
+                shapeData[id] = points.map(p => [p.lat, p.lon] as [number, number]);
             }));
             setShapes(shapeData);
             setLastSync(new Date());
@@ -90,7 +92,6 @@ const MapComponent = () => {
 
     return (
         <Box pos="relative" h="100vh" w="100%" bg={dark ? '#141517' : '#F8F9FA'}>
-            {/* Sidebar HUD */}
             <Box pos="absolute" top={20} left={20} bottom={20} w={360} style={{ zIndex: 1000, pointerEvents: 'none' }}>
                 <Card shadow="2xl" radius="lg" padding="xl" h="100%" style={{ 
                     pointerEvents: 'auto', 
@@ -101,7 +102,6 @@ const MapComponent = () => {
                     flexDirection: 'column'
                 }}>
                     <Stack gap="xl" h="100%">
-                        {/* Header */}
                         <Group justify="space-between" align="start">
                             <Stack gap={2}>
                                 <Text fw={900} size="24px" style={{ letterSpacing: '-1px', lineHeight: 1 }} c={dark ? 'white' : 'black'}>Transit Live</Text>
@@ -120,7 +120,6 @@ const MapComponent = () => {
                             </Tooltip>
                         </Group>
 
-                        {/* Search */}
                         <TextInput
                             placeholder="Find a route or destination..."
                             leftSection={<Search size={16} strokeWidth={3} />}
@@ -132,8 +131,7 @@ const MapComponent = () => {
                             styles={{ input: { fontWeight: 600 } }}
                         />
 
-                        {/* List Area */}
-                        <ScrollArea scrollbars="y" flex={1} offsetScrollbars className="pr-2">
+                        <ScrollArea scrollbars="y" flex={1} offsetScrollbars className="pr-2 font-bold">
                             <Stack gap="xs">
                                 {selectedRouteId === null && searchQuery === '' && (
                                     <Box py="xl" px="md" style={{ border: '2px dashed rgba(0,0,0,0.05)', borderRadius: '12px' }}>
@@ -175,7 +173,6 @@ const MapComponent = () => {
                             </Stack>
                         </ScrollArea>
 
-                        {/* Footer Stats */}
                         <Stack gap="xs" pt="md" style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
                             <Group justify="space-between">
                                 <Group gap={6}>
@@ -198,19 +195,17 @@ const MapComponent = () => {
                 </Card>
             </Box>
 
-            {/* Quick Map Actions */}
             <Box pos="absolute" top={20} right={20} style={{ zIndex: 1000 }}>
                 <Tooltip label="Center Map on Network" position="left" withArrow>
-                    <MActionIcon size={50} radius="xl" variant="white" shadow="xl" color="blue" style={{ border: '1px solid rgba(0,0,0,0.05)' }}>
+                    <ActionIcon size={50} radius="xl" variant="white" shadow="xl" color="blue" style={{ border: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
                         <Locate size={24} strokeWidth={2.5} />
-                    </MActionIcon>
+                    </ActionIcon>
                 </Tooltip>
             </Box>
 
-            {/* Hint Overlay */}
             {!selectedRouteId && (
                 <Box pos="absolute" bottom={40} left="50%" style={{ zIndex: 1000, transform: 'translateX(-50%)', pointerEvents: 'none' }}>
-                    <Badge size="xl" radius="xl" variant="white" shadow="xl" p="md" leftSection={<InfoIcon size={14}/>} style={{ border: '1px solid rgba(0,0,0,0.05)' }}>
+                    <Badge size="xl" radius="xl" variant="white" shadow="xl" p="md" leftSection={<InfoIcon size={14}/>} style={{ border: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
                         <Text fw={800} size="xs" c="blue">TIP: CLICK ANY ROUTE TO VIEW DETAILED PATH</Text>
                     </Badge>
                 </Box>
@@ -227,7 +222,6 @@ const MapComponent = () => {
                 
                 {selectedRouteId && activePoints && <FitBounds points={activePoints} />}
 
-                {/* Draw Network Fleet */}
                 {trips.map(trip => {
                     const route = routes.find(r => r.id === trip.route_id);
                     const positions = shapes[trip.shape_id];
@@ -257,7 +251,6 @@ const MapComponent = () => {
                     );
                 })}
 
-                {/* Draw Station Points */}
                 {stops.map(stop => (
                     <Marker key={stop.id} position={[stop.lat, stop.lon]} icon={busStopIcon}>
                         <Popup>
