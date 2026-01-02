@@ -1,0 +1,23 @@
+# Environment variables (Sensitive)
+.env
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+bin/
+main
+*.exe
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs
+*.log
