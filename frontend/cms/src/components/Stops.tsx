@@ -105,6 +105,27 @@ const Stops: React.FC = () => {
         } catch (err) { setStatus({ message: 'Save failed', type: 'error' }); }
     }, [formData, selectedStop, fetchInitialData, setStatus]);
 
+    const toggleStopInRoute = async (stop: Stop, routeId: number) => {
+        const currentRoutes = stopRouteMap[stop.id] || [];
+        const isAssigned = currentRoutes.some(r => r.id === routeId);
+        let newRouteIds: number[];
+        
+        if (isAssigned) {
+            newRouteIds = currentRoutes.filter(r => r.id !== routeId).map(r => r.id);
+            setStatus({ message: `Removing from Line ${routes.find(r => r.id === routeId)?.short_name}...`, type: 'loading' });
+        } else {
+            newRouteIds = [...currentRoutes.map(r => r.id), routeId];
+            setStatus({ message: `Adding to Line ${routes.find(r => r.id === routeId)?.short_name}...`, type: 'loading' });
+        }
+
+        try {
+            await api.put(`/stops/${stop.id}/routes`, newRouteIds);
+            setStatus({ message: isAssigned ? 'Removed from line' : 'Added to line', type: 'success' });
+            setTimeout(() => setStatus(null), 2000);
+            fetchInitialData();
+        } catch (e) { setStatus({ message: 'Update failed', type: 'error' }); }
+    };
+
     const handleSelectStop = (stop: Stop) => {
         setQuickMode(null);
         setSelectedStop(stop);
@@ -251,9 +272,37 @@ const Stops: React.FC = () => {
                                 <div key={stop.id} className="p-5 hover:bg-black/[0.02] cursor-pointer transition-all group flex items-center justify-between" onClick={() => handleSelectStop(stop)}>
                                     <div className="flex-1 min-w-0">
                                         <div className="font-black text-sm text-black uppercase tracking-tight truncate mb-1">{stop.name}</div>
-                                        <div className="flex flex-wrap gap-1">{(stopRouteMap[stop.id] || []).map(r => (<div key={r.id} className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} />))}</div>
+                                        <div className="flex flex-wrap gap-1">{(stopRouteMap[stop.id] || []).map(r => (<div key={r.id} className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} title={r.short_name} />))}</div>
                                     </div>
-                                    <ChevronRight size={18} className="text-system-gray opacity-0 group-hover:opacity-100 transition-all" />
+                                    <div className="flex gap-1 items-center shrink-0">
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {focusedRouteId ? (
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); toggleStopInRoute(stop, focusedRouteId); }} 
+                                                    className={`p-1.5 rounded-lg transition-all shadow-sm ${ (stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? 'bg-orange-500 text-white' : 'bg-system-blue text-white' }`}
+                                                    title={(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? 'Remove from Line' : 'Add to Line'}
+                                                >
+                                                    {(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? <X size={14}/> : <Plus size={14}/>}
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); setActiveAssignment({ stop, routeIds: (stopRouteMap[stop.id] || []).map(r=>r.id) }); setShowAssignModal(true); }} 
+                                                    className="p-1.5 bg-system-blue/10 text-system-blue rounded-lg hover:bg-system-blue hover:text-white transition-all"
+                                                    title="Manage Lines"
+                                                >
+                                                    <Plus size={14}/>
+                                                </button>
+                                            )}
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete stop inventory record?')) api.delete(`/stops/${stop.id}`).then(fetchInitialData); }} 
+                                                className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"
+                                                title="Delete Stop"
+                                            >
+                                                <Trash2 size={14}/>
+                                            </button>
+                                        </div>
+                                        <ChevronRight size={18} className="text-system-gray ml-2" />
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -267,22 +316,34 @@ const Stops: React.FC = () => {
                 )}
             </div>
 
-            {showAssignModal && (
+            {showAssignModal && activeAssignment.stop && (
                 <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                    <div className="hig-card w-full max-w-md shadow-2xl p-8 bg-white animate-in fade-in zoom-in duration-200">
-                        <h3 className="text-2xl font-black mb-2 text-black">Route Binding</h3>
-                        <p className="text-system-gray text-sm mb-8 font-medium">Which lines pass through <span className="text-black font-black underline">{activeAssignment.stop?.name}</span>?</p>
-                        <div className="space-y-2 mb-10 max-h-80 overflow-y-auto pr-2">
-                            {routes.map(r => (
-                                <div key={r.id} onClick={() => { const ids = activeAssignment.routeIds.includes(r.id) ? activeAssignment.routeIds.filter(id => id !== r.id) : [...activeAssignment.routeIds, r.id]; setActiveAssignment({ ...activeAssignment, routeIds: ids }); }} className={`p-4 rounded-xl flex items-center justify-between cursor-pointer transition-all border-2 ${activeAssignment.routeIds.includes(r.id) ? 'border-system-blue bg-system-blue/5' : 'border-transparent bg-black/5 hover:bg-black/10'}`}>
-                                    <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }}></div><span className="font-black text-sm tracking-tight">{r.short_name} - {r.long_name}</span></div>
-                                    {activeAssignment.routeIds.includes(r.id) && <CheckCircle2 size={20} className="text-system-blue" />}
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex gap-3">
-                            <button onClick={saveAssignments} className="flex-1 bg-system-blue text-white py-4 rounded-xl font-black shadow-xl hover:bg-blue-600 transition-all uppercase tracking-tighter text-xs">Apply Bindings</button>
-                            <button onClick={() => setShowAssignModal(false)} className="px-8 bg-black/5 text-system-gray font-black rounded-xl hover:text-black uppercase tracking-tighter text-xs">Dismiss</button>
+                    <div className="hig-card w-full max-w-md shadow-2xl p-8 bg-white animate-in fade-in zoom-in duration-200 relative">
+                        <button onClick={() => setShowAssignModal(false)} className="absolute top-6 right-6 p-2 hover:bg-black/5 rounded-lg text-system-gray"><X size={20}/></button>
+                        <h3 className="text-2xl font-black mb-2 text-black">Line Assignment</h3>
+                        <p className="text-system-gray text-sm mb-8 font-medium">Toggle lines passing through <span className="text-black font-black underline">{activeAssignment.stop.name}</span>.</p>
+                        <div className="space-y-2 mb-2 max-h-80 overflow-y-auto pr-2">
+                            {routes.map(r => {
+                                const isAssigned = activeAssignment.routeIds.includes(r.id);
+                                return (
+                                    <div 
+                                        key={r.id} 
+                                        onClick={async () => {
+                                            const newIds = isAssigned 
+                                                ? activeAssignment.routeIds.filter(id => id !== r.id) 
+                                                : [...activeAssignment.routeIds, r.id];
+                                            setActiveAssignment({ ...activeAssignment, routeIds: newIds });
+                                            // Immediate API call for "one click" feel
+                                            await api.put(`/stops/${activeAssignment.stop!.id}/routes`, newIds);
+                                            fetchInitialData();
+                                        }} 
+                                        className={`p-4 rounded-xl flex items-center justify-between cursor-pointer transition-all border-2 ${isAssigned ? 'border-system-blue bg-system-blue/5' : 'border-transparent bg-black/5 hover:bg-black/10'}`}
+                                    >
+                                        <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }}></div><span className="font-black text-sm tracking-tight">{r.short_name} - {r.long_name}</span></div>
+                                        {isAssigned ? <CheckCircle2 size={20} className="text-system-blue" /> : <Plus size={18} className="text-system-gray opacity-40" />}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

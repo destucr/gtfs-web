@@ -20,6 +20,7 @@ const RouteStudio: React.FC = () => {
     const [assignedStops, setAssignedStops] = useState<RouteStop[]>([]);
     const [history, setHistory] = useState<ShapePoint[][]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [stopSearchQuery, setStopSearchQuery] = useState('');
     
     // UI Logic
     const [activeSection, setActiveSection] = useState<'info' | 'path' | 'sequence' | null>('info');
@@ -352,8 +353,8 @@ const RouteStudio: React.FC = () => {
                                         <button onClick={snapPointsToRoads} className="py-3 bg-white border-2 border-system-blue text-system-blue rounded-xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-system-blue hover:text-white transition-all shadow-sm"><MapIcon size={12} /> SNAP ANCHORS</button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={undo} disabled={history.length === 0} className="py-2 bg-white border border-black/10 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 disabled:opacity-30"><Undo2 size={12}/> UNDO</button>
-                                        <button onClick={() => pushToHistory([])} className="py-2 bg-white border border-black/10 rounded-lg text-[10px] font-black text-red-500 flex items-center justify-center gap-1.5"><RotateCcw size={12}/> RESET</button>
+                                        <button onClick={undo} disabled={history.length === 0} className="py-2 bg-white border border-black/10 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 disabled:opacity-30 transition-all hover:bg-black/5"><Undo2 size={12}/> UNDO</button>
+                                        <button onClick={() => { if(window.confirm('Clear all geometry for this route?')) pushToHistory([]); }} className="py-2 bg-white border border-black/10 rounded-lg text-[10px] font-black text-red-500 flex items-center justify-center gap-1.5 transition-all hover:bg-red-50"><Trash2 size={12}/> CLEAR ALL</button>
                                     </div>
                                     <p className="text-[10px] text-system-gray italic leading-relaxed">Click map to drop anchors. Click path to insert. Drag node to move. Right-click node to delete.</p>
                                 </div>
@@ -381,13 +382,21 @@ const RouteStudio: React.FC = () => {
                                         ))}
                                     </Reorder.Group>
                                     <div className="pt-4 border-t border-black/5">
-                                        <h4 className="text-[9px] font-black text-system-gray uppercase tracking-widest mb-3">Add to Line</h4>
-                                        <div className="space-y-1 max-h-40 overflow-y-auto pr-2">
-                                            {allStops.filter(s => !assignedStops.find(rs => rs.stop_id === s.id)).map(s => (
-                                                <div key={s.id} className="flex items-center justify-between p-2 hover:bg-black/5 rounded-lg cursor-pointer group transition-colors" onClick={() => { setAssignedStops([...assignedStops, {stop_id: s.id, stop: s, sequence: assignedStops.length+1, route_id: selectedRoute.id}]); setIsDirty(true); }}>
-                                                    <span className="text-black/60 group-hover:text-system-blue text-[10px] font-black uppercase">{s.name}</span><Plus size={12} className="text-system-blue opacity-0 group-hover:opacity-100" />
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h4 className="text-[9px] font-black text-system-gray uppercase tracking-widest">Available Inventory</h4>
+                                            <div className="relative"><Search size={10} className="absolute left-2 top-2 text-system-gray" /><input className="hig-input text-[9px] pl-6 py-1 h-6 w-32 font-bold" placeholder="Filter inventory..." value={stopSearchQuery} onChange={e => setStopSearchQuery(e.target.value)} /></div>
+                                        </div>
+                                        <div className="space-y-1 max-h-48 overflow-y-auto pr-2">
+                                            {allStops
+                                                .filter(s => !assignedStops.find(rs => rs.stop_id === s.id))
+                                                .filter(s => s.name.toLowerCase().includes(stopSearchQuery.toLowerCase()))
+                                                .map(s => (
+                                                <div key={s.id} className="flex items-center justify-between p-3 hover:bg-black/5 rounded-xl cursor-pointer group transition-all border border-transparent hover:border-black/5 bg-white shadow-sm" onClick={() => { setAssignedStops([...assignedStops, {stop_id: s.id, stop: s, sequence: assignedStops.length+1, route_id: selectedRoute.id}]); setIsDirty(true); setStatus({ message: `Added ${s.name}`, type: 'success' }); setTimeout(()=>setStatus(null), 1000); }}>
+                                                    <span className="text-black/80 group-hover:text-system-blue text-[10px] font-black uppercase truncate mr-2">{s.name}</span>
+                                                    <Plus size={12} className="text-system-blue opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
                                                 </div>
                                             ))}
+                                            {allStops.filter(s => !assignedStops.find(rs => rs.stop_id === s.id)).length === 0 && <div className="text-[10px] text-system-gray italic text-center py-4">No additional stops available</div>}
                                         </div>
                                     </div>
                                 </div>
