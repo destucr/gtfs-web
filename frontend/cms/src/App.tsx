@@ -11,7 +11,7 @@ import { useWorkspace } from './context/useWorkspace';
 import UnifiedMap from './components/UnifiedMap';
 import { 
   LayoutDashboard, Globe, MapPin, Route as RouteIcon, Database, 
-  ArrowRight, Activity, ShieldCheck, Zap, AlertCircle, Loader2, TrendingUp, ChevronRight
+  ArrowRight, Activity, ShieldCheck, Zap, AlertCircle, Loader2, TrendingUp, ChevronRight, ChevronLeft, X
 } from 'lucide-react';
 
 const ShortcutManager: React.FC = () => {
