@@ -28,6 +28,7 @@ const RouteStudio: React.FC = () => {
     const [autoRoute, setAutoRoute] = useState(true);
     const [isDirty, setIsDirty] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
 
     const refreshAllData = useCallback(async () => {
         const [rRes, sRes, aRes] = await Promise.all([
@@ -319,10 +320,12 @@ const RouteStudio: React.FC = () => {
                 <motion.div 
                     drag
                     dragMomentum={false}
-                    className="absolute top-6 z-[3000] w-[450px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col transition-shadow duration-300 pointer-events-auto"
+                    onMouseEnter={() => setIsHovered(true)}
+                    onMouseLeave={() => setIsHovered(false)}
+                    className={`absolute top-6 z-[3000] w-[450px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`}
                     style={{ left: sidebarOpen ? 424 : 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }}
                     initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    animate={{ opacity: (quickMode && !isHovered ? 0.2 : 1), x: 0 }}
                 >
                     {/* Floating Header (Drag Handle) */}
                     <div className="p-8 pb-6 flex items-center justify-between shrink-0 cursor-move">
