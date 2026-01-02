@@ -7,7 +7,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { Route, Stop, RouteStop, Trip, ShapePoint } from '../types';
 
 const Stops: React.FC = () => {
-    const { setMapLayers, setOnMapClick, setStatus } = useWorkspace();
+    const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode } = useWorkspace();
     const [stops, setStops] = useState<Stop[]>([]);
     const [routes, setRoutes] = useState<Route[]>([]);
     const [stopRouteMap, setStopRouteMap] = useState<Record<number, Route[]>>({});
@@ -55,6 +55,13 @@ const Stops: React.FC = () => {
 
     useEffect(() => { fetchInitialData(); }, [fetchInitialData]);
 
+    // Handle Quick Mode Entry
+    useEffect(() => {
+        if (quickMode === 'add-stop' && !selectedStop) {
+            handleAddNew();
+        }
+    }, [quickMode, selectedStop]);
+
     const handleMapClick = useCallback(async (latlng: { lat: number, lng: number }) => {
         setFormData(prev => ({ ...prev, lat: latlng.lat, lon: latlng.lng }));
         setIsNaming(true);
@@ -99,12 +106,14 @@ const Stops: React.FC = () => {
     }, [formData, selectedStop, fetchInitialData, setStatus]);
 
     const handleSelectStop = (stop: Stop) => {
+        setQuickMode(null);
         setSelectedStop(stop);
         setFormData(stop);
         initialFormData.current = JSON.stringify(stop);
     };
 
     const handleAddNew = () => {
+        setQuickMode(null);
         const newStop = { id: 0, name: '', lat: 0, lon: 0 };
         setSelectedStop(newStop);
         setFormData(newStop);

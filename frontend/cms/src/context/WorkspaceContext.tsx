@@ -8,6 +8,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [status, setStatus] = useState<WorkspaceStatus | null>(null);
 
+  const [quickMode, setQuickMode] = useState<'add-stop' | 'add-route' | null>(null);
+
   const [onMapClick, setOnMapClick] = useState<((latlng: { lat: number, lng: number }) => void) | null>(null);
 
   const [onShapePointMove, setOnShapePointMove] = useState<((index: number, latlng: { lat: number, lng: number }) => void) | undefined>();
@@ -48,7 +50,9 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       onShapePointInsert, setOnShapePointInsert,
 
-      status, setStatus
+      status, setStatus,
+
+      quickMode, setQuickMode
 
     }}>
 
@@ -59,5 +63,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   );
 
 };
+
+
 
 

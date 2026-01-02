@@ -24,6 +24,9 @@ export interface WorkspaceContextType {
   // UX Feedback
   status: WorkspaceStatus | null;
   setStatus: (status: WorkspaceStatus | null) => void;
+  // Quick Actions
+  quickMode: 'add-stop' | 'add-route' | null;
+  setQuickMode: (mode: 'add-stop' | 'add-route' | null) => void;
 }
 
 export const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);

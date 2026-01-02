@@ -28,9 +28,6 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ title, Icon, onBac
       </div>
       <div className="flex gap-2">
         {actions}
-        <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-black/5 rounded-lg text-system-gray transition-colors">
-          <ChevronLeft size={20} />
-        </button>
       </div>
     </div>
   );

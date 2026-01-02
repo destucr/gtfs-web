@@ -9,7 +9,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { Route, Stop, Agency, Trip, ShapePoint, RouteStop } from '../types';
 
 const RouteStudio: React.FC = () => {
-    const { setMapLayers, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert, setStatus } = useWorkspace();
+    const { setMapLayers, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert, setStatus, quickMode, setQuickMode } = useWorkspace();
     const [routes, setRoutes] = useState<Route[]>([]);
     const [allStops, setAllStops] = useState<Stop[]>([]);
     const [agencies, setAgencies] = useState<Agency[]>([]);
@@ -43,6 +43,13 @@ const RouteStudio: React.FC = () => {
     }, [refreshAllData]);
 
     useEffect(() => { refreshData(); }, [refreshData]);
+
+    // Handle Quick Mode Entry
+    useEffect(() => {
+        if (quickMode === 'add-route' && !selectedRoute) {
+            handleAddNew();
+        }
+    }, [quickMode, selectedRoute]);
 
     // Sync isDirty to Global Status
     useEffect(() => {
@@ -221,6 +228,7 @@ const RouteStudio: React.FC = () => {
     }, [selectedRoute, shapePoints, assignedStops, activeSection, setMapLayers]);
 
     const handleSelectRoute = async (route: Route) => {
+        setQuickMode(null);
         if (isDirty) await saveChanges(true);
         setSelectedRoute(route);
         setIsDirty(false);
@@ -236,6 +244,7 @@ const RouteStudio: React.FC = () => {
     };
 
     const handleAddNew = () => {
+        setQuickMode(null);
         setSelectedRoute({ id: 0, short_name: '', long_name: '', color: '007AFF', agency_id: agencies[0]?.id || 0 });
         setShapePoints([]); setAssignedStops([]); setActiveSection('info'); setIsDirty(true);
     };

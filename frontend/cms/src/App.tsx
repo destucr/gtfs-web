@@ -136,29 +136,67 @@ const FloatingFeedback: React.FC = () => {
 };
 
 const MapHUD: React.FC = () => {
-  const { mapLayers, status } = useWorkspace();
+  const { mapLayers, status, quickMode, setQuickMode } = useWorkspace();
   const location = useLocation();
   if (location.pathname === '/') return null;
 
-  const isEditing = mapLayers.activeShape.length > 0 || mapLayers.activeStop !== null;
-  if (!isEditing && !status?.isDirty) return null;
-
   return (
     <div className="absolute top-4 left-4 z-[1000] pointer-events-none flex flex-col gap-2">
-      <div className="bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-xl border border-white/10 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-left-4">
-        <div className={`w-2 h-2 rounded-full ${status?.isDirty ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
-        <span className="text-[10px] font-black uppercase tracking-widest">
-          {status?.isDirty ? 'Unsaved Changes' : 'All Changes Synced'}
-        </span>
-      </div>
-      {mapLayers.activeShape.length > 0 && (
-        <div className="bg-system-blue text-white px-4 py-2 rounded-xl border border-blue-400/30 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-left-4 duration-500">
-          <Zap size={14} className="animate-pulse" />
+      {/* Quick Mode Indicator */}
+      {quickMode && (
+        <div className="bg-system-blue text-white px-4 py-2 rounded-xl border border-blue-400/30 shadow-2xl flex items-center justify-between gap-6 animate-in zoom-in duration-300 pointer-events-auto">
+          <div className="flex items-center gap-3">
+            {quickMode === 'add-stop' ? <MapPin size={16} className="animate-bounce" /> : <Zap size={16} className="animate-pulse" />}
+            <span className="text-[10px] font-black uppercase tracking-widest">
+              {quickMode === 'add-stop' ? 'Click Map to Drop Stop' : 'Click Map to Start Path'}
+            </span>
+          </div>
+          <button onClick={() => setQuickMode(null)} className="hover:bg-white/20 p-1 rounded-lg transition-colors"><X size={14}/></button>
+        </div>
+      )}
+
+      {/* Persistence Indicator */}
+      {(status?.isDirty || mapLayers.activeShape.length > 0) && (
+        <div className="bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-xl border border-white/10 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-left-4">
+          <div className={`w-2 h-2 rounded-full ${status?.isDirty ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
           <span className="text-[10px] font-black uppercase tracking-widest">
-            Shape Editor Active • {mapLayers.activeShape.length} points
+            {status?.isDirty ? 'Unsaved Changes' : 'All Changes Synced'}
           </span>
         </div>
       )}
+    </div>
+  );
+};
+
+const QuickActionMenu: React.FC = () => {
+  const { setQuickMode, quickMode } = useWorkspace();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  if (location.pathname === '/') return null;
+
+  const handleAction = (mode: 'add-stop' | 'add-route') => {
+    setQuickMode(mode);
+    if (mode === 'add-stop') navigate('/stops');
+    if (mode === 'add-route') navigate('/routes');
+  };
+
+  return (
+    <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 animate-in slide-in-from-right-4">
+      <button 
+        onClick={() => handleAction('add-stop')}
+        className={`group flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border transition-all hover:scale-105 active:scale-95 ${quickMode === 'add-stop' ? 'bg-orange-500 border-orange-400 text-white' : 'bg-white border-black/5 text-orange-600'}`}
+      >
+        <span className={`text-[10px] font-black uppercase tracking-widest transition-all ${quickMode === 'add-stop' ? 'block' : 'hidden group-hover:block'}`}>Drop Stop</span>
+        <MapPin size={18} />
+      </button>
+      <button 
+        onClick={() => handleAction('add-route')}
+        className={`group flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border transition-all hover:scale-105 active:scale-95 ${quickMode === 'add-route' ? 'bg-system-blue border-blue-400 text-white' : 'bg-white border-black/5 text-system-blue'}`}
+      >
+        <span className={`text-[10px] font-black uppercase tracking-widest transition-all ${quickMode === 'add-route' ? 'block' : 'hidden group-hover:block'}`}>Trace Route</span>
+        <RouteIcon size={18} />
+      </button>
     </div>
   );
 };
@@ -171,18 +209,12 @@ const WorkspaceContainer: React.FC = () => {
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden relative text-black font-bold">
       <FloatingFeedback />
-      {/* Floating Toggle Button - Always on top */}
-      {!isHome && !sidebarOpen && (
-        <button 
-          onClick={() => setSidebarOpen(true)} 
-          className="absolute left-4 top-4 z-[2000] p-3 bg-white shadow-2xl rounded-full border border-black/5 hover:scale-110 active:scale-95 transition-all text-system-blue shadow-system-blue/20"
-        >
-          <ChevronRight size={24}/>
-        </button>
-      )}
-
+      
       {/* Sidebar Content */}
-      <div className={`${isHome ? 'flex-1' : ''} h-full transition-all duration-300 overflow-hidden shrink-0`}>
+      <div 
+        className={`${isHome ? 'flex-1' : ''} h-full transition-all duration-300 overflow-hidden shrink-0 relative`}
+        style={{ width: isHome ? '100%' : (sidebarOpen ? '450px' : '0') }}
+      >
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/agencies" element={<Agencies />} />
@@ -192,12 +224,23 @@ const WorkspaceContainer: React.FC = () => {
         </Routes>
       </div>
 
+      {/* Unified Toggle Handle - Only visible when not on home */}
+      {!isHome && (
+        <div 
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className={`absolute top-1/2 -translate-y-1/2 z-[2000] w-6 h-24 bg-white shadow-2xl border border-black/5 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 group shadow-system-blue/10 ${sidebarOpen ? 'left-[438px]' : 'left-2'}`}
+        >
+          {sidebarOpen ? <ChevronLeft size={16} className="text-system-gray group-hover:text-system-blue" /> : <ChevronRight size={16} className="text-system-blue" />}
+        </div>
+      )}
+
       {/* Persistent Map */}
       <div 
         className={`flex-1 relative border-l border-black/5 h-full ${isHome ? 'hidden' : 'block'}`}
         style={{ minHeight: '100%' }}
       >
         <MapHUD />
+        <QuickActionMenu />
         <UnifiedMap />
       </div>
     </div>
