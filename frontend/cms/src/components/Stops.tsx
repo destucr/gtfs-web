@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { MapPin, Plus, Trash2, Search, Filter, Loader2, CheckCircle2, ChevronRight, X, Layers } from 'lucide-react';
+import { MapPin, Plus, Trash2, Search, Filter, Loader2, CheckCircle2, ChevronRight, X, Layers, Maximize2, Minimize2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import api from '../api';
 import axios from 'axios';
 import { SidebarHeader } from './SidebarHeader';
@@ -18,6 +19,7 @@ const Stops: React.FC = () => {
     const [formData, setFormData] = useState<Stop>({ id: 0, name: '', lat: 0, lon: 0 });
     const [activeTab, setActiveTab] = useState<'info' | 'bindings'>('info');
     const [isDirty, setIsDirty] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
     const initialFormData = useRef<string>('');
 
     const [loading, setLoading] = useState(true);
@@ -216,70 +218,83 @@ const Stops: React.FC = () => {
 
             {/* Floating Node Hub */}
             {selectedStop && (
-                <div 
-                    className="absolute top-6 z-[3000] w-[450px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col max-h-[calc(100vh-120px)] transition-all duration-500 animate-in fade-in slide-in-from-left-8 pointer-events-auto"
-                    style={{ left: sidebarOpen ? '424px' : '24px' }}
+                <motion.div 
+                    drag
+                    dragMomentum={false}
+                    className="absolute top-6 z-[3000] w-[450px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col transition-shadow duration-300 pointer-events-auto"
+                    style={{ left: sidebarOpen ? 424 : 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
                 >
-                    <div className="p-8 pb-6 flex items-center justify-between shrink-0">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-orange-500 text-white shadow-xl shadow-orange-500/20 shrink-0 transition-transform hover:rotate-12"><MapPin size={24} /></div>
+                    <div className="p-8 pb-6 flex items-center justify-between shrink-0 cursor-move">
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-orange-500 text-white shadow-xl shadow-orange-500/20 shrink-0"><MapPin size={24} /></div>
                             <div className="min-w-0">
                                 <h2 className="text-xl font-black tracking-tight truncate leading-none mb-1.5">{formData.name || 'Unlabeled Node'}</h2>
                                 <p className="text-[10px] font-black text-system-gray uppercase tracking-[0.2em] truncate opacity-60">ID: {selectedStop.id || 'NEW_RECORD'}</p>
                             </div>
                         </div>
-                        <button onClick={() => setSelectedStop(null)} className="p-2.5 hover:bg-black/5 rounded-full text-system-gray transition-all hover:rotate-90"><X size={20}/></button>
-                    </div>
-
-                    <div className="px-8 py-2 shrink-0">
-                        <div className="bg-black/5 p-1.5 rounded-[1.25rem] flex gap-1 border border-black/5">
-                            {(['info', 'bindings'] as const).map((tab) => (
-                                <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeTab === tab ? 'bg-white text-system-blue shadow-sm scale-[1.02]' : 'text-system-gray hover:text-black'}`}>
-                                    {tab === 'info' ? 'Specifications' : 'Line Bindings'}
-                                </button>
-                            ))}
+                        <div className="flex items-center gap-1">
+                            <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-2 hover:bg-black/5 rounded-full text-system-gray transition-all">
+                                {isCollapsed ? <Maximize2 size={18}/> : <Minimize2 size={18}/>}
+                            </button>
+                            <button onClick={() => setSelectedStop(null)} className="p-2.5 hover:bg-black/5 rounded-full text-system-gray transition-all hover:rotate-90"><X size={20}/></button>
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar">
-                        {activeTab === 'info' && (
-                            <form onSubmit={handleSave} className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Visual Label</label>
-                                <div className="relative"><input className="hig-input text-sm font-bold pr-10" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />{isNaming && <Loader2 size={14} className="animate-spin absolute right-3 top-3 text-system-blue" />}</div></div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Latitude</label><input type="number" step="any" className="hig-input text-xs font-mono" value={formData.lat} onChange={e => setFormData({...formData, lat: parseFloat(e.target.value)})} required /></div>
-                                    <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Longitude</label><input type="number" step="any" className="hig-input text-xs font-mono" value={formData.lon} onChange={e => setFormData({...formData, lon: parseFloat(e.target.value)})} required /></div>
-                                </div>
-                                <div className="p-6 bg-black/[0.03] rounded-[2rem] border border-black/5 text-center">
-                                    <p className="text-[10px] text-system-gray leading-relaxed font-bold uppercase tracking-tight">Relocate by dragging the orange marker directly on the map.</p>
-                                </div>
-                                <button type="submit" disabled={!isDirty} className="w-full bg-system-blue text-white py-5 rounded-2xl font-black text-[11px] shadow-2xl shadow-system-blue/30 transition-all disabled:opacity-30 uppercase tracking-widest active:scale-95">Commit Node Position</button>
-                            </form>
-                        )}
-
-                        {activeTab === 'bindings' && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="flex items-center justify-between mb-4 px-1"><h4 className="text-[10px] font-black text-system-gray uppercase tracking-[0.2em]">Network Integration</h4><span className="text-[9px] font-black text-system-blue bg-system-blue/5 px-2 py-0.5 rounded-full">ONE-CLICK SYNC</span></div>
-                                <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-                                    {routes.map(r => {
-                                        const isAssigned = (stopRouteMap[selectedStop.id] || []).some(assigned => assigned.id === r.id);
-                                        return (
-                                            <div key={r.id} onMouseEnter={() => handleRouteHover(r.id)} onMouseLeave={() => handleRouteHover(null)} onClick={async () => {
-                                                const currentIds = (stopRouteMap[selectedStop.id] || []).map(assigned => assigned.id);
-                                                const newIds = isAssigned ? currentIds.filter(id => id !== r.id) : [...currentIds, r.id];
-                                                setStatus({ message: 'Syncing...', type: 'loading' });
-                                                try { await api.put(`/stops/${selectedStop.id}/routes`, newIds); fetchInitialData(); setStatus({ message: 'Synced', type: 'success' }); setTimeout(()=>setStatus(null), 1000); } catch(e) {}
-                                            }} className={`p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all border ${isAssigned ? 'border-system-blue bg-system-blue/5 shadow-lg shadow-system-blue/10 scale-[1.02]' : 'border-black/5 bg-white hover:border-black/10'}`}>
-                                                <div className="flex items-center gap-3"><div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} /><span className="font-black text-xs tracking-tight text-black">{r.short_name} &mdash; {r.long_name}</span></div>
-                                                {isAssigned ? <CheckCircle2 size={18} className="text-system-blue" /> : <Plus size={18} className="text-system-gray opacity-20 group-hover:opacity-100" />}
-                                            </div>
-                                        );
-                                    })}
+                    {!isCollapsed && (
+                        <>
+                            <div className="px-8 py-2 shrink-0">
+                                <div className="bg-black/5 p-1.5 rounded-[1.25rem] flex gap-1 border border-black/5">
+                                    {(['info', 'bindings'] as const).map((tab) => (
+                                        <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeTab === tab ? 'bg-white text-system-blue shadow-sm scale-[1.02]' : 'text-system-gray hover:text-black'}`}>
+                                            {tab === 'info' ? 'Specifications' : 'Line Bindings'}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                        )}
-                    </div>
-                </div>
+
+                            <div className="flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar">
+                                {activeTab === 'info' && (
+                                    <form onSubmit={handleSave} className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                        <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Visual Label</label>
+                                        <div className="relative"><input className="hig-input text-sm font-bold pr-10" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />{isNaming && <Loader2 size={14} className="animate-spin absolute right-3 top-3 text-system-blue" />}</div></div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Latitude</label><input type="number" step="any" className="hig-input text-xs font-mono" value={formData.lat} onChange={e => setFormData({...formData, lat: parseFloat(e.target.value)})} required /></div>
+                                            <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60">Longitude</label><input type="number" step="any" className="hig-input text-xs font-mono" value={formData.lon} onChange={e => setFormData({...formData, lon: parseFloat(e.target.value)})} required /></div>
+                                        </div>
+                                        <div className="p-6 bg-black/[0.03] rounded-[2rem] border border-black/5 text-center">
+                                            <p className="text-[10px] text-system-gray leading-relaxed font-bold uppercase tracking-tight">Relocate by dragging the orange marker directly on the map.</p>
+                                        </div>
+                                        <button type="submit" disabled={!isDirty} className="w-full bg-system-blue text-white py-5 rounded-2xl font-black text-[11px] shadow-2xl shadow-system-blue/30 transition-all disabled:opacity-30 uppercase tracking-widest active:scale-95">Commit Node Position</button>
+                                    </form>
+                                )}
+
+                                {activeTab === 'bindings' && (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                        <div className="flex items-center justify-between mb-4 px-1"><h4 className="text-[10px] font-black text-system-gray uppercase tracking-[0.2em]">Network Integration</h4><span className="text-[9px] font-black text-system-blue bg-system-blue/5 px-2 py-0.5 rounded-full">ONE-CLICK SYNC</span></div>
+                                        <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                                            {routes.map(r => {
+                                                const isAssigned = (stopRouteMap[selectedStop.id] || []).some(assigned => assigned.id === r.id);
+                                                return (
+                                                    <div key={r.id} onMouseEnter={() => handleRouteHover(r.id)} onMouseLeave={() => handleRouteHover(null)} onClick={async () => {
+                                                        const currentIds = (stopRouteMap[selectedStop.id] || []).map(assigned => assigned.id);
+                                                        const newIds = isAssigned ? currentIds.filter(id => id !== r.id) : [...currentIds, r.id];
+                                                        setStatus({ message: 'Syncing...', type: 'loading' });
+                                                        try { await api.put(`/stops/${selectedStop.id}/routes`, newIds); fetchInitialData(); setStatus({ message: 'Synced', type: 'success' }); setTimeout(()=>setStatus(null), 1000); } catch(e) {}
+                                                    }} className={`p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all border ${isAssigned ? 'border-system-blue bg-system-blue/5 shadow-lg shadow-system-blue/10 scale-[1.02]' : 'border-black/5 bg-white hover:border-black/10'}`}>
+                                                        <div className="flex items-center gap-3"><div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} /><span className="font-black text-xs tracking-tight text-black">{r.short_name} &mdash; {r.long_name}</span></div>
+                                                        {isAssigned ? <CheckCircle2 size={18} className="text-system-blue" /> : <Plus size={18} className="text-system-gray opacity-20 group-hover:opacity-100" />}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </motion.div>
             )}
         </div>
     );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { Globe, Plus, Trash2, Search, Landmark, RotateCcw, ExternalLink, ChevronRight, X } from 'lucide-react';
+import { Globe, Plus, Trash2, Search, Landmark, RotateCcw, ExternalLink, ChevronRight, X, Maximize2, Minimize2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import api from '../api';
 import { SidebarHeader } from './SidebarHeader';
 import { Agency, Route, Stop, RouteStop, Trip, ShapePoint } from '../types';
@@ -17,6 +18,7 @@ const Agencies: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [formData, setFormData] = useState<Agency>({ name: '', url: '', timezone: '' });
     const [isDirty, setIsDirty] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
     const initialFormData = useRef<string>('');
     const [loading, setLoading] = useState(true);
     const [agencyStats, setAgencyStats] = useState<Record<number, { routes: number, stops: number }>>({});
@@ -151,56 +153,69 @@ const Agencies: React.FC = () => {
 
             {/* Floating Operator Hub */}
             {selectedAgency && (
-                <div 
-                    className="absolute top-6 z-[3000] w-[450px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col max-h-[calc(100vh-120px)] transition-all duration-500 animate-in fade-in slide-in-from-left-8 pointer-events-auto"
-                    style={{ left: sidebarOpen ? '424px' : '24px' }}
+                <motion.div 
+                    drag
+                    dragMomentum={false}
+                    className="absolute top-6 z-[3000] w-[450px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_70px_-10px_rgba(0,0,0,0.2)] border border-black/5 flex flex-col transition-shadow duration-300 pointer-events-auto"
+                    style={{ left: sidebarOpen ? 424 : 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
                 >
-                    <div className="p-8 pb-6 flex items-center justify-between shrink-0">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-system-blue text-white shadow-xl shadow-system-blue/20 shrink-0 transition-transform hover:rotate-12"><Landmark size={24} /></div>
+                    <div className="p-8 pb-6 flex items-center justify-between shrink-0 cursor-move">
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-system-blue text-white shadow-xl shadow-system-blue/20 shrink-0"><Landmark size={24} /></div>
                             <div className="min-w-0">
                                 <h2 className="text-xl font-black tracking-tight truncate leading-none mb-1.5">{formData.name || 'New Agency'}</h2>
                                 <p className="text-[10px] font-black text-system-gray uppercase tracking-[0.2em] truncate opacity-60">Operator ID: {selectedAgency.id || 'RESERVED'}</p>
                             </div>
                         </div>
-                        <button onClick={() => setSelectedAgency(null)} className="p-2.5 hover:bg-black/5 rounded-full text-system-gray transition-all hover:rotate-90"><X size={20}/></button>
+                        <div className="flex items-center gap-1">
+                            <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-2 hover:bg-black/5 rounded-full text-system-gray transition-all">
+                                {isCollapsed ? <Maximize2 size={18}/> : <Minimize2 size={18}/>}
+                            </button>
+                            <button onClick={() => setSelectedAgency(null)} className="p-2.5 hover:bg-black/5 rounded-full text-system-gray transition-all hover:rotate-90"><X size={20}/></button>
+                        </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-8 pt-2 custom-scrollbar">
-                        <form onSubmit={handleSave} className="space-y-6">
-                            <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60 tracking-widest">Formal Name</label>
-                            <input className="hig-input text-sm font-bold" placeholder="e.g. Transit Authority" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div>
-                            
-                            <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60 tracking-widest">Public Endpoint</label>
-                            <div className="relative"><input className="hig-input text-sm font-bold pr-10" placeholder="https://..." value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} required /><ExternalLink size={14} className="absolute right-3 top-3 text-system-gray opacity-40" /></div></div>
-                            
-                            <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60 tracking-widest">Timezone Protocol</label>
-                            <select className="hig-input text-sm font-bold" value={formData.timezone} onChange={e => setFormData({...formData, timezone: e.target.value})} required>
-                                <option value="">Identify Timezone...</option>
-                                <option value="Asia/Jakarta">Jakarta (WIB)</option><option value="Asia/Makassar">Makassar (WITA)</option><option value="Asia/Jayapura">Jayapura (WIT)</option>
-                            </select></div>
+                    {!isCollapsed && (
+                        <>
+                            <div className="flex-1 overflow-y-auto p-8 pt-2 custom-scrollbar">
+                                <form onSubmit={handleSave} className="space-y-6">
+                                    <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60 tracking-widest">Formal Name</label>
+                                    <input className="hig-input text-sm font-bold" placeholder="e.g. Transit Authority" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div>
+                                    
+                                    <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60 tracking-widest">Public Endpoint</label>
+                                    <div className="relative"><input className="hig-input text-sm font-bold pr-10" placeholder="https://..." value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} required /><ExternalLink size={14} className="absolute right-3 top-3 text-system-gray opacity-40" /></div></div>
+                                    
+                                    <div><label className="text-[10px] font-black uppercase mb-1.5 block text-system-gray opacity-60 tracking-widest">Timezone Protocol</label>
+                                    <select className="hig-input text-sm font-bold" value={formData.timezone} onChange={e => setFormData({...formData, timezone: e.target.value})} required>
+                                        <option value="">Identify Timezone...</option>
+                                        <option value="Asia/Jakarta">Jakarta (WIB)</option><option value="Asia/Makassar">Makassar (WITA)</option><option value="Asia/Jayapura">Jayapura (WIT)</option>
+                                    </select></div>
 
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-black/5">
-                                <div className="bg-black/5 p-4 rounded-2xl text-center">
-                                    <div className="text-2xl font-black text-black leading-none mb-1">{selectedAgency.id ? agencyStats[selectedAgency.id]?.routes || 0 : 0}</div>
-                                    <div className="text-[9px] font-black text-system-gray uppercase tracking-widest">Active Lines</div>
-                                </div>
-                                <div className="bg-black/5 p-4 rounded-2xl text-center">
-                                    <div className="text-2xl font-black text-black leading-none mb-1">{selectedAgency.id ? agencyStats[selectedAgency.id]?.stops || 0 : 0}</div>
-                                    <div className="text-[9px] font-black text-system-gray uppercase tracking-widest">Physical Nodes</div>
-                                </div>
+                                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-black/5">
+                                        <div className="bg-black/5 p-4 rounded-2xl text-center">
+                                            <div className="text-2xl font-black text-black leading-none mb-1">{selectedAgency.id ? agencyStats[selectedAgency.id]?.routes || 0 : 0}</div>
+                                            <div className="text-[9px] font-black text-system-gray uppercase tracking-widest">Active Lines</div>
+                                        </div>
+                                        <div className="bg-black/5 p-4 rounded-2xl text-center">
+                                            <div className="text-2xl font-black text-black leading-none mb-1">{selectedAgency.id ? agencyStats[selectedAgency.id]?.stops || 0 : 0}</div>
+                                            <div className="text-[9px] font-black text-system-gray uppercase tracking-widest">Physical Nodes</div>
+                                        </div>
+                                    </div>
+
+                                    {selectedAgency.id && (
+                                        <button type="button" onClick={() => { if(window.confirm('Wipe this operator from registry?')) api.delete(`/agencies/${selectedAgency.id}`).then(fetchInitialData).then(() => setSelectedAgency(null)); }} className="w-full py-3 text-[10px] font-black text-red-400 hover:text-red-600 uppercase tracking-[0.2em] transition-colors">Terminate Record</button>
+                                    )}
+                                </form>
                             </div>
 
-                            {selectedAgency.id && (
-                                <button type="button" onClick={() => { if(window.confirm('Wipe this operator from registry?')) api.delete(`/agencies/${selectedAgency.id}`).then(fetchInitialData).then(() => setSelectedAgency(null)); }} className="w-full py-3 text-[10px] font-black text-red-400 hover:text-red-600 uppercase tracking-[0.2em] transition-colors">Terminate Record</button>
-                            )}
-                        </form>
-                    </div>
-
-                    <div className="p-8 bg-white/50 backdrop-blur-md border-t border-black/5 rounded-b-[2.5rem] sticky bottom-0">
-                        <button onClick={handleSave} disabled={!isDirty} className="w-full py-5 bg-system-blue text-white rounded-2xl font-black text-[11px] shadow-2xl shadow-system-blue/30 transition-all disabled:opacity-30 active:scale-95 uppercase tracking-widest">Sync Operator Manifest</button>
-                    </div>
-                </div>
+                            <div className="p-8 bg-white/50 backdrop-blur-md border-t border-black/5 rounded-b-[2.5rem] sticky bottom-0">
+                                <button onClick={handleSave} disabled={!isDirty} className="w-full py-5 bg-system-blue text-white rounded-2xl font-black text-[11px] shadow-2xl shadow-system-blue/30 transition-all disabled:opacity-30 active:scale-95 uppercase tracking-widest">Sync Operator Manifest</button>
+                            </div>
+                        </>
+                    )}
+                </motion.div>
             )}
         </div>
     );
