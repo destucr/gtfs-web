@@ -116,6 +116,15 @@ The codebase is organized to support splitting into two repositories in the futu
 - **Iconography**: Integrated **Lucide React** for consistent, modern visual language.
 - **Interactive States**: Added tactile feedback (hover/active/focus) to all components for a native-app feel.
 
+### [Date] - Web UI Overhaul (Mantine UI)
+- **Framework Upgrade**: Migrated `frontend/web` from plain React/Bootstrap to **Mantine UI v7**.
+- **UX Redesign**: 
+    - Implemented a fullscreen immersive map experience.
+    - Added a floating "Route Terminal" glassmorphism sidebar for route discovery and searching.
+    - Implemented real-time synchronization between the CMS and the public map via 5s polling.
+    - Added interactive route highlighting: selecting a route in the sidebar fades other lines on the map.
+- **Visuals**: Switched to **Inter** typography and implemented custom Map icons and popups.
+
 ### [Date] - Security & Environment Configuration
 - Removed hardcoded sensitive credentials from `docker-compose.yml`.
 - Implemented environment variable management via `.env` file.
