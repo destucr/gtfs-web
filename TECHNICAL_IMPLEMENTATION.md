@@ -55,68 +55,68 @@ The codebase is organized to support splitting into two repositories in the futu
 
 ## Change Log
 
-### [Date] - Restructuring
+### Jan 2, 2026 - Restructuring
 - Renamed `server` to `backend`.
 - Created `frontend` directory.
 - Moved `client` to `frontend/cms` (Runs on port 5173).
 - Initialized `frontend/web` (Runs on port 3000).
 - Updated `frontend/web/vite.config.js` to use port 3000.
 
-### [Date] - Database & Infrastructure
+### Jan 2, 2026 - Database & Infrastructure
 - Added `docker-compose.yml` for PostgreSQL.
 - Updated `backend/database/db.go` to use PostgreSQL instead of SQLite.
 - Updated documentation with database and deployment details.
 
-### [Date] - Dockerization
+### Jan 2, 2026 - Dockerization
 - Created `backend/Dockerfile` for the Go application.
 - Updated `docker-compose.yml` to orchestrate both `backend` and `postgres` services.
 - Refactored `backend/database/db.go` to use environment variables (`DB_HOST`, `DB_USER`, etc.) for flexible configuration.
 
-### [Date] - CRUD & Port Configuration
+### Jan 2, 2026 - CRUD & Port Configuration
 - Implemented full CRUD (Create, Read, Update, Delete) UI in Frontend CMS.
 - Added `Update` handlers in Backend (Go) and registered `PUT` routes.
 - Resolved PostgreSQL port conflict by mapping Docker port to `5433` on host.
 - Fixed CMS routing in `App.jsx` and updated Public Web Viewer placeholder.
 
-### [Date] - Public Web Map & Data Seeding
+### Jan 2, 2026 - Public Web Map & Data Seeding
 - Installed `react-leaflet` and `leaflet` in `frontend/web`.
 - Created `MapComponent.jsx` to visualize Routes, Shapes (Polylines), and Stops (Markers) on OpenStreetMap.
 - Created and executed `backend/seed_purbalingga.sql` to populate the database with a sample route in Purbalingga, Central Java (Terminal - Alun-Alun).
 
-### [Date] - Interactive Map Editor (CMS)
+### Jan 2, 2026 - Interactive Map Editor (CMS)
 - Installed `react-leaflet` in `frontend/cms`.
 - **Shape Editor**: Created `Shapes.jsx` to visually create/edit route paths (Polyline) by clicking on the map.
 - **Stop Picker**: Updated `Stops.jsx` to allow picking stop locations directly from an interactive map.
 - **Backend**: Updated `handlers.go` to support `PUT /api/shapes/:id` (Replace All) and `DELETE` for shapes.
 
-### [Date] - UX Improvements
+### Jan 2, 2026 - UX Improvements
 - **CMS Stops**: Added "Visualize Route Line" dropdown to `Stops.jsx`. Users can now overlay a route shape on the map to place stops accurately along the path.
 - **Web App**: Added auto-refresh (polling every 5s) to `MapComponent.jsx` to reflect CMS changes in real-time.
 - **Map Visuals**: Implemented distinct Bus Stop icons and Polyline rendering in both CMS and Web.
 
-### [Date] - Routing Engine (OSRM)
+### Jan 2, 2026 - Routing Engine (OSRM)
 - Integrated **OSRM (Open Source Routing Machine)** into the CMS Shape Editor.
 - Added **"Snap to Roads (Auto-Route)"** feature: Users can drop a few key points, and the system automatically calculates and draws the actual road geometry between them.
 
-### [Date] - Unified Editor & Route Expansion
+### Jan 2, 2026 - Unified Editor & Route Expansion
 - **Unified Editor**: Redesigned `Shapes.jsx` as a single dashboard where users select a Route to automatically load its Shape and Stops for simultaneous editing.
 - **Stops Preview**: Fixed a bug in `Stops.jsx` where the marker wouldn't update on the map during edit/creation.
 - **Data Expansion**: Added **Koridor 2 (Terminal - Bukateja)** to the Purbalingga transit network.
 - **Real-time UX**: Enhanced Web App with auto-polling to reflect changes immediately.
 
-### [Date] - Data Standardization & Advanced UX
+### Jan 2, 2026 - Data Standardization & Advanced UX
 - **Human-Readable IDs**: Implemented auto-generation of `shape_id` based on Route short names (e.g., `SHP_K1`) for easier database analysis.
 - **Route-Stop Relationship**: Added `RouteStop` model and logic to link stops to specific routes in a defined sequence.
 - **Reverse Geocoding**: Integrated smart stop creation—clicking the map now automatically suggests stop names using OpenStreetMap data.
 
-### [Date] - UI Migration (Tailwind CSS & HIG)
+### Jan 2, 2026 - UI Migration (Tailwind CSS & HIG)
 - **Framework Shift**: Migrated the entire CMS from Bootstrap to **Tailwind CSS**.
 - **Design System**: Implemented a professional **HIG (Human Interface Guidelines)** aesthetic using system colors, frosted glass effects, and soft shadows.
 - **Unified Workspace**: Consolidated Route metadata, Path (Shape) editing, and Stop Assignments into a high-performance **Route Studio**.
 - **Iconography**: Integrated **Lucide React** for consistent, modern visual language.
 - **Interactive States**: Added tactile feedback (hover/active/focus) to all components for a native-app feel.
 
-### [Date] - Web UI Overhaul (Mantine UI)
+### Jan 2, 2026 - Web UI Overhaul (Mantine UI)
 - **Framework Upgrade**: Migrated `frontend/web` from plain React/Bootstrap to **Mantine UI v7**.
 - **Bundler Shift**: Replaced experimental `rolldown-vite` with standard **Vite v6** to resolve dependency conflicts and ensure React 18 hook stability (`useId`).
 - **UX Redesign**: 
@@ -126,7 +126,7 @@ The codebase is organized to support splitting into two repositories in the futu
     - Added interactive route highlighting: selecting a route in the sidebar fades other lines on the map.
 - **Visuals**: Switched to **Inter** typography and implemented custom Map icons and popups.
 
-### [Date] - Security & Environment Configuration
+### Jan 2, 2026 - Security & Environment Configuration
 - Removed hardcoded sensitive credentials from `docker-compose.yml`.
 - Implemented environment variable management via `.env` file.
 - Added `.env.example` as a template for local development.
