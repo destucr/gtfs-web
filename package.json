@@ -1,0 +1,25 @@
+{
+  "name": "gtfs-web",
+  "version": "1.0.0",
+  "description": "A professional, full-stack transit management ecosystem designed for designing, managing, and visualizing General Transit Feed Specification (GTFS) data. The platform features an immersive, GIS-desktop-inspired CMS and a modern public-facing live map.",
+  "main": "index.js",
+  "scripts": {
+    "screenshots": "node scripts/capture_screenshots.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/destucr/gtfs-web.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/destucr/gtfs-web/issues"
+  },
+  "homepage": "https://github.com/destucr/gtfs-web#readme",
+  "devDependencies": {
+    "playwright": "^1.57.0"
+  }
+}

@@ -109,6 +109,12 @@ The codebase is organized to support splitting into two repositories in the futu
 - **Route-Stop Relationship**: Added `RouteStop` model and logic to link stops to specific routes in a defined sequence.
 - **Reverse Geocoding**: Integrated smart stop creation—clicking the map now automatically suggests stop names using OpenStreetMap data.
 
+### Jan 2, 2026 - Advanced Workspace & Auto-Save
+- **GIS Workspace Overhaul**: Standardized all CMS modules to a professional fullscreen layout with collapsible sidebars and floating HUDs.
+- **Live Persistence**: Implemented an auto-save engine in Route Studio that synchronizes changes (Geometry, Metadata, Sequences) in the background with a debounced 2s delay.
+- **Improved Navigation**: Added global keybindings (`Cmd+1-4`) and direct line switching in Route Studio without context loss.
+- **Automated Documentation**: Created Playwright-based screenshot utility to programmatically update project visuals.
+
 ### Jan 2, 2026 - UI Migration (Tailwind CSS & HIG)
 - **Framework Shift**: Migrated the entire CMS from Bootstrap to **Tailwind CSS**.
 - **Design System**: Implemented a professional **HIG (Human Interface Guidelines)** aesthetic using system colors, frosted glass effects, and soft shadows.

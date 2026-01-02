@@ -19,6 +19,10 @@ A GTFS (General Transit Feed Specification) management system consisting of a Go
 - **Start CMS**: `cd frontend/cms && npm run dev`
 - **Start Web**: `cd frontend/web && npm run dev`
 
+## Development Rules
+- Always run 'npm run build && npm run lint' in both frontend/cms and frontend/web directories before finalizing any changes or committing to ensure codebase stability.
+- Maintain and update `GUIDE.md` whenever new features, shortcuts, or workflow changes are implemented to ensure user documentation is always accurate.
+
 ## Implementation Memories
 - Remember to use `GOTOOLCHAIN=local` or ensure Go 1.24 is used for builds due to `go.mod` requirements.
 - The `backend/database/db.go` uses environment variables for connection strings.
