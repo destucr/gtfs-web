@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-The project is structured into a Backend and two Frontend applications (CMS and Web).
+The project is structured into a Go-based Backend and two TypeScript-powered Frontend applications (CMS and Web).
 
 ### Directory Structure
 
@@ -10,8 +10,10 @@ The project is structured into a Backend and two Frontend applications (CMS and 
 /
 ├── backend/            # Golang server (API & Database)
 ├── frontend/
-│   ├── cms/           # React Admin Dashboard (GTFS Management)
-│   └── web/           # React Public Web Application (GTFS Viewer)
+│   ├── cms/           # React + TypeScript Admin Dashboard (GTFS Management)
+│   └── web/           # React + TypeScript Public Web Application (GTFS Viewer)
+├── assets/            # Static assets and documentation visuals
+├── scripts/           # Automation scripts (Screenshots, etc.)
 └── TECHNICAL_IMPLEMENTATION.md
 ```
 
@@ -29,29 +31,27 @@ The project is structured into a Backend and two Frontend applications (CMS and 
 ## Database
 - **System**: PostgreSQL
 - **Infrastructure**: Managed via Docker Compose for development/testing.
-- **Connection**: Configured via DSN (Data Source Name).
+- **Connection**: Configured via DSN (Data Source Name) using environment variables.
 - **Schema**: Auto-migrated using GORM based on defined models.
 
-## Frontend: CMS
-- **Framework**: React (Vite)
-- **Purpose**: Admin interface to manage GTFS data.
-- **Features**:
-    - CRUD operations for Agencies, Routes, Stops, Trips.
-    - Shape management.
-    - Authentication (Future).
+## Frontend: CMS (GTFS Studio)
+- **Framework**: React + TypeScript (Vite)
+- **Styling**: Tailwind CSS (HIG-inspired)
+- **Purpose**: Unified GIS workspace to manage transit infrastructure.
+- **Key Features**:
+    - **Unified Route Studio**: Manage metadata, geographic paths, and stop sequences in one place.
+    - **Smart Routing**: OSRM integration for road-following path construction.
+    - **Live Persistence**: Auto-save engine for zero-friction data entry.
+    - **Persistent Map**: Shared Leaflet instance for zero-flicker navigation.
 
-## Frontend: Web
-- **Framework**: React (Vite)
-- **Port**: 3000
-- **Purpose**: Public-facing application for users to view transit data.
+## Frontend: Web (Public Viewer)
+- **Framework**: React + TypeScript (Vite)
+- **UI Library**: Mantine UI v7
+- **Purpose**: Immersive, public-facing transit map.
 - **Features**:
-    - View routes and schedules.
-    - Map visualization.
-
-## Future Repository Split
-The codebase is organized to support splitting into two repositories in the future:
-1. **Core Repo**: `backend` + `frontend/cms` (Management & Data)
-2. **Public Repo**: `frontend/web` (Public Interface)
+    - Fullscreen interactive map with dark mode support.
+    - Real-time data synchronization (5s polling).
+    - Intelligent route search and highlighting.
 
 ## Change Log
 
@@ -60,7 +60,6 @@ The codebase is organized to support splitting into two repositories in the futu
 - Created `frontend` directory.
 - Moved `client` to `frontend/cms` (Runs on port 5173).
 - Initialized `frontend/web` (Runs on port 3000).
-- Updated `frontend/web/vite.config.js` to use port 3000.
 
 ### Jan 2, 2026 - Database & Infrastructure
 - Added `docker-compose.yml` for PostgreSQL.
@@ -111,7 +110,7 @@ The codebase is organized to support splitting into two repositories in the futu
 
 ### Jan 2, 2026 - Advanced Workspace & Auto-Save
 - **GIS Workspace Overhaul**: Standardized all CMS modules to a professional fullscreen layout with collapsible sidebars and floating HUDs.
-- **Persistent Map Architecture**: Migrated the `MapContainer` to a shared parent layout (`App.jsx`) using React Context (`WorkspaceContext`). This ensures the map instance never unmounts during navigation, eliminating flickering and providing a seamless "GIS Desktop" feel.
+- **Persistent Map Architecture**: Migrated the `MapContainer` to a shared parent layout (`App.tsx`) using React Context (`WorkspaceContext`). This ensures the map instance never unmounts during navigation, eliminating flickering and providing a seamless "GIS Desktop" feel.
 - **Live Persistence**: Implemented an auto-save engine in Route Studio that synchronizes changes (Geometry, Metadata, Sequences) in the background with a debounced 2s delay.
 - **Improved Navigation**: Added global keybindings (`Cmd+1-4`) and direct line switching in Route Studio without context loss.
 - **Automated Documentation**: Created Playwright-based screenshot utility to programmatically update project visuals.
@@ -138,3 +137,9 @@ The codebase is organized to support splitting into two repositories in the futu
 - Implemented environment variable management via `.env` file.
 - Added `.env.example` as a template for local development.
 - Created root `.gitignore` to ensure secrets are not committed to the repository.
+
+### Jan 2, 2026 - TypeScript Migration
+- **Frontend Core**: Refactored both `frontend/cms` and `frontend/web` to 100% TypeScript.
+- **Type Safety**: Defined strict interfaces for all GTFS entities (`Agency`, `Stop`, `Route`, `Trip`, `ShapePoint`).
+- **Context Optimization**: Refactored the `WorkspaceContext` and `UnifiedMap` logic into typed components, ensuring robust cross-module data synchronization.
+- **Verification**: All modules passing strict build and lint checks under TypeScript configuration.
