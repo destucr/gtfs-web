@@ -112,6 +112,57 @@ const Home: React.FC = () => {
   );
 };
 
+const FloatingFeedback: React.FC = () => {
+  const { status } = useWorkspace();
+  if (!status) return null;
+
+  const colors = {
+    info: 'bg-white text-black border-black/5',
+    success: 'bg-green-500 text-white border-green-600',
+    error: 'bg-red-500 text-white border-red-600',
+    loading: 'bg-system-blue text-white border-blue-600'
+  };
+
+  return (
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[3000] animate-in slide-in-from-bottom-4 duration-300">
+      <div className={`px-6 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 font-black text-xs uppercase tracking-widest ${colors[status.type]}`}>
+        {status.type === 'loading' && <Loader2 size={16} className="animate-spin" />}
+        {status.type === 'success' && <ShieldCheck size={16} />}
+        {status.type === 'error' && <AlertCircle size={16} />}
+        {status.message}
+      </div>
+    </div>
+  );
+};
+
+const MapHUD: React.FC = () => {
+  const { mapLayers, status } = useWorkspace();
+  const location = useLocation();
+  if (location.pathname === '/') return null;
+
+  const isEditing = mapLayers.activeShape.length > 0 || mapLayers.activeStop !== null;
+  if (!isEditing && !status?.isDirty) return null;
+
+  return (
+    <div className="absolute top-4 left-4 z-[1000] pointer-events-none flex flex-col gap-2">
+      <div className="bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-xl border border-white/10 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-left-4">
+        <div className={`w-2 h-2 rounded-full ${status?.isDirty ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
+        <span className="text-[10px] font-black uppercase tracking-widest">
+          {status?.isDirty ? 'Unsaved Changes' : 'All Changes Synced'}
+        </span>
+      </div>
+      {mapLayers.activeShape.length > 0 && (
+        <div className="bg-system-blue text-white px-4 py-2 rounded-xl border border-blue-400/30 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-left-4 duration-500">
+          <Zap size={14} className="animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-widest">
+            Shape Editor Active • {mapLayers.activeShape.length} points
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const WorkspaceContainer: React.FC = () => {
   const location = useLocation();
   const { sidebarOpen, setSidebarOpen } = useWorkspace();
@@ -119,6 +170,7 @@ const WorkspaceContainer: React.FC = () => {
 
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden relative text-black font-bold">
+      <FloatingFeedback />
       {/* Floating Toggle Button - Always on top */}
       {!isHome && !sidebarOpen && (
         <button 
@@ -145,6 +197,7 @@ const WorkspaceContainer: React.FC = () => {
         className={`flex-1 relative border-l border-black/5 h-full ${isHome ? 'hidden' : 'block'}`}
         style={{ minHeight: '100%' }}
       >
+        <MapHUD />
         <UnifiedMap />
       </div>
     </div>

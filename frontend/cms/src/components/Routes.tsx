@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { Info, Map as MapIcon, MapPin, Plus, Save, RotateCcw, Zap, ChevronRight, ChevronLeft, Bus, Loader2, GripVertical, Undo2, Settings2, Search, X, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Info, Map as MapIcon, MapPin, Plus, Save, RotateCcw, Zap, ChevronRight, Bus, Loader2, GripVertical, Undo2, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import api from '../api';
 import axios from 'axios';
 import L from 'leaflet';
+import { SidebarHeader } from './SidebarHeader';
 import { Route, Stop, Agency, Trip, ShapePoint, RouteStop } from '../types';
 
 const RouteStudio: React.FC = () => {
-    const { setMapLayers, sidebarOpen, setSidebarOpen, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert } = useWorkspace();
+    const { setMapLayers, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert, setStatus } = useWorkspace();
     const [routes, setRoutes] = useState<Route[]>([]);
     const [allStops, setAllStops] = useState<Stop[]>([]);
     const [agencies, setAgencies] = useState<Agency[]>([]);
@@ -23,11 +24,8 @@ const RouteStudio: React.FC = () => {
     // UI Logic
     const [activeSection, setActiveSection] = useState<'info' | 'path' | 'sequence' | null>('info');
     const [globalLoading, setGlobalLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [routing, setRouting] = useState(false);
     const [autoRoute, setAutoRoute] = useState(true);
     const [isDirty, setIsDirty] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'danger', text: string } | null>(null);
 
     const refreshAllData = useCallback(async () => {
         const [rRes, sRes, aRes] = await Promise.all([
@@ -45,6 +43,17 @@ const RouteStudio: React.FC = () => {
     }, [refreshAllData]);
 
     useEffect(() => { refreshData(); }, [refreshData]);
+
+    // Sync isDirty to Global Status
+    useEffect(() => {
+        if (isDirty) {
+            setStatus({ message: 'Unsaved Changes', type: 'info', isDirty: true });
+        } else if (selectedRoute) {
+            setStatus({ message: 'All Changes Synced', type: 'info', isDirty: false });
+        } else {
+            setStatus(null);
+        }
+    }, [isDirty, selectedRoute, setStatus]);
 
     // --- Persistence ---
     const pushToHistory = useCallback((newPoints: ShapePoint[]) => {
@@ -77,120 +86,85 @@ const RouteStudio: React.FC = () => {
         const sId = selectedRoute?.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute?.id}`;
         
         if (autoRoute && index > 0 && index < shapePoints.length) {
-            setRouting(true);
+            setStatus({ message: 'Routing via Roads...', type: 'loading' });
             try {
                 const prev = shapePoints[index - 1];
                 const next = shapePoints[index];
-                // Route from prev -> new -> next
                 const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${prev.lon},${prev.lat};${latlng.lng},${latlng.lat};${next.lon},${next.lat}?overview=full&geometries=geojson`);
                 
                 if (res.data.routes && res.data.routes[0]) {
                     const geometry: [number, number][] = res.data.routes[0].geometry.coordinates;
-                    // Replace the segment between prev and next with the new road-following points
                     const newPoints = [...shapePoints];
                     const intermediatePoints = geometry.slice(1, -1).map((c) => ({
-                        shape_id: sId,
-                        lat: c[1],
-                        lon: c[0],
-                        sequence: 0 // Will be re-indexed
+                        shape_id: sId, lat: c[1], lon: c[0], sequence: 0
                     }));
-                    
                     newPoints.splice(index, 0, ...intermediatePoints);
                     const reordered = newPoints.map((p, i) => ({ ...p, sequence: i + 1 }));
                     pushToHistory(reordered);
+                    setStatus({ message: 'Point Inserted (Road Snapped)', type: 'success' });
+                    setTimeout(() => setStatus(null), 2000);
                     return;
                 }
-            } catch (e) {
-                console.error("Auto-routing during insert failed:", e);
-            } finally {
-                setRouting(false);
-            }
+            } catch (e) { console.error(e); setStatus({ message: 'Routing failed', type: 'error' }); }
         }
 
         const newPoints = [...shapePoints];
         newPoints.splice(index, 0, { lat: latlng.lat, lon: latlng.lng, sequence: index + 1, shape_id: sId });
         const reordered = newPoints.map((p, i) => ({ ...p, sequence: i + 1 }));
         pushToHistory(reordered);
-    }, [shapePoints, selectedRoute, autoRoute, pushToHistory]);
+    }, [shapePoints, selectedRoute, autoRoute, pushToHistory, setStatus]);
 
     const snapStopsToPath = useCallback(() => {
         if (shapePoints.length < 2 || assignedStops.length === 0) return;
+        setStatus({ message: 'Snapping stops...', type: 'loading' });
         
         const newAssignedStops = assignedStops.map(rs => {
             if (!rs.stop) return rs;
-            
             let minDistance = Infinity;
             let nearestPoint = { lat: rs.stop.lat, lon: rs.stop.lon };
-            
             for (let i = 0; i < shapePoints.length - 1; i++) {
                 const p1 = L.latLng(shapePoints[i].lat, shapePoints[i].lon);
                 const p2 = L.latLng(shapePoints[i+1].lat, shapePoints[i+1].lon);
                 const stopPt = L.latLng(rs.stop.lat, rs.stop.lon);
-                
-                const closest = L.LineUtil.closestPointOnSegment(
-                    L.CRS.EPSG3857.project(stopPt),
-                    L.CRS.EPSG3857.project(p1),
-                    L.CRS.EPSG3857.project(p2)
-                );
-                
+                const closest = L.LineUtil.closestPointOnSegment(L.CRS.EPSG3857.project(stopPt), L.CRS.EPSG3857.project(p1), L.CRS.EPSG3857.project(p2));
                 const unprojected = L.CRS.EPSG3857.unproject(closest);
                 const dist = stopPt.distanceTo(unprojected);
-                
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    nearestPoint = { lat: unprojected.lat, lon: unprojected.lng };
-                }
+                if (dist < minDistance) { minDistance = dist; nearestPoint = { lat: unprojected.lat, lon: unprojected.lng }; }
             }
-            
-            return {
-                ...rs,
-                stop: { ...rs.stop, lat: nearestPoint.lat, lon: nearestPoint.lon }
-            };
+            return { ...rs, stop: { ...rs.stop, lat: nearestPoint.lat, lon: nearestPoint.lon } };
         });
         
         setAssignedStops(newAssignedStops);
         setIsDirty(true);
-        setMessage({ type: 'success', text: 'Stops Snapped' });
-        setTimeout(() => setMessage(null), 2000);
-    }, [shapePoints, assignedStops]);
+        setStatus({ message: 'Stops aligned to path', type: 'success' });
+        setTimeout(() => setStatus(null), 2000);
+    }, [shapePoints, assignedStops, setStatus]);
 
     const saveChanges = useCallback(async (isAuto = false) => {
         if (!selectedRoute) return;
-        setSaving(true);
+        if (!isAuto) setStatus({ message: 'Syncing with Cloud...', type: 'loading' });
         try {
-            // 1. Save Metadata
             if (selectedRoute.id) await api.put(`/routes/${selectedRoute.id}`, selectedRoute);
             else if (!isAuto) {
                 const res = await api.post('/routes', selectedRoute);
                 setSelectedRoute(res.data);
             }
-
-            // 2. Save Shape
             if (selectedRoute.id || !isAuto) {
                 const rId = selectedRoute.id || 0;
                 const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${rId}`;
                 await api.put(`/shapes/${sId}`, shapePoints.map(p => ({ ...p, shape_id: sId })));
-                
-                // Trip Binding
                 const trips: { data: Trip[] } = await api.get('/trips');
-                if (!trips.data.find(t => t.route_id === rId)) {
-                    await api.post('/trips', { route_id: rId, headsign: selectedRoute.long_name, shape_id: sId });
-                }
+                if (!trips.data.find(t => t.route_id === rId)) await api.post('/trips', { route_id: rId, headsign: selectedRoute.long_name, shape_id: sId });
             }
-
-            // 3. Save Sequence
             if (selectedRoute.id) {
                 const reordered = assignedStops.map((s, i) => ({ ...s, sequence: i + 1 }));
                 await api.put(`/routes/${selectedRoute.id}/stops`, reordered);
             }
-
             setIsDirty(false);
-            if (!isAuto) setMessage({ type: 'success', text: 'Cloud Synced' });
-            setTimeout(() => setMessage(null), 3000);
+            if (!isAuto) { setStatus({ message: 'Changes committed', type: 'success' }); setTimeout(() => setStatus(null), 2000); }
             await refreshAllData();
-        } catch (e) { console.error(e); } finally { setSaving(false); }
-    }, [selectedRoute, shapePoints, assignedStops, refreshAllData]);
-
+        } catch (e) { console.error(e); setStatus({ message: 'Save failed', type: 'error' }); }
+    }, [selectedRoute, shapePoints, assignedStops, refreshAllData, setStatus]);
 
     // Auto-save
     useEffect(() => {
@@ -206,57 +180,39 @@ const RouteStudio: React.FC = () => {
             const newPoint = { lat: latlng.lat, lon: latlng.lng, sequence: shapePoints.length + 1, shape_id: sId };
 
             if (autoRoute && shapePoints.length > 0) {
-                setRouting(true);
+                setStatus({ message: 'Finding Road...', type: 'loading' });
                 try {
                     const lastPoint = shapePoints[shapePoints.length - 1];
                     const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${lastPoint.lon},${lastPoint.lat};${latlng.lng},${latlng.lat}?overview=full&geometries=geojson`);
-                    
                     if (res.data.routes && res.data.routes[0]) {
                         const geometry: [number, number][] = res.data.routes[0].geometry.coordinates;
-                        // Skip the first coordinate as it's the lastPoint we already have
                         const intermediatePoints = geometry.slice(1).map((c, i) => ({
-                            shape_id: sId,
-                            lat: c[1],
-                            lon: c[0],
-                            sequence: shapePoints.length + i + 1
+                            shape_id: sId, lat: c[1], lon: c[0], sequence: shapePoints.length + i + 1
                         }));
                         pushToHistory([...shapePoints, ...intermediatePoints]);
+                        setStatus({ message: 'Path Extended', type: 'success' });
+                        setTimeout(() => setStatus(null), 2000);
                         return;
                     }
-                } catch (e) {
-                    console.error("Auto-routing failed, falling back to straight line:", e);
-                } finally {
-                    setRouting(false);
-                }
+                } catch (e) { console.error(e); setStatus({ message: 'Road not found', type: 'error' }); }
             }
-            
             pushToHistory([...shapePoints, newPoint]);
         }
-    }, [activeSection, selectedRoute, shapePoints, autoRoute, pushToHistory]);
+    }, [activeSection, selectedRoute, shapePoints, autoRoute, pushToHistory, setStatus]);
 
     useEffect(() => {
         setOnMapClick(() => handleMapClick);
         setOnShapePointMove(() => handleShapePointMove);
         setOnShapePointDelete(() => handleShapePointDelete);
         setOnShapePointInsert(() => handleShapePointInsert);
-        return () => {
-            setOnMapClick(null);
-            setOnShapePointMove(undefined);
-            setOnShapePointDelete(undefined);
-            setOnShapePointInsert(undefined);
-        };
+        return () => { setOnMapClick(null); setOnShapePointMove(undefined); setOnShapePointDelete(undefined); setOnShapePointInsert(undefined); };
     }, [handleMapClick, handleShapePointMove, handleShapePointDelete, handleShapePointInsert, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert]);
 
     // Sync to global map
     useEffect(() => {
         setMapLayers(prev => ({
             ...prev,
-            routes: selectedRoute ? [{
-                id: selectedRoute.id,
-                color: selectedRoute.color,
-                positions: shapePoints.map(p => [p.lat, p.lon] as [number, number]),
-                isFocused: true
-            }] : [],
+            routes: selectedRoute ? [{ id: selectedRoute.id, color: selectedRoute.color, positions: shapePoints.map(p => [p.lat, p.lon] as [number, number]), isFocused: true }] : [],
             stops: assignedStops.map(rs => ({ ...(rs.stop as Stop), hidePopup: false })),
             activeShape: activeSection === 'path' ? shapePoints : [],
             focusedPoints: shapePoints.length > 0 ? shapePoints.map(p => [p.lat, p.lon] as [number, number]) : [],
@@ -269,9 +225,7 @@ const RouteStudio: React.FC = () => {
         setSelectedRoute(route);
         setIsDirty(false);
         try {
-            const [tripsRes, stopsRes] = await Promise.all([
-                api.get('/trips'), api.get(`/routes/${route.id}/stops`)
-            ]);
+            const [tripsRes, stopsRes] = await Promise.all([api.get('/trips'), api.get(`/routes/${route.id}/stops`)]);
             setAssignedStops(stopsRes.data || []);
             const trip: Trip | undefined = tripsRes.data.find((t: Trip) => t.route_id === route.id);
             if (trip?.shape_id) {
@@ -288,7 +242,7 @@ const RouteStudio: React.FC = () => {
 
     const snapPointsToRoads = async () => {
         if (shapePoints.length === 0) return;
-        setRouting(true);
+        setStatus({ message: 'Snapping anchors...', type: 'loading' });
         try {
             const snappedPoints = await Promise.all(shapePoints.map(async (p) => {
                 try {
@@ -301,53 +255,48 @@ const RouteStudio: React.FC = () => {
                 return p;
             }));
             pushToHistory(snappedPoints);
-        } finally { setRouting(false); }
+            setStatus({ message: 'Anchors aligned to roads', type: 'success' });
+            setTimeout(() => setStatus(null), 2000);
+        } finally { }
     };
 
     const snapToRoads = async () => {
         if (shapePoints.length < 2 || !selectedRoute) return;
-        setRouting(true);
+        setStatus({ message: 'Re-routing full path...', type: 'loading' });
         const coords = shapePoints.map(p => `${p.lon},${p.lat}`).join(';');
         const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
         try {
             const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
             const geometry: [number, number][] = res.data.routes[0].geometry.coordinates;
             pushToHistory(geometry.map((c, i) => ({ shape_id: sId, lat: c[1], lon: c[0], sequence: i + 1 })));
-        } finally { setRouting(false); }
+            setStatus({ message: 'Path fully snapped', type: 'success' });
+            setTimeout(() => setStatus(null), 2000);
+        } catch (e) { setStatus({ message: 'Routing error', type: 'error' }); }
     };
 
-    const filteredRoutes = routes.filter(r => 
-        r.long_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        r.short_name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredRoutes = routes.filter(r => r.long_name.toLowerCase().includes(searchQuery.toLowerCase()) || r.short_name.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (globalLoading) return <div className="flex h-screen items-center justify-center font-bold text-system-gray animate-pulse flex-col gap-4"><Loader2 className="animate-spin text-system-blue" size={32} /> INITIALIZING STUDIO...</div>;
 
     return (
-        <div className="flex flex-col h-full bg-white shadow-2xl relative z-20 overflow-hidden font-bold text-black" style={{ width: sidebarOpen ? '450px' : '0', transition: 'width 0.3s ease' }}>
-            {/* Header */}
-            <div className="p-6 border-b border-black/5 flex items-center justify-between shrink-0 bg-white">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-system-blue rounded-lg flex items-center justify-center text-white shadow-lg"><Bus size={18}/></div>
-                    <h1 className="text-xl font-black tracking-tight leading-none">Route Studio</h1>
-                </div>
-                <div className="flex gap-2">
-                    <button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all"><Plus size={18} /></button>
-                    <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-black/5 rounded-lg text-system-gray"><ChevronLeft size={20}/></button>
-                </div>
-            </div>
+        <div className="flex flex-col h-full bg-white shadow-2xl relative z-20 overflow-hidden font-bold text-black" style={{ width: 450 }}>
+            <SidebarHeader 
+                title={selectedRoute ? 'Editor' : 'Studio'} 
+                Icon={Bus} 
+                onBack={selectedRoute ? () => setSelectedRoute(null) : undefined} 
+                actions={!selectedRoute && <button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all"><Plus size={18} /></button>}
+            />
 
-            {/* Editing Section */}
             <div className="flex-1 overflow-y-auto">
                 {selectedRoute ? (
-                    <div className="animate-in fade-in duration-300">
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                         {/* Section: Route Metadata */}
                         <div className="border-b border-black/5">
                             <button onClick={() => setActiveSection(activeSection === 'info' ? null : 'info')} className="w-full p-4 flex items-center justify-between hover:bg-black/[0.02]">
                                 <div className="flex items-center gap-3 text-xs uppercase tracking-widest font-black text-system-gray">
                                     <Info size={14} className="text-system-blue" /> 1. Route Attributes
                                 </div>
-                                {activeSection === 'info' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                {activeSection === 'info' ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                             </button>
                             {activeSection === 'info' && (
                                 <div className="p-6 bg-system-blue/[0.02] space-y-4">
@@ -356,16 +305,7 @@ const RouteStudio: React.FC = () => {
                                         <select className="hig-input text-sm font-bold" value={selectedRoute.agency_id} onChange={e => { setSelectedRoute({...selectedRoute, agency_id: parseInt(e.target.value)}); setIsDirty(true); }}>{agencies.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
                                         <div><label className="text-[10px] font-black uppercase mb-1 block text-system-gray opacity-60">Route Type</label>
                                         <select className="hig-input text-sm font-bold" value={selectedRoute.route_type} onChange={e => { setSelectedRoute({...selectedRoute, route_type: parseInt(e.target.value)}); setIsDirty(true); }}>
-                                            <option value={0}>Tram/Light Rail</option>
-                                            <option value={1}>Subway/Metro</option>
-                                            <option value={2}>Rail</option>
-                                            <option value={3}>Bus</option>
-                                            <option value={4}>Ferry</option>
-                                            <option value={5}>Cable Tram</option>
-                                            <option value={6}>Aerial Lift</option>
-                                            <option value={7}>Funicular</option>
-                                            <option value={11}>Trolleybus</option>
-                                            <option value={12}>Monorail</option>
+                                            <option value={0}>Tram/Light Rail</option><option value={1}>Subway/Metro</option><option value={2}>Rail</option><option value={3}>Bus</option><option value={4}>Ferry</option><option value={5}>Cable Tram</option><option value={6}>Aerial Lift</option><option value={7}>Funicular</option><option value={11}>Trolleybus</option><option value={12}>Monorail</option>
                                         </select></div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -390,25 +330,17 @@ const RouteStudio: React.FC = () => {
                                 <div className="flex items-center gap-3 text-xs uppercase tracking-widest font-black text-system-gray">
                                     <MapIcon size={14} className="text-system-blue" /> 2. Path Geometry
                                 </div>
-                                {activeSection === 'path' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                {activeSection === 'path' ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                             </button>
                             {activeSection === 'path' && (
                                 <div className="p-6 bg-system-blue/[0.02] space-y-4">
                                     <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-black/5 shadow-sm">
-                                        <div className="flex items-center gap-2">
-                                            <Zap size={14} className={autoRoute ? "text-system-blue" : "text-system-gray"} />
-                                            <span className="text-[10px] font-black uppercase tracking-tight">Follow Roads on Click</span>
-                                        </div>
-                                        <button 
-                                            onClick={() => setAutoRoute(!autoRoute)}
-                                            className={`w-10 h-5 rounded-full transition-colors relative ${autoRoute ? 'bg-system-blue' : 'bg-black/10'}`}
-                                        >
-                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${autoRoute ? 'left-6' : 'left-1'}`} />
-                                        </button>
+                                        <div className="flex items-center gap-2"><Zap size={14} className={autoRoute ? "text-system-blue" : "text-system-gray"} /><span className="text-[10px] font-black uppercase tracking-tight">Follow Roads on Click</span></div>
+                                        <button onClick={() => setAutoRoute(!autoRoute)} className={`w-10 h-5 rounded-full transition-colors relative ${autoRoute ? 'bg-system-blue' : 'bg-black/10'}`}><div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${autoRoute ? 'left-6' : 'left-1'}`} /></button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={snapToRoads} className="py-3 bg-system-blue text-white rounded-xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-blue-600 shadow-lg">{routing ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />} SNAP FULL PATH</button>
-                                        <button onClick={snapPointsToRoads} className="py-3 bg-white border-2 border-system-blue text-system-blue rounded-xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-system-blue hover:text-white transition-all shadow-sm">{routing ? <Loader2 size={12} className="animate-spin" /> : <MapIcon size={12} />} SNAP ANCHORS</button>
+                                        <button onClick={snapToRoads} className="py-3 bg-system-blue text-white rounded-xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-blue-600 shadow-lg"><Zap size={12} /> SNAP FULL PATH</button>
+                                        <button onClick={snapPointsToRoads} className="py-3 bg-white border-2 border-system-blue text-system-blue rounded-xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-system-blue hover:text-white transition-all shadow-sm"><MapIcon size={12} /> SNAP ANCHORS</button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <button onClick={undo} disabled={history.length === 0} className="py-2 bg-white border border-black/10 rounded-lg text-[10px] font-black flex items-center justify-center gap-1.5 disabled:opacity-30"><Undo2 size={12}/> UNDO</button>
@@ -425,7 +357,7 @@ const RouteStudio: React.FC = () => {
                                 <div className="flex items-center gap-3 text-xs uppercase tracking-widest font-black text-system-gray">
                                     <MapPin size={14} className="text-system-blue" /> 3. Stop Sequence
                                 </div>
-                                {activeSection === 'sequence' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                {activeSection === 'sequence' ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                             </button>
                             {activeSection === 'sequence' && (
                                 <div className="p-6 bg-system-blue/[0.02] space-y-6">
@@ -455,28 +387,26 @@ const RouteStudio: React.FC = () => {
 
                         {/* Save Actions */}
                         <div className="p-6 bg-white border-t border-black/5 sticky bottom-0">
-                            <button onClick={() => saveChanges()} disabled={saving || !isDirty} className="w-full py-4 bg-system-blue text-white rounded-2xl font-black text-xs shadow-2xl flex items-center justify-center gap-3 hover:bg-blue-600 transition-all disabled:opacity-30">
-                                {saving ? <Loader2 size={18} className="animate-spin"/> : <Save size={18}/>} COMMIT CHANGES
+                            <button onClick={() => saveChanges()} disabled={!isDirty} className="w-full py-4 bg-system-blue text-white rounded-2xl font-black text-xs shadow-2xl flex items-center justify-center gap-3 hover:bg-blue-600 transition-all disabled:opacity-30">
+                                <Save size={18}/> COMMIT CHANGES
                             </button>
-                            {message && <div className={`mt-3 text-center text-[10px] font-black uppercase tracking-widest ${message.type === 'success' ? 'text-green-600' : 'text-red-500'} animate-pulse`}>{message.text}</div>}
-                            <button onClick={() => setSelectedRoute(null)} className="w-full mt-3 py-2 text-[10px] font-black text-system-gray hover:text-black uppercase">Close Editor</button>
                         </div>
                     </div>
                 ) : (
-                    <>
+                    <div className="animate-in fade-in slide-in-from-left-4 duration-300">
                         <div className="p-4 px-6 border-b border-black/5 bg-white shrink-0 font-bold">
                             <div className="relative"><Search size={14} className="absolute left-3 top-3 text-system-gray" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search service lines..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
                         </div>
                         <div className="divide-y divide-black/5">
                             {filteredRoutes.map(r => (
                                 <div key={r.id} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-black/[0.02] cursor-pointer transition-all flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`}>
-                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm font-black text-[10px]" style={{ backgroundColor: `#${r.color}` }}>{r.short_name}</div>
+                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm font-black text-[10px]" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#','')}` }}>{r.short_name}</div>
                                     <div className="flex-1 min-w-0"><div className="text-sm text-black truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-system-gray uppercase tracking-tighter">Line #{r.id}</div></div>
                                     <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-all" />
                                 </div>
                             ))}
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
         </div>

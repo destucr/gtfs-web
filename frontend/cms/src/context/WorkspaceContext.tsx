@@ -6,17 +6,17 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  const [status, setStatus] = useState<WorkspaceStatus | null>(null);
+
   const [onMapClick, setOnMapClick] = useState<((latlng: { lat: number, lng: number }) => void) | null>(null);
 
   const [onShapePointMove, setOnShapePointMove] = useState<((index: number, latlng: { lat: number, lng: number }) => void) | undefined>();
 
-    const [onShapePointDelete, setOnShapePointDelete] = useState<((index: number) => void) | undefined>();
+  const [onShapePointDelete, setOnShapePointDelete] = useState<((index: number) => void) | undefined>();
 
-    const [onShapePointInsert, setOnShapePointInsert] = useState<((index: number, latlng: { lat: number, lng: number }) => void) | undefined>();
+  const [onShapePointInsert, setOnShapePointInsert] = useState<((index: number, latlng: { lat: number, lng: number }) => void) | undefined>();
 
-    const [mapLayers, setMapLayers] = useState<MapLayers>({
-
-  
+  const [mapLayers, setMapLayers] = useState<MapLayers>({
 
     routes: [], 
 
@@ -40,17 +40,17 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       sidebarOpen, setSidebarOpen, 
 
-            onMapClick, setOnMapClick,
+      onMapClick, setOnMapClick,
 
-            onShapePointMove, setOnShapePointMove,
+      onShapePointMove, setOnShapePointMove,
 
-            onShapePointDelete, setOnShapePointDelete,
+      onShapePointDelete, setOnShapePointDelete,
 
-            onShapePointInsert, setOnShapePointInsert
+      onShapePointInsert, setOnShapePointInsert,
 
-          }}>
+      status, setStatus
 
-      
+    }}>
 
       {children}
 
@@ -59,3 +59,5 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   );
 
 };
+
+
