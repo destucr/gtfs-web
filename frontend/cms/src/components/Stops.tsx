@@ -4,11 +4,13 @@ import { MapPin, Plus, Trash2, Search, Filter, Loader2, CheckCircle2, ChevronRig
 import { motion } from 'framer-motion';
 import api from '../api';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { SidebarHeader } from './SidebarHeader';
 import { Route, Stop, RouteStop, Trip, ShapePoint } from '../types';
 
 const Stops: React.FC = () => {
-    const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen } = useWorkspace();
+    const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, hoveredEntityId, setHoveredEntityId } = useWorkspace();
+    const navigate = useNavigate();
     const [stops, setStops] = useState<Stop[]>([]);
     const [routes, setRoutes] = useState<Route[]>([]);
     const [stopRouteMap, setStopRouteMap] = useState<Record<number, Route[]>>({});
@@ -52,6 +54,28 @@ const Stops: React.FC = () => {
     }, [setStatus]);
 
     useEffect(() => { fetchInitialData(); }, [fetchInitialData]);
+
+    // Handle Deep Linking Entry
+    useEffect(() => {
+        if (selectedEntityId && stops.length > 0) {
+            const stop = stops.find(s => s.id === selectedEntityId);
+            if (stop) {
+                handleSelectStop(stop);
+                // We keep it in context until component consumes it
+                setSelectedEntityId(null);
+            }
+        }
+    }, [selectedEntityId, stops, setSelectedEntityId]);
+
+    const handleStopHover = async (stopId: number | null) => {
+        setHoveredEntityId(stopId);
+        if (stopId) {
+            const routesForStop = stopRouteMap[stopId] || [];
+            await Promise.all(routesForStop.map(r => handleRouteHover(r.id)));
+        } else {
+            handleRouteHover(null);
+        }
+    };
 
     const handleRouteHover = async (routeId: number | null) => {
         setHoveredRouteId(routeId);
@@ -149,15 +173,25 @@ const Stops: React.FC = () => {
         } catch (e) { setStatus({ message: 'Update failed', type: 'error' }); }
     };
 
+    // Sync to global map
     useEffect(() => {
+        const hoveredStop = stops.find(s => s.id === hoveredEntityId);
         setMapLayers(prev => ({
             ...prev,
             routes: selectedRouteIds.map(rid => ({
                 id: rid, color: routes.find(r => r.id === rid)?.color || '007AFF',
                 positions: routeShapes[rid] || [], isFocused: focusedRouteId === rid
             })),
-            stops: stops.map(s => ({ ...s, isSmall: true, hidePopup: false })),
-            focusedPoints: (formData.lat !== 0 && formData.lon !== 0) ? [[formData.lat, formData.lon]] : [],
+            stops: stops.map(s => ({
+                ...s,
+                isSmall: true,
+                hidePopup: false,
+                isCustom: s.id === hoveredEntityId,
+                icon: s.id === hoveredEntityId ? L.divIcon({ className: 'bg-orange-500 border-2 border-white w-4 h-4 rounded-full shadow-lg scale-150 transition-all', iconSize: [16, 16] }) : undefined
+            })),
+            focusedPoints: (formData.lat !== 0 && formData.lon !== 0)
+                ? [[formData.lat, formData.lon]]
+                : (hoveredStop ? [[hoveredStop.lat, hoveredStop.lon]] : []),
             activeStop: (formData.lat !== 0 && formData.lon !== 0) ? { ...formData, isDraggable: true } : null,
             activeShape: [],
             previewRoute: hoveredRouteId ? {
@@ -165,7 +199,7 @@ const Stops: React.FC = () => {
                 positions: routeShapes[hoveredRouteId] || [], isFocused: false
             } : null
         }));
-    }, [stops, selectedRouteIds, routeShapes, formData, routes, focusedRouteId, hoveredRouteId, setMapLayers]);
+    }, [stops, selectedRouteIds, routeShapes, formData, routes, focusedRouteId, hoveredRouteId, hoveredEntityId, setMapLayers]);
 
     const filteredStops = stops.filter(s => {
         const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -191,7 +225,13 @@ const Stops: React.FC = () => {
 
                 <div className="flex-1 overflow-y-auto divide-y divide-black/5">
                     {filteredStops.map(stop => (
-                        <div key={stop.id} className={`p-5 hover:bg-black/[0.02] cursor-pointer transition-all group flex items-center justify-between ${selectedStop?.id === stop.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} onClick={() => handleSelectStop(stop)}>
+                        <div 
+                            key={stop.id} 
+                            onMouseEnter={() => handleStopHover(stop.id)}
+                            onMouseLeave={() => handleStopHover(null)}
+                            className={`p-5 hover:bg-black/[0.02] cursor-pointer transition-all group flex items-center justify-between ${selectedStop?.id === stop.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} 
+                            onClick={() => handleSelectStop(stop)}
+                        >
                             <div className="flex-1 min-w-0">
                                 <div className="font-black text-sm text-black uppercase tracking-tight truncate mb-1">{stop.name}</div>
                                 <div className="flex flex-wrap gap-1">{(stopRouteMap[stop.id] || []).map(r => (<div key={r.id} className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} />))}</div>
@@ -280,15 +320,31 @@ const Stops: React.FC = () => {
                                             {routes.map(r => {
                                                 const isAssigned = (stopRouteMap[selectedStop.id] || []).some(assigned => assigned.id === r.id);
                                                 return (
-                                                    <div key={r.id} onMouseEnter={() => handleRouteHover(r.id)} onMouseLeave={() => handleRouteHover(null)} onClick={async () => {
-                                                        const currentIds = (stopRouteMap[selectedStop.id] || []).map(assigned => assigned.id);
-                                                        const newIds = isAssigned ? currentIds.filter(id => id !== r.id) : [...currentIds, r.id];
-                                                        setStatus({ message: 'Syncing...', type: 'loading' });
-                                                        try { await api.put(`/stops/${selectedStop.id}/routes`, newIds); fetchInitialData(); setStatus({ message: 'Synced', type: 'success' }); setTimeout(()=>setStatus(null), 1000); } catch(e) {}
-                                                    }} className={`p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all border ${isAssigned ? 'border-system-blue bg-system-blue/5 shadow-lg shadow-system-blue/10 scale-[1.02]' : 'border-black/5 bg-white hover:border-black/10'}`}>
-                                                        <div className="flex items-center gap-3"><div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} /><span className="font-black text-xs tracking-tight text-black">{r.short_name} &mdash; {r.long_name}</span></div>
-                                                        {isAssigned ? <CheckCircle2 size={18} className="text-system-blue" /> : <Plus size={18} className="text-system-gray opacity-20 group-hover:opacity-100" />}
-                                                    </div>
+                                                                                                <div key={r.id} onMouseEnter={() => handleRouteHover(r.id)} onMouseLeave={() => handleRouteHover(null)} className={`p-4 rounded-2xl flex items-center justify-between transition-all border ${isAssigned ? 'border-system-blue bg-system-blue/5 shadow-lg shadow-system-blue/10 scale-[1.02]' : 'border-black/5 bg-white hover:border-black/10'}`}>
+                                                                                                    <div 
+                                                                                                        onClick={async () => {
+                                                                                                            const currentIds = (stopRouteMap[selectedStop.id] || []).map(assigned => assigned.id);
+                                                                                                            const newIds = isAssigned ? currentIds.filter(id => id !== r.id) : [...currentIds, r.id];
+                                                                                                            setStatus({ message: 'Syncing...', type: 'loading' });
+                                                                                                            try { await api.put(`/stops/${selectedStop.id}/routes`, newIds); fetchInitialData(); setStatus({ message: 'Synced', type: 'success' }); setTimeout(()=>setStatus(null), 1000); } catch(e) {}
+                                                                                                        }} 
+                                                                                                        className="flex-1 flex items-center gap-3 cursor-pointer"
+                                                                                                    >
+                                                                                                        <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} />
+                                                                                                        <span className="font-black text-xs tracking-tight text-black">{r.short_name} &mdash; {r.long_name}</span>
+                                                                                                    </div>
+                                                                                                    <div className="flex items-center gap-2">
+                                                                                                        <button 
+                                                                                                            onClick={(e) => { e.stopPropagation(); setSelectedEntityId(r.id); navigate('/routes'); }}
+                                                                                                            className="p-2 hover:bg-system-blue hover:text-white rounded-lg transition-all text-system-blue/40"
+                                                                                                            title="Go to Studio"
+                                                                                                        >
+                                                                                                            <Bus size={14} />
+                                                                                                        </button>
+                                                                                                        {isAssigned ? <CheckCircle2 size={18} className="text-system-blue" /> : <Plus size={18} className="text-system-gray opacity-20" />}
+                                                                                                    </div>
+                                                                                                </div>
+                                                    
                                                 );
                                             })}
                                         </div>

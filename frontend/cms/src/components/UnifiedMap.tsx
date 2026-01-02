@@ -18,8 +18,12 @@ const MapController: React.FC<{ focusedPoints: [number, number][] }> = ({ focuse
     const map = useMap();
     useEffect(() => {
         if (focusedPoints && focusedPoints.length > 0) {
-            const bounds = L.latLngBounds(focusedPoints);
-            map.fitBounds(bounds, { padding: [100, 100], animate: true });
+            if (focusedPoints.length === 1) {
+                map.flyTo(focusedPoints[0], 16, { animate: true, duration: 1.5 });
+            } else {
+                const bounds = L.latLngBounds(focusedPoints);
+                map.fitBounds(bounds, { padding: [100, 100], animate: true, duration: 1.5 });
+            }
         }
     }, [focusedPoints, map]);
     return null;

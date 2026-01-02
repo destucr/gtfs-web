@@ -27,6 +27,12 @@ export interface WorkspaceContextType {
   // Quick Actions
   quickMode: 'add-stop' | 'add-route' | null;
   setQuickMode: (mode: 'add-stop' | 'add-route' | null) => void;
+  // Deep Linking
+  selectedEntityId: number | null;
+  setSelectedEntityId: (id: number | null) => void;
+  // Map Highlighting
+  hoveredEntityId: number | null;
+  setHoveredEntityId: (id: number | null) => void;
 }
 
 export const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);

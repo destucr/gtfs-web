@@ -5,11 +5,13 @@ import { Reorder, motion } from 'framer-motion';
 import api from '../api';
 import axios from 'axios';
 import L from 'leaflet';
+import { useNavigate } from 'react-router-dom';
 import { SidebarHeader } from './SidebarHeader';
 import { Route, Stop, Agency, Trip, ShapePoint, RouteStop } from '../types';
 
 const RouteStudio: React.FC = () => {
-    const { setMapLayers, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert, setStatus, quickMode, setQuickMode, sidebarOpen } = useWorkspace();
+    const { setMapLayers, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, hoveredEntityId, setHoveredEntityId } = useWorkspace();
+    const navigate = useNavigate();
     const [routes, setRoutes] = useState<Route[]>([]);
     const [allStops, setAllStops] = useState<Stop[]>([]);
     const [agencies, setAgencies] = useState<Agency[]>([]);
@@ -46,6 +48,17 @@ const RouteStudio: React.FC = () => {
     }, [refreshAllData]);
 
     useEffect(() => { refreshData(); }, [refreshData]);
+
+    // Handle Deep Linking Entry
+    useEffect(() => {
+        if (selectedEntityId && routes.length > 0) {
+            const route = routes.find(r => r.id === selectedEntityId);
+            if (route) {
+                handleSelectRoute(route);
+                setSelectedEntityId(null);
+            }
+        }
+    }, [selectedEntityId, routes, setSelectedEntityId]);
 
     // Handle Quick Mode Entry
     useEffect(() => {
@@ -230,6 +243,27 @@ const RouteStudio: React.FC = () => {
         }));
     }, [selectedRoute, shapePoints, assignedStops, activeSection, setMapLayers]);
 
+    const handleRouteHoverEffect = async (routeId: number | null) => {
+        setHoveredEntityId(routeId);
+        if (routeId) {
+            try {
+                const tripsRes: { data: Trip[] } = await api.get('/trips');
+                const routeTrips = tripsRes.data.filter(t => t.route_id === routeId);
+                if (routeTrips.length > 0 && routeTrips[0].shape_id) {
+                    const shapeRes = await api.get(`/shapes/${routeTrips[0].shape_id}`);
+                    const poly = (shapeRes.data || []).sort((a:any,b:any)=>a.sequence-b.sequence).map((p:any)=>[p.lat, p.lon] as [number, number]);
+                    // Cache the shape in a local map or similar if needed, but for now we just show it
+                    setMapLayers(prev => ({
+                        ...prev,
+                        previewRoute: { id: routeId, color: routes.find(r => r.id === routeId)?.color || '007AFF', positions: poly, isFocused: true }
+                    }));
+                }
+            } catch (e) { console.error(e); }
+        } else {
+            setMapLayers(prev => ({ ...prev, previewRoute: null }));
+        }
+    };
+
     const handleSelectRoute = async (route: Route) => {
         setQuickMode(null);
         if (isDirty) await saveChanges(true);
@@ -306,7 +340,13 @@ const RouteStudio: React.FC = () => {
 
                 <div className="flex-1 overflow-y-auto divide-y divide-black/5">
                     {filteredRoutes.map(r => (
-                        <div key={r.id} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-black/[0.02] cursor-pointer transition-all flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`}>
+                        <div 
+                            key={r.id} 
+                            onMouseEnter={() => handleRouteHoverEffect(r.id)}
+                            onMouseLeave={() => handleRouteHoverEffect(null)}
+                            onClick={() => handleSelectRoute(r)} 
+                            className={`p-4 hover:bg-black/[0.02] cursor-pointer transition-all flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`}
+                        >
                             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm font-black text-[10px]" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#','')}` }}>{r.short_name}</div>
                             <div className="flex-1 min-w-0"><div className="text-sm text-black truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-system-gray uppercase tracking-tighter">Line #{r.id}</div></div>
                             <ChevronRight size={14} className={`transition-all ${selectedRoute?.id === r.id ? 'opacity-100 text-system-blue translate-x-1' : 'opacity-0 group-hover:opacity-100'}`} />
@@ -441,12 +481,22 @@ const RouteStudio: React.FC = () => {
                                             </div>
                                             <Reorder.Group axis="y" values={assignedStops} onReorder={(newOrder) => { setAssignedStops(newOrder); setIsDirty(true); }} className="space-y-2">
                                                 {assignedStops.map((rs, i) => (
-                                                    <Reorder.Item key={rs.stop_id} value={rs} className="flex items-center gap-4 p-4 bg-white/50 border border-black/5 rounded-2xl cursor-grab border-transparent hover:border-black/10 hover:bg-white hover:shadow-xl hover:shadow-black/5 transition-all group">
-                                                        <GripVertical size={14} className="text-black/10 group-hover:text-black/30 transition-colors" />
-                                                        <div className="w-7 h-7 rounded-full bg-system-blue/5 flex items-center justify-center text-[10px] font-black text-system-blue shrink-0 group-hover:bg-system-blue group-hover:text-white transition-all">{i+1}</div>
-                                                        <div className="flex-1 font-black text-[11px] truncate uppercase tracking-tight text-black">{rs.stop?.name}</div>
-                                                        <button onClick={() => { setAssignedStops(assignedStops.filter((_, idx) => idx !== i)); setIsDirty(true); }} className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 opacity-0 group-hover:opacity-100 transition-all"><X size={16}/></button>
-                                                    </Reorder.Item>
+                                                                                                <Reorder.Item key={rs.stop_id} value={rs} className="flex items-center gap-4 p-4 bg-white/50 border border-black/5 rounded-2xl cursor-grab border-transparent hover:border-black/10 hover:bg-white hover:shadow-xl hover:shadow-black/5 transition-all group">
+                                                                                                    <GripVertical size={14} className="text-black/10 group-hover:text-black/30 transition-colors" />
+                                                                                                    <div className="w-7 h-7 rounded-full bg-system-blue/5 flex items-center justify-center text-[10px] font-black text-system-blue shrink-0 group-hover:bg-system-blue group-hover:text-white transition-all">{i+1}</div>
+                                                                                                    <div className="flex-1 font-black text-[11px] truncate uppercase tracking-tight text-black">{rs.stop?.name}</div>
+                                                                                                    <div className="flex items-center gap-1">
+                                                                                                        <button 
+                                                                                                            onClick={(e) => { e.stopPropagation(); setSelectedEntityId(rs.stop_id); navigate('/stops'); }}
+                                                                                                            className="p-1.5 hover:bg-orange-500 hover:text-white rounded-lg transition-all text-orange-500/40"
+                                                                                                            title="Edit Node Metadata"
+                                                                                                        >
+                                                                                                            <MapPin size={14} />
+                                                                                                        </button>
+                                                                                                        <button onClick={() => { setAssignedStops(assignedStops.filter((_, idx) => idx !== i)); setIsDirty(true); }} className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 opacity-0 group-hover:opacity-100 transition-all"><X size={16}/></button>
+                                                                                                    </div>
+                                                                                                </Reorder.Item>
+                                                    
                                                 ))}
                                             </Reorder.Group>
                                         </div>
