@@ -141,27 +141,40 @@ const MapHUD: React.FC = () => {
   if (location.pathname === '/') return null;
 
   return (
-    <div className="absolute top-4 left-4 z-[1000] pointer-events-none flex flex-col gap-2">
+    <div className="absolute top-6 left-6 z-[1000] pointer-events-none flex flex-col gap-3">
       {/* Quick Mode Indicator */}
       {quickMode && (
-        <div className="bg-system-blue text-white px-4 py-2 rounded-xl border border-blue-400/30 shadow-2xl flex items-center justify-between gap-6 animate-in zoom-in duration-300 pointer-events-auto">
-          <div className="flex items-center gap-3">
-            {quickMode === 'add-stop' ? <MapPin size={16} className="animate-bounce" /> : <Zap size={16} className="animate-pulse" />}
-            <span className="text-[10px] font-black uppercase tracking-widest">
-              {quickMode === 'add-stop' ? 'Click Map to Drop Stop' : 'Click Map to Start Path'}
-            </span>
+        <div className="bg-system-blue/90 backdrop-blur-xl text-white px-6 py-3 rounded-2xl border border-blue-400/30 shadow-[0_20px_50px_rgba(0,122,255,0.3)] flex items-center justify-between gap-8 animate-in zoom-in slide-in-from-top-4 duration-500 pointer-events-auto">
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 p-2 rounded-xl animate-pulse">
+              {quickMode === 'add-stop' ? <MapPin size={18} /> : <Zap size={18} />}
+            </div>
+            <div>
+              <span className="text-[11px] font-black uppercase tracking-[0.1em] block">GIS Creative Mode</span>
+              <p className="text-[9px] font-bold text-white/60 uppercase tracking-widest">
+                {quickMode === 'add-stop' ? 'Click Map to Record Node' : 'Click Map to Extend Path'}
+              </p>
+            </div>
           </div>
-          <button onClick={() => setQuickMode(null)} className="hover:bg-white/20 p-1 rounded-lg transition-colors"><X size={14}/></button>
+          <button onClick={() => setQuickMode(null)} className="hover:bg-white/20 p-2 rounded-xl transition-all active:scale-90"><X size={16}/></button>
         </div>
       )}
 
       {/* Persistence Indicator */}
       {(status?.isDirty || mapLayers.activeShape.length > 0) && (
-        <div className="bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-xl border border-white/10 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-left-4">
-          <div className={`w-2 h-2 rounded-full ${status?.isDirty ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
-          <span className="text-[10px] font-black uppercase tracking-widest">
-            {status?.isDirty ? 'Unsaved Changes' : 'All Changes Synced'}
-          </span>
+        <div className="bg-black/80 backdrop-blur-xl text-white px-5 py-3 rounded-2xl border border-white/10 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
+          <div className="relative flex h-3 w-3">
+            <div className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status?.isDirty ? 'bg-orange-400' : 'bg-green-400'}`} />
+            <div className={`relative inline-flex rounded-full h-3 w-3 ${status?.isDirty ? 'bg-orange-500' : 'bg-green-500'}`} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-[0.15em]">
+              {status?.isDirty ? 'Workspace Dirty' : 'Manifest Integrity'}
+            </span>
+            <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">
+              {status?.isDirty ? 'Pending Local Buffer' : 'Cloud Synchronized'}
+            </p>
+          </div>
         </div>
       )}
     </div>
@@ -176,27 +189,35 @@ const QuickActionMenu: React.FC = () => {
   if (location.pathname === '/') return null;
 
   const handleAction = (mode: 'add-stop' | 'add-route') => {
-    setQuickMode(mode);
-    if (mode === 'add-stop') navigate('/stops');
-    if (mode === 'add-route') navigate('/routes');
+    if (quickMode === mode) {
+      setQuickMode(null);
+    } else {
+      setQuickMode(mode);
+      if (mode === 'add-stop') navigate('/stops');
+      if (mode === 'add-route') navigate('/routes');
+    }
   };
 
   return (
-    <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 animate-in slide-in-from-right-4">
-      <button 
-        onClick={() => handleAction('add-stop')}
-        className={`group flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border transition-all hover:scale-105 active:scale-95 ${quickMode === 'add-stop' ? 'bg-orange-500 border-orange-400 text-white' : 'bg-white border-black/5 text-orange-600'}`}
-      >
-        <span className={`text-[10px] font-black uppercase tracking-widest transition-all ${quickMode === 'add-stop' ? 'block' : 'hidden group-hover:block'}`}>Drop Stop</span>
-        <MapPin size={18} />
-      </button>
-      <button 
-        onClick={() => handleAction('add-route')}
-        className={`group flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border transition-all hover:scale-105 active:scale-95 ${quickMode === 'add-route' ? 'bg-system-blue border-blue-400 text-white' : 'bg-white border-black/5 text-system-blue'}`}
-      >
-        <span className={`text-[10px] font-black uppercase tracking-widest transition-all ${quickMode === 'add-route' ? 'block' : 'hidden group-hover:block'}`}>Trace Route</span>
-        <RouteIcon size={18} />
-      </button>
+    <div className="absolute top-6 right-6 z-[1000] flex flex-col gap-3 animate-in slide-in-from-right-4 duration-500">
+      <div className="bg-white/80 backdrop-blur-xl p-2 rounded-[2rem] shadow-2xl border border-black/5 flex flex-col gap-2">
+        <button 
+          onClick={() => handleAction('add-stop')}
+          className={`group flex items-center gap-4 p-4 rounded-[1.5rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-stop' ? 'bg-orange-500 shadow-xl shadow-orange-500/30 text-white' : 'hover:bg-black/5 text-orange-600'}`}
+          title="Drop Station Node"
+        >
+          <span className={`text-[10px] font-black uppercase tracking-[0.1em] transition-all overflow-hidden whitespace-nowrap ${quickMode === 'add-stop' ? 'w-24 opacity-100' : 'w-0 opacity-0 group-hover:w-24 group-hover:opacity-100'}`}>Drop Node</span>
+          <MapPin size={20} />
+        </button>
+        <button 
+          onClick={() => handleAction('add-route')}
+          className={`group flex items-center gap-4 p-4 rounded-[1.5rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-route' ? 'bg-system-blue shadow-xl shadow-system-blue/30 text-white' : 'hover:bg-black/5 text-system-blue'}`}
+          title="Trace Route Geometry"
+        >
+          <span className={`text-[10px] font-black uppercase tracking-[0.1em] transition-all overflow-hidden whitespace-nowrap ${quickMode === 'add-route' ? 'w-24 opacity-100' : 'w-0 opacity-0 group-hover:w-24 group-hover:opacity-100'}`}>Trace Path</span>
+          <RouteIcon size={20} />
+        </button>
+      </div>
     </div>
   );
 };
@@ -228,9 +249,9 @@ const WorkspaceContainer: React.FC = () => {
       {!isHome && (
         <div 
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className={`absolute top-1/2 -translate-y-1/2 z-[2000] w-6 h-24 bg-white shadow-2xl border border-black/5 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 group shadow-system-blue/10 ${sidebarOpen ? 'left-[438px]' : 'left-2'}`}
+          className={`absolute top-1/2 -translate-y-1/2 z-[2000] w-7 h-28 bg-white/80 backdrop-blur-md shadow-2xl border border-black/5 rounded-[1.5rem] flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 group shadow-system-blue/10 ${sidebarOpen ? 'left-[386px]' : 'left-4'}`}
         >
-          {sidebarOpen ? <ChevronLeft size={16} className="text-system-gray group-hover:text-system-blue" /> : <ChevronRight size={16} className="text-system-blue" />}
+          {sidebarOpen ? <ChevronLeft size={18} className="text-system-gray group-hover:text-system-blue transition-colors" /> : <ChevronRight size={18} className="text-system-blue animate-pulse" />}
         </div>
       )}
 
