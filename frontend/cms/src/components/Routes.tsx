@@ -31,6 +31,7 @@ const RouteStudio: React.FC = () => {
     const [isDirty, setIsDirty] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
+    const [focusType, setFocusType] = useState<'select' | 'hover' | null>(null);
 
     const refreshAllData = useCallback(async () => {
         const [rRes, sRes, aRes] = await Promise.all([
@@ -218,6 +219,7 @@ const RouteStudio: React.FC = () => {
 
     const handleRouteHoverEffect = async (routeId: number | null) => {
         setHoveredEntityId(routeId);
+        setFocusType(routeId ? 'hover' : null);
         if (routeId) {
             try {
                 const tripsRes: { data: Trip[] } = await api.get('/trips');
@@ -246,12 +248,14 @@ const RouteStudio: React.FC = () => {
             stops: assignedStops.map(rs => ({ ...(rs.stop as Stop), hidePopup: false })),
             activeShape: activeSection === 'path' ? shapePoints : [],
             focusedPoints: shapePoints.length > 0 ? shapePoints.map(p => [p.lat, p.lon] as [number, number]) : [],
-            activeStop: null
+            activeStop: null,
+            focusType
         }));
-    }, [selectedRoute, shapePoints, assignedStops, activeSection, setMapLayers]);
+    }, [selectedRoute, shapePoints, assignedStops, activeSection, focusType, setMapLayers]);
 
     const handleSelectRoute = async (route: Route) => {
         setQuickMode(null);
+        setFocusType('select');
         if (isDirty) await saveChanges(true);
         setSelectedRoute(route);
         setIsDirty(false);
@@ -267,6 +271,8 @@ const RouteStudio: React.FC = () => {
     };
 
     const handleAddNew = () => {
+        setQuickMode(null);
+        setFocusType('select');
         setSelectedRoute({ id: 0, short_name: '', long_name: '', color: '007AFF', agency_id: agencies[0]?.id || 0 });
         setShapePoints([]); setAssignedStops([]); setActiveSection('info'); setIsDirty(true);
     };

@@ -32,6 +32,7 @@ const Stops: React.FC = () => {
     const [selectedRouteIds, setSelectedRouteIds] = useState<number[]>([]);
     const [routeShapes, setRouteShapes] = useState<Record<number, [number, number][]>>({});
     const [hoveredRouteIds, setHoveredRouteIds] = useState<number[]>([]);
+    const [focusType, setFocusType] = useState<'select' | 'hover' | null>(null);
 
     const fetchInitialData = useCallback(async () => {
         setLoading(true);
@@ -83,6 +84,7 @@ const Stops: React.FC = () => {
 
     const handleStopHover = async (stopId: number | null) => {
         setHoveredEntityId(stopId);
+        setFocusType(stopId ? 'hover' : null);
         if (stopId) {
             const routesForStop = stopRouteMap[stopId] || [];
             setHoveredRouteIds([]); 
@@ -141,6 +143,7 @@ const Stops: React.FC = () => {
         setSelectedStop(stop);
         setFormData(stop);
         setActiveTab('info');
+        setFocusType('select');
         initialFormData.current = JSON.stringify(stop);
     };
 
@@ -149,8 +152,10 @@ const Stops: React.FC = () => {
         setSelectedStop(newStop);
         setFormData(newStop);
         setActiveTab('info');
+        setFocusType('select');
         initialFormData.current = JSON.stringify(newStop);
     };
+
 
     const toggleStopInRoute = async (stop: Stop, routeId: number) => {
         const currentRoutes = stopRouteMap[stop.id] || [];
@@ -194,9 +199,10 @@ const Stops: React.FC = () => {
             previewRoutes: hoveredRouteIds.map(rid => ({
                 id: rid, color: routes.find(r => r.id === rid)?.color || '007AFF',
                 positions: routeShapes[rid] || [], isFocused: false
-            }))
+            })),
+            focusType
         }));
-    }, [stops, selectedRouteIds, routeShapes, formData, routes, focusedRouteId, hoveredRouteIds, hoveredEntityId, setMapLayers]);
+    }, [stops, selectedRouteIds, routeShapes, formData, routes, focusedRouteId, hoveredRouteIds, hoveredEntityId, focusType, setMapLayers]);
 
     const filteredStops = stops.filter(s => {
         const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());

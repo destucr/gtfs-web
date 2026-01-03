@@ -14,18 +14,28 @@ const ActiveStopIcon = L.icon({
     iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32]
 });
 
-const MapController: React.FC<{ focusedPoints: [number, number][] }> = ({ focusedPoints }) => {
+const MapController: React.FC<{ focusedPoints: [number, number][], focusType?: 'select' | 'hover' | null }> = ({ focusedPoints, focusType }) => {
     const map = useMap();
     useEffect(() => {
         if (focusedPoints && focusedPoints.length > 0) {
-            if (focusedPoints.length === 1) {
-                map.flyTo(focusedPoints[0], 16, { animate: true, duration: 1.5 });
-            } else {
-                const bounds = L.latLngBounds(focusedPoints);
-                map.fitBounds(bounds, { padding: [100, 100], animate: true, duration: 1.5 });
+            const bounds = L.latLngBounds(focusedPoints);
+            const currentBounds = map.getBounds();
+            const inView = currentBounds.contains(bounds);
+
+            if (focusType === 'select') {
+                // Hard focus: center and zoom in
+                if (focusedPoints.length === 1) {
+                    map.flyTo(focusedPoints[0], 16, { animate: true, duration: 1.5 });
+                } else {
+                    map.fitBounds(bounds, { padding: [100, 100], animate: true, duration: 1.5 });
+                }
+            } else if (focusType === 'hover' && !inView) {
+                // Soft focus: zoom out to encompass both current view and target
+                const combined = currentBounds.extend(bounds);
+                map.fitBounds(combined, { padding: [80, 80], animate: true, duration: 1.2 });
             }
         }
-    }, [focusedPoints, map]);
+    }, [focusedPoints, focusType, map]);
     return null;
 };
 
@@ -133,7 +143,7 @@ const UnifiedMap: React.FC = () => {
         >
             <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="&copy; CARTO" />
             
-            <MapController focusedPoints={mapLayers.focusedPoints} />
+            <MapController focusedPoints={mapLayers.focusedPoints} focusType={mapLayers.focusType} />
             <MapEventListener />
 
             {/* Render Polylines */}

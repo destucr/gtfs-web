@@ -59,6 +59,7 @@ export interface MapLayers {
   routes: MapLayerRoute[];
   stops: (Stop & { isSmall?: boolean; hidePopup?: boolean; isCustom?: boolean; icon?: any })[];
   focusedPoints: [number, number][];
+  focusType?: 'select' | 'hover' | null;
   activeShape: ShapePoint[];
   activeStop: (Stop & { isDraggable?: boolean }) | null;
   previewRoutes?: MapLayerRoute[] | null;
