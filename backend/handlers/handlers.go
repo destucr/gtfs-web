@@ -454,12 +454,40 @@ func UpdateTripStops(c *gin.Context) {
 	}
 
 	// Verify tripID conversion
-	tID := castToUint(tripID)
-	// castToUint returns 0 on failure or if empty, could check if tripID was "0" but likely it's a valid ID from URL.
-	// We can check if it's 0 and handle safely, though standard castToUint handles sscanf.
+	tID, err := strconv.ParseUint(tripID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid trip ID"})
+		return
+	}
+
+	// Helper for time calculation
+	calculateTime := func(seq int) (string, string) {
+		baseTime := 8 * 60 // 08:00 in minutes
+		arrivalMin := baseTime + (seq * 5)
+		departureMin := arrivalMin + 5
+
+		excludeHours := func(m int) string {
+			h := (m / 60) % 24
+			min := m % 60
+			return fmt.Sprintf("%02d:%02d:00", h, min)
+		}
+		return excludeHours(arrivalMin), excludeHours(departureMin)
+	}
 
 	for _, ts := range tripStops {
 		ts.TripID = uint(tID)
+
+		// Ensure time is set
+		if ts.ArrivalTime == "" || ts.DepartureTime == "" {
+			arr, dep := calculateTime(ts.Sequence)
+			if ts.ArrivalTime == "" {
+				ts.ArrivalTime = arr
+			}
+			if ts.DepartureTime == "" {
+				ts.DepartureTime = dep
+			}
+		}
+
 		if err := tx.Create(&ts).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create trip stop: " + err.Error()})

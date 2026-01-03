@@ -72,25 +72,52 @@ func Connect() {
 			log.Fatalf("Migration failed: Could not read trips: %v", err)
 		}
 
+		if len(trips) == 0 {
+			log.Println("Migration Warning: No trips found. Skipping TripStops creation to preserve RouteStop data.")
+			// Skip migration, do not drop route_stops
+			return
+		}
+
 		tx := DB.Begin()
 		var count int64 = 0
+
+		// Helper for time calculation
+		calculateTime := func(seq int) (string, string) {
+			baseTime := 8 * 60 // 08:00 in minutes
+			arrivalMin := baseTime + (seq * 5)
+			departureMin := arrivalMin + 5
+
+			excludeHours := func(m int) string {
+				h := (m / 60) % 24
+				min := m % 60
+				return fmt.Sprintf("%02d:%02d:00", h, min)
+			}
+			return excludeHours(arrivalMin), excludeHours(departureMin)
+		}
+
 		for _, rs := range oldStops {
 			// Find all trips for this route
 			for _, t := range trips {
 				if t.RouteID == rs.RouteID {
+					arr, dep := calculateTime(rs.Sequence)
+
+					// Use existing if valid, else calculate
+					finalArr := rs.ArrivalTime
+					if finalArr == "" {
+						finalArr = arr
+					}
+					finalDep := rs.DepartureTime
+					if finalDep == "" {
+						finalDep = dep
+					}
+
 					newStop := models.TripStop{
 						TripID:        t.ID,
 						StopID:        rs.StopID,
 						Sequence:      rs.Sequence,
-						ArrivalTime:   rs.ArrivalTime,
-						DepartureTime: rs.DepartureTime,
+						ArrivalTime:   finalArr,
+						DepartureTime: finalDep,
 					}
-					// Defaults if empty
-					if newStop.ArrivalTime == "" {
-						newStop.ArrivalTime = "08:00:00"
-					}
-					// DepartureTime is typically optional or same as arrival in simple models, but let's default if needed or leave as is.
-					// If strict SQL, might need it.
 
 					if err := tx.Create(&newStop).Error; err != nil {
 						tx.Rollback()
