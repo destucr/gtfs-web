@@ -5,12 +5,12 @@ A professional, full-stack transit management ecosystem designed for designing, 
 ## 🚀 Key Features
 
 ### 🛠 GTFS Studio (CMS)
-*   **Immersive GIS Workspace**: Full-screen interactive map interface with collapsible sidebars.
-*   **Unified Route Studio**: Manage metadata, geographic paths, and stop sequences in one place.
-*   **Smart Routing (OSRM)**: Drop anchor points and "Snap to Roads" to automatically generate precise geometries following the actual road network.
-*   **Multi-Step Undo**: Robust history tracking for all geographic edits.
-*   **Smart Stops Inventory**: Click-to-add stops with automatic reverse geocoding (Auto-Naming) and draggable coordinate adjustment.
-*   **Cross-Route Assignments**: Easily manage stops shared by multiple service lines (transit hubs).
+*   **Unified Explorer**: High-density dashboard with a dynamic data manifest engine for Operators, Stops, Routes, and Trips.
+*   **Map Designer**: Immersive GIS workspace with real-time road-following path construction (OSRM) and anchor-point snapping.
+*   **Spatial Intelligence**: Multi-layer map highlighting with high-contrast "Halo Previews" for discovery and persistent selection states.
+*   **Smart Node Hub**: One-click contextual stop-to-route assignments with automated reverse geocoding.
+*   **Industrial Standard UX**: Draggable, collapsible hubs with "Ghost Mode" transparency during active map drawing.
+*   **Deterministic Integrity**: Real-time topological health scoring and live system activity auditing.
 
 ### 🌐 Public Web Viewer
 *   **Immersive Map**: Fullscreen map with glassmorphism HUD.
@@ -20,22 +20,22 @@ A professional, full-stack transit management ecosystem designed for designing, 
 
 ## 📸 Screenshots
 
-### Dashboard Overview
+### Unified Explorer Dashboard
 ![Dashboard](./assets/screenshots/dashboard.jpg)
 
-### Stops & Route Assignments
+### Smart Node Hub & Link Assignments
 ![Stops Inventory](./assets/screenshots/stop-and-routes.jpg)
 
-### Transit Operator Network
+### Operator Network Management
 ![Agencies](./assets/screenshots/agencies.jpg)
 
-### Route Studio - Geographic Path Construction
+### Map Designer - Path Construction
 ![Route Studio Path](./assets/screenshots/route-studio-path.jpg)
 
-### Route Studio - Metadata Configuration
+### Map Designer - Configuration
 ![Route Studio Info](./assets/screenshots/route-studio-info.jpg)
 
-### Trip Data Mapping
+### Trip Binding & Schedule Mapping
 ![Trip Mapping](./assets/screenshots/trip-mapping.jpg)
 
 ### Spatial Micro-Interactions (Hover Discovery & Pulsing Feedback)
