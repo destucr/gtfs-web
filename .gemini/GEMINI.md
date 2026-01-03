@@ -1,7 +1,7 @@
 # Gemini Project Context - GTFS-Web
 
 ## Project Overview
-A professional GTFS (General Transit Feed Specification) management ecosystem consisting of a Go backend and two TypeScript frontends (CMS and Public Web).
+A high-performance GTFS management ecosystem consisting of a Go backend and two TypeScript frontends.
 
 ## Tech Stack
 - **Backend**: Go 1.24 (Gin, GORM, PostgreSQL)
@@ -9,22 +9,18 @@ A professional GTFS (General Transit Feed Specification) management ecosystem co
 - **Frontend Web**: React + TypeScript (Vite) - Port 3000
 - **Infrastructure**: Docker Compose (Backend + PostgreSQL)
 
-## Key Configurations
-- **Database Port (Host)**: 5433 (mapped to 5432 in container) to avoid conflict with local PostgreSQL.
-- **Database Credentials**: Managed via `.env` (user: `user`, password: `password`, db: `gtfs_db`).
-- **Backend API**: `http://localhost:8080/api`
+## AI Maintenance Rules (Strict Adherence Required)
+1.  **Architecture**: Follow the **Proximal Hub Overlay Pattern**. Sidebars are for picking; Floating Draggable Hubs are for editing.
+2.  **Layering**: Map is always Layer 0 (`z-0`). All UI components must use `absolute inset-0` with proper `pointer-events` management to avoid clipping.
+3.  **Density**: Adhere to **X-Style High-Density**. Hub width: 320px. Base font: 11px (text-sm/xs). Palette: Monochromatic Zinc.
+4.  **Copywriting**: Use the **Deterministic Formula**: `[System Status] + [Action Warning]`. Avoid jargon like "Manifest" or "Topology." Use "List" or "Connection."
+5.  **Interactivity**: Every button must have a unique, deterministic purpose. Always include `title` tooltips explaining the system action.
+6.  **Deep-Linking**: Maintain the "Thread"—bi-directional jumps between related entities (Stops <-> Routes) must be preserved.
+7.  **Ghost Mode**: Ensure any new floating components support auto-transparency and click-through logic during Map Drawing modes (`quickMode`).
 
-## Development Rules
-- **Health Check**: Always run `npm run build && npm run lint` in both `frontend/cms` and `frontend/web` before finalizing any changes or committing to ensure codebase stability.
-- **Documentation**: Maintain and update `GUIDE.md` whenever new features, shortcuts, or workflow changes are implemented to ensure user documentation is always accurate.
-- **TypeScript**: Strictly follow the defined interfaces in `src/types.ts` for all frontend development.
-
-## Implementation Memories
-- **Persistent Map**: The `MapContainer` is a singleton hosted in `App.tsx` and managed via `WorkspaceContext`. Child components must use the `useWorkspace` hook to update map layers instead of mounting their own map instances.
-- **Auto-Save Engine**: Route Studio implements a 2s debounced persistence layer. Changes to geometry or metadata are synchronized automatically.
-- **Standardized IDs**: Always use the `SHP_[ROUTE_SHORT_NAME]` format for `shape_id` to maintain database readability.
-- **Automated Visuals**: Use `npm run screenshots` from the root directory to programmatically refresh all project visual documentation using Playwright.
-- **UI migration**: The CMS is fully migrated to Tailwind CSS (HIG system), and the Web Viewer is migrated to Mantine UI v7.
+## Health Check & Documentation
+- **Sanity Check**: Always run `npm run build && npm run lint` in both frontend directories before finalizing changes.
+- **Visuals**: Use `npm run screenshots` from the root to refresh visuals after any UI modification.
 ---
 ## Gemini Added Memories
 - The user's GitHub username is destucr.

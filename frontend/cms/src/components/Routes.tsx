@@ -386,7 +386,7 @@ const RouteStudio: React.FC = () => {
                                         
                                         {selectedRoute.id !== 0 && (
                                             <div className="pt-4 mt-4 border-t border-black/[0.03]">
-                                                <button type="button" onClick={() => { if(window.confirm('Terminate this route record?')) api.delete(`/routes/${selectedRoute.id}`).then(refreshData).then(() => setSelectedRoute(null)); }} className="w-full py-2 text-[8px] font-black text-rose-400 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Terminate Record</button>
+                                                <button type="button" onClick={() => { if(window.confirm('Delete this route record permanently?')) api.delete(`/routes/${selectedRoute.id}`).then(refreshData).then(() => setSelectedRoute(null)); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button>
                                             </div>
                                         )}
                                     </div>
