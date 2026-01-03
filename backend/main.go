@@ -44,9 +44,9 @@ func main() {
 		api.PUT("/routes/:id", handlers.UpdateRoute)
 		api.DELETE("/routes/:id", handlers.DeleteRoute)
 
-		api.GET("/routes/:id/stops", handlers.GetRouteStops)
-		api.POST("/routes/:id/stops", handlers.AddStopToRoute)
-		api.PUT("/routes/:id/stops", handlers.UpdateRouteStops)
+		api.GET("/trips/:id/stops", handlers.GetTripStops)
+		api.POST("/trips/:id/stops", handlers.AddStopToTrip)
+		api.PUT("/trips/:id/stops", handlers.UpdateTripStops)
 
 		api.GET("/trips", handlers.GetTrips)
 		api.POST("/trips", handlers.CreateTrip)
@@ -58,6 +58,8 @@ func main() {
 		api.POST("/shapes", handlers.CreateShape)
 		api.PUT("/shapes/:shape_id", handlers.UpdateShape)
 		api.DELETE("/shapes/:shape_id", handlers.DeleteShape)
+
+		api.GET("/export/gtfs", handlers.ExportGTFS)
 	}
 
 	r.Run(":8080")

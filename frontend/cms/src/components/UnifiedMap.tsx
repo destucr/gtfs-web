@@ -29,14 +29,11 @@ const MapController: React.FC = () => {
   useEffect(() => {
     if (mapLayers.focusedPoints && mapLayers.focusedPoints.length > 0) {
       const bounds = L.latLngBounds(mapLayers.focusedPoints);
-      
-      // Calculate responsive padding based on sidebar and hub visibility
-      // Sidebar: 400px, Hub: 320px. We add extra buffer for aesthetic breathing room.
       map.flyToBounds(bounds, { 
         paddingTopLeft: [sidebarOpen ? 440 : 40, 40],
         paddingBottomRight: [360, 40],
         duration: 0.5,
-        maxZoom: 16 // Prevent zooming in too close for single-point entities
+        maxZoom: 16
       });
     }
   }, [mapLayers.focusedPoints, map, sidebarOpen]);

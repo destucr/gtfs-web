@@ -14,7 +14,7 @@ const Trips: React.FC = () => {
     
     // Editor State
     const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
-    const [formData, setFormData] = useState({ route_id: '', headsign: '', shape_id: '' });
+    const [formData, setFormData] = useState({ route_id: '', headsign: '', shape_id: '', service_id: 'DAILY', direction_id: '0' });
     const [activePoints, setActivePoints] = useState<[number, number][]>([]);
     const [isDirty, setIsDirty] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -59,19 +59,17 @@ const Trips: React.FC = () => {
         });
     }, [activePoints, formData.route_id, routes, selectedTrip, setMapLayers]);
 
-    useEffect(() => {
-        if (formData.route_id && !selectedTrip?.id) {
-            const route = routes.find(r => r.id === parseInt(formData.route_id));
-            if (route) { setFormData(prev => ({ ...prev, shape_id: prev.shape_id || `SHP_${route.short_name.toUpperCase()}`, headsign: prev.headsign || route.long_name })); }
-        }
-    }, [formData.route_id, routes, selectedTrip]);
-
     const handleSave = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         setStatus({ message: 'Saving...', type: 'loading' });
         try {
-            if (selectedTrip?.id) await api.put(`/trips/${selectedTrip.id}`, { ...formData, route_id: parseInt(formData.route_id) });
-            else await api.post('/trips', { ...formData, route_id: parseInt(formData.route_id) });
+            const payload = { 
+                ...formData, 
+                route_id: parseInt(formData.route_id), 
+                direction_id: parseInt(formData.direction_id) 
+            };
+            if (selectedTrip?.id) await api.put(`/trips/${selectedTrip.id}`, payload);
+            else await api.post('/trips', payload);
             initialFormData.current = JSON.stringify(formData);
             setIsDirty(false);
             setStatus({ message: 'Saved successfully.', type: 'success' });
@@ -82,7 +80,13 @@ const Trips: React.FC = () => {
 
     const handleSelectTrip = async (trip: Trip) => {
         setSelectedTrip(trip);
-        const data = { route_id: trip.route_id.toString(), headsign: trip.headsign, shape_id: trip.shape_id };
+        const data = { 
+            route_id: trip.route_id.toString(), 
+            headsign: trip.headsign, 
+            shape_id: trip.shape_id,
+            service_id: trip.service_id || 'DAILY',
+            direction_id: (trip.direction_id ?? 0).toString()
+        };
         setFormData(data);
         initialFormData.current = JSON.stringify(data);
         if (trip.shape_id) {
@@ -95,8 +99,8 @@ const Trips: React.FC = () => {
     };
 
     const handleAddNew = () => {
-        setSelectedTrip({ id: 0, route_id: 0, headsign: '', shape_id: '' });
-        const data = { route_id: '', headsign: '', shape_id: '' };
+        setSelectedTrip({ id: 0, route_id: 0, headsign: '', shape_id: '', service_id: 'DAILY', direction_id: 0 });
+        const data = { route_id: '', headsign: '', shape_id: '', service_id: 'DAILY', direction_id: '0' };
         setFormData(data);
         initialFormData.current = JSON.stringify(data);
         setActivePoints([]);
@@ -131,7 +135,7 @@ const Trips: React.FC = () => {
                         <div className="flex items-center gap-3 flex-1 min-w-0"><div className="w-8 h-8 rounded-lg flex items-center justify-center bg-system-blue text-white shadow-lg shrink-0"><Database size={16} /></div><div className="min-w-0"><h2 className="text-sm font-black tracking-tight truncate leading-none mb-0.5">{formData.headsign || 'New'}</h2><p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest truncate">Mapping</p></div></div>
                         <div className="flex items-center gap-0.5"><button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400">{isCollapsed ? <Maximize2 size={14}/> : <Minimize2 size={14}/>}</button><button onClick={() => setSelectedTrip(null)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400 transition-all hover:rotate-90"><X size={16}/></button></div>
                     </div>
-                    {!isCollapsed && (<><div className="flex-1 overflow-y-auto p-4 pt-2 custom-scrollbar"><form onSubmit={handleSave} className="space-y-4"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Master Line</label><select className="hig-input text-[11px] font-bold py-1.5" value={formData.route_id} onChange={e => setFormData({...formData, route_id: e.target.value})} required><option value="">Select...</option>{routes.map(r => <option key={r.id} value={r.id}>{r.short_name} &mdash; {r.long_name}</option>)}</select></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Heading</label><input className="hig-input text-[11px] font-bold py-1.5" value={formData.headsign} onChange={e => setFormData({...formData, headsign: e.target.value})} required /></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Path ID</label><div className="relative"><input className="hig-input text-[11px] font-mono py-1.5 pr-8 uppercase" value={formData.shape_id} onChange={e => setFormData({...formData, shape_id: e.target.value})} required /><div className="absolute right-2.5 top-2 text-[7px] bg-black/5 px-1 rounded font-black opacity-40">ID</div></div></div><div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100"><div className="flex items-center gap-2 mb-1 text-zinc-400"><Navigation size={12}/><span className="text-[8px] font-black uppercase">Geometry</span></div><div className="text-[10px] font-bold text-zinc-600 leading-relaxed">{activePoints.length > 0 ? `${activePoints.length} points.` : 'No path.'}</div></div>{selectedTrip.id !== 0 && (<div className="pt-4 mt-4 border-t border-black/[0.03]"><button type="button" onClick={() => { if(window.confirm('Delete this mapping record permanently?')) api.delete(`/trips/${selectedTrip.id}`).then(fetchInitialData).then(() => setSelectedTrip(null)); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}</form></div><div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0 flex justify-center"><button onClick={() => handleSave()} disabled={!isDirty} className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"><Save size={14}/> Commit Changes</button></div></>)}
+                    {!isCollapsed && (<><div className="flex-1 overflow-y-auto p-4 pt-2 custom-scrollbar"><form onSubmit={handleSave} className="space-y-4"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Master Line</label><select className="hig-input text-[11px] font-bold py-1.5" value={formData.route_id} onChange={e => setFormData({...formData, route_id: e.target.value})} required><option value="">Select...</option>{routes.map(r => <option key={r.id} value={r.id}>{r.short_name} &mdash; {r.long_name}</option>)}</select></div><div className="grid grid-cols-2 gap-3"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Service ID</label><input className="hig-input text-[11px] font-bold py-1.5 uppercase" placeholder="e.g. DAILY" value={formData.service_id} onChange={e => setFormData({...formData, service_id: e.target.value})} required /></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Direction</label><select className="hig-input text-[11px] font-bold py-1.5" value={formData.direction_id} onChange={e => setFormData({...formData, direction_id: e.target.value})} required><option value="0">0 - Outbound</option><option value="1">1 - Inbound</option></select></div></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Heading</label><input className="hig-input text-[11px] font-bold py-1.5" value={formData.headsign} onChange={e => setFormData({...formData, headsign: e.target.value})} required /></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Path ID</label><div className="relative"><input className="hig-input text-[11px] font-mono py-1.5 pr-8 uppercase" value={formData.shape_id} onChange={e => setFormData({...formData, shape_id: e.target.value})} required /><div className="absolute right-2.5 top-2 text-[7px] bg-black/5 px-1 rounded font-black opacity-40">ID</div></div></div><div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100"><div className="flex items-center gap-2 mb-1 text-zinc-400"><Navigation size={12}/><span className="text-[8px] font-black uppercase">Geometry</span></div><div className="text-[10px] font-bold text-zinc-600 leading-relaxed">{activePoints.length > 0 ? `${activePoints.length} points.` : 'No path.'}</div></div>{selectedTrip.id !== 0 && (<div className="pt-4 mt-4 border-t border-black/[0.03]"><button type="button" onClick={() => { if(window.confirm('Delete this mapping record permanently?')) api.delete(`/trips/${selectedTrip.id}`).then(fetchInitialData).then(() => setSelectedTrip(null)); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}</form></div><div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0 flex justify-center"><button onClick={() => handleSave()} disabled={!isDirty} className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"><Save size={14}/> Commit Changes</button></div></>)}
                 </motion.div>
             )}
         </div>
