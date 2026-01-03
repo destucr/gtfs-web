@@ -215,7 +215,41 @@ func DeleteAgency(c *gin.Context) {
 
 func GetStops(c *gin.Context) {
 	var stops []models.Stop
-	database.DB.Find(&stops)
+	if err := database.DB.Find(&stops).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stops"})
+		return
+	}
+
+	// Optimize: Fetch all stop-route validations in one query
+	// We want distinct route_ids for each stop based on trip_stops -> trips
+	type Result struct {
+		StopID  uint
+		RouteID uint
+	}
+	var results []Result
+	if err := database.DB.Table("trip_stops").
+		Select("DISTINCT trip_stops.stop_id, trips.route_id").
+		Joins("JOIN trips ON trips.id = trip_stops.trip_id").
+		Scan(&results).Error; err != nil {
+		// Log but don't fail - stops can still be returned without route associations
+		fmt.Printf("Warning: Failed to fetch route associations: %v\n", err)
+	}
+
+	// Build map
+	routeMap := make(map[uint][]uint)
+	for _, r := range results {
+		routeMap[r.StopID] = append(routeMap[r.StopID], r.RouteID)
+	}
+
+	// Assign to stops
+	for i := range stops {
+		if rIDs, ok := routeMap[stops[i].ID]; ok {
+			stops[i].RouteIDs = rIDs
+		} else {
+			stops[i].RouteIDs = []uint{}
+		}
+	}
+
 	c.JSON(http.StatusOK, stops)
 }
 

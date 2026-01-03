@@ -3,6 +3,7 @@ export interface Stop {
   name: string;
   lat: number;
   lon: number;
+  route_ids?: number[]; // From backend hydration
 }
 
 export interface Route {

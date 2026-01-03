@@ -8,10 +8,11 @@ type Agency struct {
 }
 
 type Stop struct {
-	ID   uint    `gorm:"primaryKey" json:"id"`
-	Name string  `json:"name"`
-	Lat  float64 `json:"lat"`
-	Lon  float64 `json:"lon"`
+	ID       uint    `gorm:"primaryKey" json:"id"`
+	Name     string  `json:"name"`
+	Lat      float64 `json:"lat"`
+	Lon      float64 `json:"lon"`
+	RouteIDs []uint  `gorm:"-" json:"route_ids"` // Hydrated field
 }
 
 type Route struct {
