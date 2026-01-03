@@ -40,7 +40,10 @@ func ExportGTFS(c *gin.Context) {
 			strconv.Itoa(int(a.ID)), a.Name, a.Url, a.Timezone, "en",
 		})
 	}
-	createCSV("agency.txt", []string{"agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang"}, agencyData)
+	if err := createCSV("agency.txt", []string{"agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang"}, agencyData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create agency.txt: " + err.Error()})
+		return
+	}
 
 	// 2. stops.txt
 	var stops []models.Stop
@@ -51,7 +54,10 @@ func ExportGTFS(c *gin.Context) {
 			strconv.Itoa(int(s.ID)), s.Name, fmt.Sprintf("%f", s.Lat), fmt.Sprintf("%f", s.Lon), "0",
 		})
 	}
-	createCSV("stops.txt", []string{"stop_id", "stop_name", "stop_lat", "stop_lon", "location_type"}, stopData)
+	if err := createCSV("stops.txt", []string{"stop_id", "stop_name", "stop_lat", "stop_lon", "location_type"}, stopData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create stops.txt: " + err.Error()})
+		return
+	}
 
 	// 3. routes.txt
 	var routes []models.Route
@@ -66,7 +72,10 @@ func ExportGTFS(c *gin.Context) {
 			strconv.Itoa(int(r.ID)), strconv.Itoa(int(r.AgencyID)), r.ShortName, r.LongName, rType, r.Color,
 		})
 	}
-	createCSV("routes.txt", []string{"route_id", "agency_id", "route_short_name", "route_long_name", "route_type", "route_color"}, routeData)
+	if err := createCSV("routes.txt", []string{"route_id", "agency_id", "route_short_name", "route_long_name", "route_type", "route_color"}, routeData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create routes.txt: " + err.Error()})
+		return
+	}
 
 	// 4. trips.txt
 	var trips []models.Trip
@@ -81,7 +90,10 @@ func ExportGTFS(c *gin.Context) {
 			strconv.Itoa(int(t.RouteID)), sID, strconv.Itoa(int(t.ID)), t.Headsign, t.ShapeID,
 		})
 	}
-	createCSV("trips.txt", []string{"route_id", "service_id", "trip_id", "trip_headsign", "shape_id"}, tripData)
+	if err := createCSV("trips.txt", []string{"route_id", "service_id", "trip_id", "trip_headsign", "shape_id"}, tripData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create trips.txt: " + err.Error()})
+		return
+	}
 
 	// 5. stop_times.txt
 	var routeStops []models.RouteStop
@@ -107,7 +119,10 @@ func ExportGTFS(c *gin.Context) {
 			})
 		}
 	}
-	createCSV("stop_times.txt", []string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"}, stopTimeData)
+	if err := createCSV("stop_times.txt", []string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"}, stopTimeData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create stop_times.txt: " + err.Error()})
+		return
+	}
 
 	// 6. shapes.txt
 	var shapePoints []models.ShapePoint
@@ -118,15 +133,24 @@ func ExportGTFS(c *gin.Context) {
 			p.ShapeID, fmt.Sprintf("%f", p.Lat), fmt.Sprintf("%f", p.Lon), strconv.Itoa(p.Sequence),
 		})
 	}
-	createCSV("shapes.txt", []string{"shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence"}, shapeData)
+	if err := createCSV("shapes.txt", []string{"shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence"}, shapeData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create shapes.txt: " + err.Error()})
+		return
+	}
 
 	// 7. calendar.txt (Minimal default)
 	calendarData := [][]string{
 		{"DAILY", "1", "1", "1", "1", "1", "1", "1", "20250101", "20261231"},
 	}
-	createCSV("calendar.txt", []string{"service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"}, calendarData)
+	if err := createCSV("calendar.txt", []string{"service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"}, calendarData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create calendar.txt: " + err.Error()})
+		return
+	}
 
-	zw.Close()
+	if err := zw.Close(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finalize ZIP archive: " + err.Error()})
+		return
+	}
 
 	c.Header("Content-Disposition", "attachment; filename=gtfs_export.zip")
 	c.Header("Content-Type", "application/zip")
