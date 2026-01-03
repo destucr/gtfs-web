@@ -9,11 +9,13 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [selectedEntityId, setSelectedEntityId] = useState<number | null>(null);
   const [hoveredEntityId, setHoveredEntityId] = useState<number | null>(null);
 
+  // Raw states for handlers
   const [onMapClick, setOnMapClickRaw] = useState<((latlng: { lat: number, lng: number }) => void) | null>(null);
   const [onShapePointMove, setOnShapePointMoveRaw] = useState<((index: number, latlng: { lat: number, lng: number }) => void) | undefined>();
   const [onShapePointDelete, setOnShapePointDeleteRaw] = useState<((index: number) => void) | undefined>();
   const [onShapePointInsert, setOnShapePointInsertRaw] = useState<((index: number, latlng: { lat: number, lng: number }) => void) | undefined>();
 
+  // Optimized setters that prevent the functional-update "Double-Wrapping" bug
   const setOnMapClick = useCallback((cb: ((latlng: { lat: number, lng: number }) => void) | null) => {
     setOnMapClickRaw(() => cb);
   }, []);

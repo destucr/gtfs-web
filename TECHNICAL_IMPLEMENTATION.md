@@ -22,7 +22,8 @@ The project is structured into a Go-based Backend and two TypeScript-powered Fro
 - **Database**: PostgreSQL (v15+)
 - **Framework**: Gin
 - **ORM**: GORM (with Auto-Migrate enabled)
-- **Optionality Handling**: Pointer types used for optional GTFS fields (`route_type`, `text_color`, etc.) to ensure correct `null` serialization for the frontend.
+- **GTFS Compliance**: Support for `service_id`, `direction_id`, `arrival_time`, and `departure_time` across models.
+- **Export Engine**: Server-side ZIP generation for standard GTFS bundles (`agency`, `stops`, `routes`, `trips`, `stop_times`, `shapes`, `calendar`).
 
 ## Frontend: CMS (High-Density GIS IDE)
 - **Framework**: React + TypeScript (Vite)
@@ -30,27 +31,25 @@ The project is structured into a Go-based Backend and two TypeScript-powered Fro
 - **UI Standard**: **X-Style High-Density** (11px base typography, monochromatic zinc palette)
 
 ### Key Architectural Patterns:
-- **Absolute Overlay Architecture**: Map is Layer 0 (`z-0`). UI is Layer 10+ using `absolute inset-0` with optimized `pointer-events` management.
-- **State Handler Stability**: Implemented the `setX(() => handler)` pattern for context-based callback functions. This prevents unintended function execution during React's state reconciliation cycle.
-- **Intelligent Visual Filtering**: To prevent icon flickering and double-rendering, the map logic dynamically filters active/selected entities out of the general registry layer.
-- **Multi-Layer Highlighting**:
-    - **Selection (Persistent)**: Solid high-opacity lines representing the active editing context.
-    - **Discovery (Transient)**: "Halo Previews" (colored lines with white background halos) triggered by hover for high-contrast data discovery.
-- **Unified Registry Explorer**: Dynamic Pane Engine allows switching between data manifests without page reloads.
-- **Deterministic UX**: Standardized **"Commit Changes"** primary CTAs and **"Delete Record"** secondary CTAs across all modules.
+- **Absolute Overlay Architecture**: Map is Layer 0 (`z-0`). UI is Layer 10+ using `absolute inset-0`.
+- **Flow-Based Timing Engine**: Implemented a propagation logic for scheduling. Changing a "Start Time" or "Travel Duration" automatically recalculates the entire line's schedule.
+- **State Handler Stability**: Functional setter pattern (`setX(() => handler)`) for context callbacks to prevent premature execution.
+- **Bulk Data Retrieval**: Optimized shape fetching using a specialized bulk endpoint to prevent network congestion.
+- **Persistent Highlighting**: Selection-based route persistence combined with transient "Halo Previews" for discovery.
 
 ## Frontend: Web (Public Viewer)
 - **Framework**: React + TypeScript (Vite)
 - **UI Library**: Mantine UI v7
-- **Features**: Immersive fullscreen map with dark mode and 5s real-time data sync.
+- **Features**: Immersive fullscreen map with real-time sync.
 
 ---
 
-## Technical Change Log (Refinement Phase)
+## Technical Change Log (Standardization Phase)
 
-### Jan 2, 2026 - UX & Stability Audit
-- **State Logic**: Refactored `WorkspaceContext` to use stable functional setters for map handlers.
-- **Visual Cleanup**: Simplified stop markers to a single-pulse design. Resolved double-render overlap bugs.
-- **Type Safety**: Achieved 100% TS compliance across both frontends. Fixed missing properties in `MapLayers` and asset import errors.
-- **Highlighting**: Implemented persistent vs. transient route highlighting logic in the Stops module.
-- **Standardization**: Unified button labeling, layout (flex-centered), and positioning for all record lifecycle actions.
+### Jan 3, 2026 - GTFS Compliance & Export
+- **Export Engine**: Implemented `ExportGTFS` handler to generate Google-compliant ZIP bundles.
+- **Scheduling UX**: Created the **Unified Timing Node** and **Flow Designer** for high-speed schedule authoring.
+- **Model Sync**: Updated physical PostgreSQL schema with pointers for optional fields and new temporal columns.
+- **GIS Centering**: Standardized all marker anchors and flex-centering for 100% coordinate precision.
+- **Visual Robustness**: Refactored all Leaflet icons to use inline CSS and raw keyframes, ensuring consistent rendering outside the React JIT cycle.
+- **Performance**: Integrated `AbortController` for all async geometry updates to eliminate race conditions.

@@ -28,7 +28,9 @@ export interface Trip {
   id: number;
   route_id: number;
   route?: Route;
+  service_id?: string;
   headsign: string;
+  direction_id?: number;
   shape_id: string;
 }
 
@@ -46,6 +48,8 @@ export interface RouteStop {
   stop_id: number;
   stop?: Stop;
   sequence: number;
+  arrival_time?: string;
+  departure_time?: string;
 }
 
 export interface MapLayerRoute {

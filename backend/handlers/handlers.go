@@ -1,13 +1,137 @@
 package handlers
 
 import (
+	"archive/zip"
+	"bytes"
+	"encoding/csv"
 	"fmt"
 	"gtfs-cms/database"
 	"gtfs-cms/models"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
+
+// ExportGTFS generates a ZIP file with standard GTFS text files
+func ExportGTFS(c *gin.Context) {
+	buf := new(bytes.Buffer)
+	zw := zip.NewWriter(buf)
+
+	// Helper to create CSV files in ZIP
+	createCSV := func(name string, headers []string, data [][]string) error {
+		f, err := zw.Create(name)
+		if err != nil {
+			return err
+		}
+		w := csv.NewWriter(f)
+		if err := w.Write(headers); err != nil {
+			return err
+		}
+		return w.WriteAll(data)
+	}
+
+	// 1. agency.txt
+	var agencies []models.Agency
+	database.DB.Find(&agencies)
+	agencyData := [][]string{}
+	for _, a := range agencies {
+		agencyData = append(agencyData, []string{
+			strconv.Itoa(int(a.ID)), a.Name, a.Url, a.Timezone, "en",
+		})
+	}
+	createCSV("agency.txt", []string{"agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang"}, agencyData)
+
+	// 2. stops.txt
+	var stops []models.Stop
+	database.DB.Find(&stops)
+	stopData := [][]string{}
+	for _, s := range stops {
+		stopData = append(stopData, []string{
+			strconv.Itoa(int(s.ID)), s.Name, fmt.Sprintf("%f", s.Lat), fmt.Sprintf("%f", s.Lon), "0",
+		})
+	}
+	createCSV("stops.txt", []string{"stop_id", "stop_name", "stop_lat", "stop_lon", "location_type"}, stopData)
+
+	// 3. routes.txt
+	var routes []models.Route
+	database.DB.Find(&routes)
+	routeData := [][]string{}
+	for _, r := range routes {
+		rType := "3" // Bus default
+		if r.RouteType != nil {
+			rType = strconv.Itoa(*r.RouteType)
+		}
+		routeData = append(routeData, []string{
+			strconv.Itoa(int(r.ID)), strconv.Itoa(int(r.AgencyID)), r.ShortName, r.LongName, rType, r.Color,
+		})
+	}
+	createCSV("routes.txt", []string{"route_id", "agency_id", "route_short_name", "route_long_name", "route_type", "route_color"}, routeData)
+
+	// 4. trips.txt
+	var trips []models.Trip
+	database.DB.Find(&trips)
+	tripData := [][]string{}
+	for _, t := range trips {
+		sID := t.ServiceID
+		if sID == "" {
+			sID = "DAILY"
+		}
+		tripData = append(tripData, []string{
+			strconv.Itoa(int(t.RouteID)), sID, strconv.Itoa(int(t.ID)), t.Headsign, t.ShapeID,
+		})
+	}
+	createCSV("trips.txt", []string{"route_id", "service_id", "trip_id", "trip_headsign", "shape_id"}, tripData)
+
+	// 5. stop_times.txt
+	var routeStops []models.RouteStop
+	database.DB.Find(&routeStops)
+	// We need to map RouteID to TripIDs because our model links stops to routes
+	// Standard GTFS links stops to trips.
+	stopTimeData := [][]string{}
+	for _, rs := range routeStops {
+		// Find all trips for this route
+		var tripsForRoute []models.Trip
+		database.DB.Where("route_id = ?", rs.RouteID).Find(&tripsForRoute)
+		for _, t := range tripsForRoute {
+			arr := rs.ArrivalTime
+			if arr == "" {
+				arr = "08:00:00"
+			}
+			dep := rs.DepartureTime
+			if dep == "" {
+				dep = "08:00:00"
+			}
+			stopTimeData = append(stopTimeData, []string{
+				strconv.Itoa(int(t.ID)), arr, dep, strconv.Itoa(int(rs.StopID)), strconv.Itoa(rs.Sequence),
+			})
+		}
+	}
+	createCSV("stop_times.txt", []string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"}, stopTimeData)
+
+	// 6. shapes.txt
+	var shapePoints []models.ShapePoint
+	database.DB.Order("shape_id, sequence asc").Find(&shapePoints)
+	shapeData := [][]string{}
+	for _, p := range shapePoints {
+		shapeData = append(shapeData, []string{
+			p.ShapeID, fmt.Sprintf("%f", p.Lat), fmt.Sprintf("%f", p.Lon), strconv.Itoa(p.Sequence),
+		})
+	}
+	createCSV("shapes.txt", []string{"shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence"}, shapeData)
+
+	// 7. calendar.txt (Minimal default)
+	calendarData := [][]string{
+		{"DAILY", "1", "1", "1", "1", "1", "1", "1", "20250101", "20261231"},
+	}
+	createCSV("calendar.txt", []string{"service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"}, calendarData)
+
+	zw.Close()
+
+	c.Header("Content-Disposition", "attachment; filename=gtfs_export.zip")
+	c.Header("Content-Type", "application/zip")
+	c.Data(http.StatusOK, "application/zip", buf.Bytes())
+}
 
 // --- Agency ---
 

@@ -146,6 +146,15 @@ const Home: React.FC = () => {
             <div className={`w-1.5 h-1.5 rounded-full ${health === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
             <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">{health === 'online' ? 'All systems ready' : 'Server error'}</span>
           </div>
+          <div className="pt-4 px-2">
+            <button 
+              onClick={() => window.open('http://localhost:8080/api/export/gtfs', '_blank')}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-white border border-zinc-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-all shadow-sm active:scale-95"
+              title="Export standard GTFS ZIP bundle."
+            >
+              <Database size={14} /> Export Bundle
+            </button>
+          </div>
         </div>
         <div className="p-4 bg-zinc-900 text-white group cursor-pointer overflow-hidden relative" onClick={() => navigate('/routes')}>
           <div className="relative z-10 flex items-center justify-between w-full">

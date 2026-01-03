@@ -58,6 +58,8 @@ func main() {
 		api.POST("/shapes", handlers.CreateShape)
 		api.PUT("/shapes/:shape_id", handlers.UpdateShape)
 		api.DELETE("/shapes/:shape_id", handlers.DeleteShape)
+
+		api.GET("/export/gtfs", handlers.ExportGTFS)
 	}
 
 	r.Run(":8080")

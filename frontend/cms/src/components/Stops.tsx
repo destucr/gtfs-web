@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
 import { MapPin, Plus, Trash2, Search, Loader2, CheckCircle2, ChevronRight, X, Maximize2, Minimize2, Bus, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -10,8 +10,10 @@ import { SidebarHeader } from './SidebarHeader';
 import { Route, Stop, RouteStop, Trip, ShapePoint } from '../types';
 
 const Stops: React.FC = () => {
-    const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, hoveredEntityId, setHoveredEntityId } = useWorkspace();
+    const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, hoveredEntityId } = useWorkspace();
     const navigate = useNavigate();
+    
+    // Registry Data
     const [stops, setStops] = useState<Stop[]>([]);
     const [routes, setRoutes] = useState<Route[]>([]);
     const [stopRouteMap, setStopRouteMap] = useState<Record<number, Route[]>>({});
@@ -20,18 +22,24 @@ const Stops: React.FC = () => {
     // Editor State
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
     const [formData, setFormData] = useState<Stop>({ id: 0, name: '', lat: 0, lon: 0 });
+    const [originalData, setOriginalData] = useState<Stop | null>(null);
+    
+    // UI State
     const [activeTab, setActiveTab] = useState<'info' | 'bindings'>('info');
-    const [isDirty, setIsDirty] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
-    const initialFormData = useRef<string>('');
-
     const [isNaming, setIsNaming] = useState(false);
     const [focusedRouteId, setFocusedRouteId] = useState<number | null>(null);
     const [routeShapes, setRouteShapes] = useState<Record<number, [number, number][]>>({});
     const [hoveredRouteIds, setHoveredRouteIds] = useState<number[]>([]);
     const [selectedStopRouteIds, setSelectedStopRouteIds] = useState<number[]>([]);
     const [focusType, setFocusType] = useState<'select' | 'hover' | null>(null);
+
+    // Calculate Dirty State
+    const isDirty = useMemo(() => {
+        if (!selectedStop || !originalData) return false;
+        return JSON.stringify(formData) !== JSON.stringify(originalData);
+    }, [formData, originalData, selectedStop]);
 
     const fetchInitialData = useCallback(async () => {
         setStatus({ message: 'Syncing...', type: 'loading' });
@@ -77,25 +85,25 @@ const Stops: React.FC = () => {
         }
     };
 
-    const handleSelectStop = async (stop: Stop) => {
+    const handleSelectStop = useCallback(async (stop: Stop) => {
         setQuickMode(null);
         setSelectedStop(stop);
-        setFormData(stop);
+        setFormData({ ...stop });
+        setOriginalData({ ...stop });
         setActiveTab('info');
         setFocusType('select');
-        initialFormData.current = JSON.stringify(stop);
 
         const routesForStop = stopRouteMap[stop.id] || [];
         setSelectedStopRouteIds([]);
         await Promise.all(routesForStop.map(r => handleRouteHighlight(r.id, true)));
-    };
+    }, [stopRouteMap, setQuickMode]);
 
     useEffect(() => {
         if (selectedEntityId && stops.length > 0) {
             const stop = stops.find(s => s.id === selectedEntityId);
             if (stop) { handleSelectStop(stop); setSelectedEntityId(null); }
         }
-    }, [selectedEntityId, stops, setSelectedEntityId]);
+    }, [selectedEntityId, stops, handleSelectStop, setSelectedEntityId]);
 
     const handleStopHover = async (stopId: number | null) => {
         setHoveredEntityId(stopId);
@@ -107,9 +115,20 @@ const Stops: React.FC = () => {
         } else { setHoveredRouteIds([]); }
     };
 
+    const handleAddNew = useCallback(() => {
+        setQuickMode(null);
+        const newStop = { id: 0, name: '', lat: 0, lon: 0 };
+        setSelectedStop(newStop);
+        setFormData({ ...newStop });
+        setOriginalData({ ...newStop });
+        setActiveTab('info');
+        setFocusType('select');
+        setSelectedStopRouteIds([]);
+    }, [setQuickMode]);
+
     useEffect(() => {
         if (quickMode === 'add-stop' && !selectedStop) { handleAddNew(); }
-    }, [quickMode, selectedStop]);
+    }, [quickMode, selectedStop, handleAddNew]);
 
     const handleMapClick = useCallback(async (latlng: { lat: number, lng: number }) => {
         if (selectedStop || quickMode === 'add-stop') {
@@ -127,42 +146,31 @@ const Stops: React.FC = () => {
     }, [selectedStop, quickMode, setQuickMode]);
 
     useEffect(() => {
-        setOnMapClick(() => handleMapClick);
+        setOnMapClick(handleMapClick);
         return () => setOnMapClick(null);
     }, [handleMapClick, setOnMapClick]);
 
     useEffect(() => {
-        const current = JSON.stringify(formData);
-        const dirty = current !== initialFormData.current && initialFormData.current !== '';
-        setIsDirty(dirty);
-        if (dirty) setStatus({ message: 'Unsaved edits. Save to sync.', type: 'info', isDirty: true });
+        if (isDirty) setStatus({ message: 'Unsaved edits. Save to sync.', type: 'info', isDirty: true });
         else if (selectedStop) setStatus({ message: 'All changes saved.', type: 'info', isDirty: false });
-    }, [formData, selectedStop, setStatus]);
+        else setStatus(null);
+    }, [isDirty, selectedStop, setStatus]);
 
     const handleSave = useCallback(async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         setStatus({ message: 'Saving...', type: 'loading' });
         try {
             if (selectedStop?.id) await api.put(`/stops/${selectedStop.id}`, formData);
-            else await api.post('/stops', formData);
-            initialFormData.current = JSON.stringify(formData);
-            setIsDirty(false);
+            else {
+                const res = await api.post('/stops', formData);
+                setSelectedStop(res.data);
+            }
+            setOriginalData({ ...formData });
             setStatus({ message: 'Saved successfully.', type: 'success' });
             setTimeout(() => setStatus(null), 2000);
             fetchInitialData();
         } catch (err) { setStatus({ message: 'Save failed.', type: 'error' }); }
     }, [formData, selectedStop, fetchInitialData, setStatus]);
-
-    const handleAddNew = () => {
-        setQuickMode(null);
-        const newStop = { id: 0, name: '', lat: 0, lon: 0 };
-        setSelectedStop(newStop);
-        setFormData(newStop);
-        setActiveTab('info');
-        setFocusType('select');
-        setSelectedStopRouteIds([]);
-        initialFormData.current = JSON.stringify(newStop);
-    };
 
     const toggleStopInRoute = async (stop: Stop, routeId: number) => {
         const currentRoutes = stopRouteMap[stop.id] || [];
@@ -257,16 +265,7 @@ const Stops: React.FC = () => {
                         <div className="flex items-center gap-3 flex-1 min-w-0"><div className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-500 text-white shadow-lg shrink-0"><MapPin size={16} /></div><div className="min-w-0"><h2 className="text-sm font-black tracking-tight truncate leading-none mb-0.5">{formData.name || 'Unlabeled'}</h2><p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest truncate">Stop Details</p></div></div>
                         <div className="flex items-center gap-0.5"><button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400">{isCollapsed ? <Maximize2 size={14}/> : <Minimize2 size={14}/>}</button><button onClick={() => setSelectedStop(null)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400 transition-all hover:rotate-90"><X size={16}/></button></div>
                     </div>
-                    {!isCollapsed && (<><div className="px-4 py-2 shrink-0"><div className="bg-black/5 p-1 rounded-lg flex gap-0.5 border border-black/5">{(['info', 'bindings'] as const).map((tab) => (<button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-1.5 rounded-md text-[9px] font-black uppercase tracking-tight transition-all ${activeTab === tab ? 'bg-white text-system-blue shadow-sm' : 'text-zinc-400 hover:text-black'}`}>{tab === 'info' ? 'Details' : 'Links'}</button>))}</div></div><div className="flex-1 overflow-y-auto p-4 pt-2 custom-scrollbar">{activeTab === 'info' && (<form onSubmit={handleSave} className="space-y-4 animate-in fade-in duration-300"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Name</label><div className="relative"><input className="hig-input text-[11px] font-bold py-1.5 pr-8" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />{isNaming && <Loader2 size={12} className="animate-spin absolute right-2.5 top-2.5 text-system-blue" />}</div></div><div className="grid grid-cols-2 gap-3"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Lat</label><input type="number" step="any" className="hig-input text-[10px] font-mono py-1.5" value={formData.lat} onChange={e => setFormData({...formData, lat: parseFloat(e.target.value)})} required /></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Lon</label><input type="number" step="any" className="hig-input text-[10px] font-mono py-1.5" value={formData.lon} onChange={e => setFormData({...formData, lon: parseFloat(e.target.value)})} required /></div></div><div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100 text-center"><p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Drag marker on map to move.</p></div>{selectedStop.id !== 0 && (<div className="pt-4 mt-4 border-t border-black/[0.03]"><button type="button" onClick={() => { if(window.confirm('Delete this stop record permanently?')) api.delete(`/stops/${selectedStop.id}`).then(fetchInitialData).then(() => setSelectedStop(null)); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}</form>)}{activeTab === 'bindings' && (<div className="space-y-3 animate-in fade-in duration-300"><div className="flex items-center justify-between mb-1 px-1"><h4 className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">One-Click Toggle</h4></div><div className="space-y-1.5 max-h-96 overflow-y-auto pr-1.5 custom-scrollbar">{routes.map(r => {const isAssigned = (stopRouteMap[selectedStop.id] || []).some(assigned => assigned.id === r.id);return (<div key={r.id} onMouseEnter={() => handleRouteHighlight(r.id, false)} onMouseLeave={() => handleRouteHighlight(r.id, false)} className={`p-2.5 rounded-xl flex items-center justify-between transition-all border ${isAssigned ? 'border-system-blue bg-system-blue/5 shadow-sm scale-[1.02]' : 'border-black/5 bg-white hover:border-black/10'}`}><div onClick={() => toggleStopInRoute(selectedStop, r.id)} className="flex-1 flex items-center gap-2.5 cursor-pointer"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: `#${r.color}` }} /><span className="font-black text-[10px] text-zinc-900">{r.short_name} &mdash; {r.long_name}</span></div><div className="flex items-center gap-1"><button onClick={(e) => { e.stopPropagation(); setSelectedEntityId(r.id); navigate('/routes'); }} className="p-1 hover:bg-system-blue hover:text-white rounded-md transition-all text-system-blue/40"><Bus size={12} /></button>{isAssigned ? <CheckCircle2 size={14} className="text-system-blue" /> : <Plus size={14} className="text-zinc-200" />}</div></div>);})}</div></div>)}</div>                            <div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0 flex justify-center">
-                                <button 
-                                    onClick={handleSave} 
-                                    disabled={!isDirty} 
-                                    className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase hover:bg-blue-600"
-                                >
-                                    <Save size={14}/> Commit Changes
-                                </button>
-                            </div>
-</>)}
+                    {!isCollapsed && (<><div className="px-4 py-2 shrink-0"><div className="bg-black/5 p-1 rounded-lg flex gap-0.5 border border-black/5">{(['info', 'bindings'] as const).map((tab) => (<button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-1.5 rounded-md text-[9px] font-black uppercase tracking-tight transition-all ${activeTab === tab ? 'bg-white text-system-blue shadow-sm' : 'text-zinc-400 hover:text-black'}`}>{tab === 'info' ? 'Details' : 'Links'}</button>))}</div></div><div className="flex-1 overflow-y-auto p-4 pt-2 custom-scrollbar">{activeTab === 'info' && (<form onSubmit={handleSave} className="space-y-4 animate-in fade-in duration-300"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Name</label><div className="relative"><input className="hig-input text-[11px] font-bold py-1.5 pr-8" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />{isNaming && <Loader2 size={12} className="animate-spin absolute right-2.5 top-2.5 text-system-blue" />}</div></div><div className="grid grid-cols-2 gap-3"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Lat</label><input type="number" step="any" className="hig-input text-[10px] font-mono py-1.5" value={formData.lat} onChange={e => setFormData({...formData, lat: parseFloat(e.target.value)})} required /></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Lon</label><input type="number" step="any" className="hig-input text-[10px] font-mono py-1.5" value={formData.lon} onChange={e => setFormData({...formData, lon: parseFloat(e.target.value)})} required /></div></div><div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100 text-center"><p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Drag marker on map to move.</p></div>{selectedStop.id !== 0 && (<div className="pt-4 mt-4 border-t border-black/[0.03]"><button type="button" onClick={() => { if(window.confirm('Delete this stop record permanently?')) api.delete(`/stops/${selectedStop.id}`).then(fetchInitialData).then(() => setSelectedStop(null)); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}</form>)}{activeTab === 'bindings' && (<div className="space-y-3 animate-in fade-in duration-300"><div className="flex items-center justify-between mb-1 px-1"><h4 className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">One-Click Toggle</h4></div><div className="space-y-1.5 max-h-96 overflow-y-auto pr-1.5 custom-scrollbar">{routes.map(r => {const isAssigned = (stopRouteMap[selectedStop.id] || []).some(assigned => assigned.id === r.id);return (<div key={r.id} onMouseEnter={() => handleRouteHighlight(r.id, false)} onMouseLeave={() => handleRouteHighlight(r.id, false)} className={`p-2.5 rounded-xl flex items-center justify-between transition-all border ${isAssigned ? 'border-system-blue bg-system-blue/5 shadow-sm scale-[1.02]' : 'border-black/5 bg-white hover:border-black/10'}`}><div onClick={() => toggleStopInRoute(selectedStop, r.id)} className="flex-1 flex items-center gap-2.5 cursor-pointer"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: `#${r.color}` }} /><span className="font-black text-[10px] text-zinc-900">{r.short_name} &mdash; {r.long_name}</span></div><div className="flex items-center gap-1"><button onClick={(e) => { e.stopPropagation(); setSelectedEntityId(r.id); navigate('/routes'); }} className="p-1 hover:bg-system-blue hover:text-white rounded-md transition-all text-system-blue/40"><Bus size={12} /></button>{isAssigned ? <CheckCircle2 size={14} className="text-system-blue" /> : <Plus size={14} className="text-zinc-200" />}</div></div>);})}</div></div>)}</div><div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0 flex justify-center"><button onClick={handleSave} disabled={!isDirty} className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"><Save size={14}/> Commit Changes</button></div></>)}
                 </motion.div>
             )}
         </div>
