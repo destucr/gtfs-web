@@ -8,6 +8,7 @@ const PAGES = [
   { name: 'route-studio-path', url: 'http://localhost:5173/routes' },
   { name: 'route-studio-info', url: 'http://localhost:5173/routes' },
   { name: 'trip-mapping', url: 'http://localhost:5173/trips' },
+  { name: 'micro-interactions', url: 'http://localhost:5173/stops' }, // New interaction showcase
 ];
 
 const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
@@ -16,7 +17,7 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
   console.log('🚀 Starting automated screenshot capture with framed mockups...');
   const browser = await chromium.launch();
   const context = await browser.newContext({
-    viewport: { width: 1600, height: 1000 }, // Larger viewport to accommodate frame
+    viewport: { width: 1600, height: 1000 },
     deviceScaleFactor: 2,
   });
   const page = await context.newPage();
@@ -28,40 +29,53 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
         console.log(`📸 Capturing ${item.name}...`);
         await page.goto(item.url, { waitUntil: 'networkidle' });
         
-        // Interaction logic
+        // --- Interaction Logic ---
+        
+        // Common selection logic for lists
+        const selectFirstItem = async () => {
+            await page.waitForSelector('div[class*="cursor-pointer"]', { timeout: 10000 });
+            const items = await page.$$('div[class*="cursor-pointer"]');
+            if (items.length > 0) await items[0].click();
+        };
+
         if (item.name === 'route-studio-path') {
-            await page.click('div[onClick]:has-text("K1")', { timeout: 5000 }).catch(() => {}); 
-            await page.waitForTimeout(2000);
-            await page.click('div:has-text("Path")', { timeout: 5000 }).catch(() => {});
+            await selectFirstItem();
+            await page.waitForTimeout(1000);
+            await page.click('button:has-text("Path")').catch(() => {});
             await page.waitForTimeout(2000);
         }
         
         if (item.name === 'route-studio-info') {
-            await page.click('div[onClick]:has-text("K1")', { timeout: 5000 }).catch(() => {});
-            await page.waitForTimeout(2000);
-            await page.click('div:has-text("Info")', { timeout: 5000 }).catch(() => {});
+            await selectFirstItem();
+            await page.waitForTimeout(1000);
+            await page.click('button:has-text("Details")').catch(() => {});
             await page.waitForTimeout(2000);
         }
 
         if (item.name === 'agencies') {
-            await page.click('div[onClick]:has-text("Trans")', { timeout: 5000 }).catch(() => {});
-            await page.waitForTimeout(3000);
-        }
-
-        if (item.name === 'stop-and-routes') {
+            await selectFirstItem();
             await page.waitForTimeout(3000);
         }
 
         if (item.name === 'trip-mapping') {
-            await page.click('div[onClick]:has-text("K1")', { timeout: 5000 }).catch(() => {});
+            await selectFirstItem();
             await page.waitForTimeout(3000);
+        }
+
+        if (item.name === 'micro-interactions') {
+            // Trigger a hover effect on a stop to show the Orange Pulse and associated Routes
+            await page.waitForSelector('div[class*="cursor-pointer"]', { timeout: 10000 });
+            const stops = await page.$$('div[class*="cursor-pointer"]');
+            if (stops.length > 1) {
+                await stops[1].hover(); // Hover the second stop for visual depth
+                await page.waitForTimeout(1500);
+            }
         }
 
         // --- Inject Frame Effect ---
         await page.evaluate(() => {
-            // Apply a frame/window look to the entire body
             const body = document.body;
-            body.style.backgroundColor = '#F2F2F7'; // Frame color
+            body.style.backgroundColor = '#F2F2F7';
             body.style.padding = '40px';
             body.style.display = 'flex';
             body.style.justifyContent = 'center';
@@ -86,7 +100,7 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
             path: path.join(OUTPUT_DIR, `${item.name}.jpg`),
             quality: 90,
             type: 'jpeg',
-            fullPage: true // Capture the entire framed viewport
+            fullPage: true
         });
     } catch (err) {
         console.error(`❌ Failed to capture ${item.name}: ${err.message}`);

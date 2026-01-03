@@ -38,6 +38,9 @@ A professional, full-stack transit management ecosystem designed for designing, 
 ### Trip Data Mapping
 ![Trip Mapping](./assets/screenshots/trip-mapping.jpg)
 
+### Spatial Micro-Interactions (Hover Discovery & Pulsing Feedback)
+![Micro Interactions](./assets/screenshots/micro-interactions.jpg)
+
 ## 🏗 Architecture & Tech Stack
 
 ### Backend
