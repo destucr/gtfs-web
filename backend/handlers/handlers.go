@@ -227,10 +227,13 @@ func GetStops(c *gin.Context) {
 		RouteID uint
 	}
 	var results []Result
-	database.DB.Table("trip_stops").
+	if err := database.DB.Table("trip_stops").
 		Select("DISTINCT trip_stops.stop_id, trips.route_id").
 		Joins("JOIN trips ON trips.id = trip_stops.trip_id").
-		Scan(&results)
+		Scan(&results).Error; err != nil {
+		// Log but don't fail - stops can still be returned without route associations
+		fmt.Printf("Warning: Failed to fetch route associations: %v\n", err)
+	}
 
 	// Build map
 	routeMap := make(map[uint][]uint)
