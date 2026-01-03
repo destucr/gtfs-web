@@ -17,7 +17,6 @@ const Stops: React.FC = () => {
     const [stopRouteMap, setStopRouteMap] = useState<Record<number, Route[]>>({});
     const [searchQuery, setSearchQuery] = useState('');
     
-    // Editor State
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
     const [formData, setFormData] = useState<Stop>({ id: 0, name: '', lat: 0, lon: 0 });
     const [activeTab, setActiveTab] = useState<'info' | 'bindings'>('info');
@@ -38,9 +37,7 @@ const Stops: React.FC = () => {
         setLoading(true);
         setStatus({ message: 'Syncing...', type: 'loading' });
         try {
-            const [sRes, rRes, srRes] = await Promise.all([
-                api.get('/stops'), api.get('/routes'), api.get('/stop-routes')
-            ]);
+            const [sRes, rRes, srRes] = await Promise.all([api.get('/stops'), api.get('/routes'), api.get('/stop-routes')]);
             setStops(sRes.data || []);
             setRoutes(rRes.data || []);
             const map: Record<number, Route[]> = {};
@@ -64,10 +61,7 @@ const Stops: React.FC = () => {
     }, [selectedEntityId, stops, setSelectedEntityId]);
 
     const handleRouteHover = async (routeId: number | null) => {
-        if (routeId === null) {
-            setHoveredRouteIds([]);
-            return;
-        }
+        if (routeId === null) { setHoveredRouteIds([]); return; }
         setHoveredRouteIds(prev => [...new Set([...prev, routeId])]);
         if (!routeShapes[routeId]) {
             try {
@@ -109,7 +103,7 @@ const Stops: React.FC = () => {
                 }
             } catch (e) {} finally { setIsNaming(false); }
         }
-    }, [selectedStop, quickMode]);
+    }, [selectedStop, quickMode, setQuickMode]);
 
     useEffect(() => {
         setOnMapClick(() => handleMapClick);
@@ -120,22 +114,22 @@ const Stops: React.FC = () => {
         const current = JSON.stringify(formData);
         const dirty = current !== initialFormData.current && initialFormData.current !== '';
         setIsDirty(dirty);
-        if (dirty) setStatus({ message: 'Unsaved local edits. Commit to sync.', type: 'info', isDirty: true });
-        else if (selectedStop) setStatus({ message: 'Registry match synchronized.', type: 'info', isDirty: false });
+        if (dirty) setStatus({ message: 'Unsaved edits. Save to sync.', type: 'info', isDirty: true });
+        else if (selectedStop) setStatus({ message: 'All changes saved.', type: 'info', isDirty: false });
     }, [formData, selectedStop, setStatus]);
 
     const handleSave = useCallback(async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        setStatus({ message: 'Syncing...', type: 'loading' });
+        setStatus({ message: 'Saving...', type: 'loading' });
         try {
             if (selectedStop?.id) await api.put(`/stops/${selectedStop.id}`, formData);
             else await api.post('/stops', formData);
             initialFormData.current = JSON.stringify(formData);
             setIsDirty(false);
-            setStatus({ message: 'Saved', type: 'success' });
+            setStatus({ message: 'Saved successfully.', type: 'success' });
             setTimeout(() => setStatus(null), 2000);
             fetchInitialData();
-        } catch (err) { setStatus({ message: 'Save failed', type: 'error' }); }
+        } catch (err) { setStatus({ message: 'Save failed.', type: 'error' }); }
     }, [formData, selectedStop, fetchInitialData, setStatus]);
 
     const handleSelectStop = (stop: Stop) => {
@@ -148,6 +142,7 @@ const Stops: React.FC = () => {
     };
 
     const handleAddNew = () => {
+        setQuickMode(null);
         const newStop = { id: 0, name: '', lat: 0, lon: 0 };
         setSelectedStop(newStop);
         setFormData(newStop);
@@ -156,16 +151,15 @@ const Stops: React.FC = () => {
         initialFormData.current = JSON.stringify(newStop);
     };
 
-
     const toggleStopInRoute = async (stop: Stop, routeId: number) => {
         const currentRoutes = stopRouteMap[stop.id] || [];
         const isAssigned = currentRoutes.some(r => r.id === routeId);
         const newRouteIds = isAssigned ? currentRoutes.filter(r => r.id !== routeId).map(r => r.id) : [...currentRoutes.map(r => r.id), routeId];
-        setStatus({ message: 'Syncing...', type: 'loading' });
+        setStatus({ message: 'Updating...', type: 'loading' });
         try {
             await api.put(`/stops/${stop.id}/routes`, newRouteIds);
             fetchInitialData();
-            setStatus({ message: 'Binding updated', type: 'success' });
+            setStatus({ message: 'Link updated.', type: 'success' });
             setTimeout(() => setStatus(null), 1000);
         } catch (e) {}
     };
@@ -188,13 +182,10 @@ const Stops: React.FC = () => {
                             <div class="absolute w-5 h-5 bg-orange-500/60 rounded-full animate-pulse"></div>
                             <div class="absolute w-3 h-3 bg-orange-600 border-2 border-white rounded-full shadow-2xl scale-125"></div>
                         </div>`,
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
+                    iconSize: [32, 32], iconAnchor: [16, 16]
                 }) : undefined
             })),
-            focusedPoints: (formData.lat !== 0 && formData.lon !== 0) 
-                ? [[formData.lat, formData.lon]] 
-                : (hoveredStop ? [[hoveredStop.lat, hoveredStop.lon]] : []),
+            focusedPoints: (formData.lat !== 0 && formData.lon !== 0) ? [[formData.lat, formData.lon]] : (hoveredStop ? [[hoveredStop.lat, hoveredStop.lon]] : []),
             activeStop: (formData.lat !== 0 && formData.lon !== 0) ? { ...formData, isDraggable: true } : null,
             previewRoutes: hoveredRouteIds.map(rid => ({
                 id: rid, color: routes.find(r => r.id === rid)?.color || '007AFF',
@@ -212,68 +203,32 @@ const Stops: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
-            <motion.div 
-                animate={{ x: sidebarOpen ? 0 : -400 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-black/5 pointer-events-auto shadow-2xl" 
-                style={{ width: 400 }}
-            >
-                <SidebarHeader title="Inventory" Icon={MapPin} actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all" title="Initialize New Node Record"><Plus size={18} /></button>} />
-                <div className="p-4 px-6 border-b border-black/5 bg-white shrink-0">
-                    <div className="relative mb-4"><Search size={14} className="absolute left-3 top-3 text-system-gray" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search inventory..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
-                    
+            <motion.div animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-zinc-100 pointer-events-auto shadow-2xl" style={{ width: 400 }}>
+                <SidebarHeader title="Stops" Icon={MapPin} actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all" title="Add a new stop"><Plus size={18} /></button>} />
+                <div className="p-4 px-6 border-b border-zinc-100 bg-white shrink-0">
+                    <div className="relative mb-4"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search stops..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
                     <div className="space-y-2">
-                        <div className="flex items-center justify-between px-1">
-                            <h3 className="text-[8px] font-black text-system-gray uppercase tracking-[0.2em]">Assign to Line</h3>
-                            {focusedRouteId && <button onClick={() => setFocusedRouteId(null)} className="text-[8px] font-black text-red-500 hover:underline uppercase">Clear</button>}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                            {routes.map(r => (
-                                <button 
-                                    key={r.id} 
-                                    onClick={() => { if(focusedRouteId === r.id) setFocusedRouteId(null); else setFocusedRouteId(r.id); }} 
-                                    className={`px-2.5 py-1 rounded-lg text-[9px] font-black transition-all border ${focusedRouteId === r.id ? 'bg-black text-white border-black shadow-lg scale-105' : 'bg-white text-system-gray border-black/5 hover:border-black/10'}`}
-                                >
-                                    {r.short_name}
-                                </button>
-                            ))}
-                        </div>
+                        <div className="flex items-center justify-between px-1"><h3 className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Link to Route</h3>{focusedRouteId && <button onClick={() => setFocusedRouteId(null)} className="text-[8px] font-black text-red-500 hover:underline uppercase">Clear</button>}</div>
+                        <div className="flex flex-wrap gap-1.5">{routes.map(r => (<button key={r.id} onClick={() => { if(focusedRouteId === r.id) setFocusedRouteId(null); else setFocusedRouteId(r.id); }} className={`px-2.5 py-1 rounded-lg text-[9px] font-black transition-all border ${focusedRouteId === r.id ? 'bg-black text-white border-black shadow-lg scale-105' : 'bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200'}`}>{r.short_name}</button>))}</div>
                     </div>
                 </div>
-
-                <div className="flex-1 overflow-y-auto divide-y divide-black/5">
+                <div className="flex-1 overflow-y-auto divide-y divide-zinc-50">
                     {filteredStops.map(stop => (
-                        <div 
-                            key={stop.id} 
-                            onMouseEnter={() => handleStopHover(stop.id)}
-                            onMouseLeave={() => handleStopHover(null)}
-                            className={`p-4 hover:bg-black/[0.02] cursor-pointer transition-all group flex items-center justify-between ${selectedStop?.id === stop.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} 
-                            onClick={() => handleSelectStop(stop)}
-                        >
+                        <div key={stop.id} onMouseEnter={() => handleStopHover(stop.id)} onMouseLeave={() => handleStopHover(null)} className={`p-4 hover:bg-zinc-50 cursor-pointer transition-all group flex items-center justify-between ${selectedStop?.id === stop.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} onClick={() => handleSelectStop(stop)}>
                             <div className="flex-1 min-w-0">
-                                <div className="font-black text-sm text-black uppercase tracking-tight truncate mb-1">{stop.name}</div>
-                                <div className="flex flex-wrap gap-1">{(stopRouteMap[stop.id] || []).map(r => (<div key={r.id} className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} title={r.short_name} />))}</div>
+                                <div className="font-black text-sm text-zinc-900 uppercase tracking-tight truncate mb-1">{stop.name}</div>
+                                <div className="flex flex-wrap gap-1">{(stopRouteMap[stop.id] || []).map(r => (<div key={r.id} className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} />))}</div>
                             </div>
                             <div className="flex gap-1 items-center shrink-0">
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                    {focusedRouteId && (
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); toggleStopInRoute(stop, focusedRouteId); }} 
-                                            className={`p-1.5 rounded-lg transition-all shadow-sm ${ (stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? 'bg-orange-500 text-white' : 'bg-system-blue text-white' }`}
-                                            title={(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? 'System: Removing node from line.' : 'System: Adding node to line.'}
-                                        >
-                                            {(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? <X size={14}/> : <Plus size={14}/>}
-                                        </button>
+                                    {focusedRouteId ? (
+                                        <button onClick={(e) => { e.stopPropagation(); toggleStopInRoute(stop, focusedRouteId); }} className={`p-1.5 rounded-lg transition-all shadow-sm ${ (stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? 'bg-orange-500 text-white' : 'bg-system-blue text-white' }`}>{(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? <X size={14}/> : <Plus size={14}/>}</button>
+                                    ) : (
+                                        <button onClick={(e) => { e.stopPropagation(); handleSelectStop(stop); }} className="p-1.5 bg-system-blue/10 text-system-blue rounded-lg hover:bg-system-blue hover:text-white transition-all"><Plus size={14}/></button>
                                     )}
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); if(window.confirm('Wipe this node from registry?')) api.delete(`/stops/${stop.id}`).then(fetchInitialData); }} 
-                                        className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"
-                                        title="System: Terminating node record."
-                                    >
-                                        <Trash2 size={14}/>
-                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); if(window.confirm('Wipe record?')) api.delete(`/stops/${stop.id}`).then(fetchInitialData); }} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"><Trash2 size={14}/></button>
                                 </div>
-                                <ChevronRight size={18} className={`text-system-gray ml-2 transition-all ${selectedStop?.id === stop.id ? 'translate-x-1 text-system-blue' : ''}`} />
+                                <ChevronRight size={18} className={`text-zinc-300 ml-2 transition-all ${selectedStop?.id === stop.id ? 'translate-x-1 text-system-blue' : ''}`} />
                             </div>
                         </div>
                     ))}
@@ -281,88 +236,12 @@ const Stops: React.FC = () => {
             </motion.div>
 
             {selectedStop && (
-                <motion.div 
-                    drag dragMomentum={false}
-                    onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}
-                    className={`absolute top-6 z-[3000] w-[320px] bg-white/90 backdrop-blur-xl rounded-[1.5rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] border border-black/5 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`}
-                    style={{ right: 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }}
-                    initial={{ opacity: 0, x: 20 }} animate={{ opacity: (quickMode && !isHovered ? 0.2 : 1), x: 0 }}
-                >
+                <motion.div drag dragMomentum={false} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} className={`absolute top-6 z-[3000] w-[320px] bg-white/90 backdrop-blur-xl rounded-[1.5rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] border border-black/5 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`} style={{ right: 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }} initial={{ opacity: 0, x: 20 }} animate={{ opacity: (quickMode && !isHovered ? 0.2 : 1), x: 0 }}>
                     <div className="p-4 pb-3 flex items-center justify-between shrink-0 cursor-move border-b border-black/[0.03]">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-500 text-white shadow-lg shrink-0"><MapPin size={16} /></div>
-                            <div className="min-w-0">
-                                <h2 className="text-sm font-black tracking-tight truncate leading-none mb-0.5">{formData.name || 'Unlabeled Node'}</h2>
-                                <p className="text-[8px] font-black text-system-gray uppercase tracking-widest truncate opacity-60">Node Profile</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-0.5">
-                            <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-black/5 rounded-full text-system-gray">{isCollapsed ? <Maximize2 size={14}/> : <Minimize2 size={14}/>}</button>
-                            <button onClick={() => setSelectedStop(null)} className="p-1.5 hover:bg-black/5 rounded-full text-system-gray transition-all hover:rotate-90"><X size={16}/></button>
-                        </div>
+                        <div className="flex items-center gap-3 flex-1 min-w-0"><div className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-500 text-white shadow-lg shrink-0"><MapPin size={16} /></div><div className="min-w-0"><h2 className="text-sm font-black tracking-tight truncate leading-none mb-0.5">{formData.name || 'Unlabeled'}</h2><p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest truncate">Stop Details</p></div></div>
+                        <div className="flex items-center gap-0.5"><button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400">{isCollapsed ? <Maximize2 size={14}/> : <Minimize2 size={14}/>}</button><button onClick={() => setSelectedStop(null)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400 transition-all hover:rotate-90"><X size={16}/></button></div>
                     </div>
-
-                    {!isCollapsed && (
-                        <>
-                            <div className="px-4 py-2 shrink-0">
-                                <div className="bg-black/5 p-1 rounded-lg flex gap-0.5 border border-black/5">
-                                    {(['info', 'bindings'] as const).map((tab) => (
-                                        <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-1.5 rounded-md text-[9px] font-black uppercase tracking-tight transition-all ${activeTab === tab ? 'bg-white text-system-blue shadow-sm' : 'text-system-gray hover:text-black'}`}>
-                                            {tab === 'info' ? 'Specs' : 'Bindings'}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-4 pt-2 custom-scrollbar">
-                                {activeTab === 'info' && (
-                                    <form onSubmit={handleSave} className="space-y-4 animate-in fade-in duration-300">
-                                        <div><label className="text-[8px] font-black uppercase mb-1 block text-system-gray opacity-60">Label</label>
-                                        <div className="relative"><input className="hig-input text-[11px] font-bold py-1.5 pr-8" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />{isNaming && <Loader2 size={12} className="animate-spin absolute right-2.5 top-2.5 text-system-blue" />}</div></div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div><label className="text-[8px] font-black uppercase mb-1 block text-system-gray opacity-60">Lat</label><input type="number" step="any" className="hig-input text-[10px] font-mono py-1.5" value={formData.lat} onChange={e => setFormData({...formData, lat: parseFloat(e.target.value)})} required /></div>
-                                            <div><label className="text-[8px] font-black uppercase mb-1 block text-system-gray opacity-60">Lon</label><input type="number" step="any" className="hig-input text-[10px] font-mono py-1.5" value={formData.lon} onChange={e => setFormData({...formData, lon: parseFloat(e.target.value)})} required /></div>
-                                        </div>
-                                        <div className="p-3 bg-black/[0.03] rounded-xl border border-black/5 text-center">
-                                            <p className="text-[9px] text-system-gray leading-relaxed font-bold uppercase tracking-tight">Drag marker on map to relocate.</p>
-                                        </div>
-                                        {selectedStop.id !== 0 && (
-                                            <button type="button" onClick={() => { if(window.confirm('Wipe record?')) api.delete(`/stops/${selectedStop.id}`).then(fetchInitialData).then(() => setSelectedStop(null)); }} className="w-full py-2 text-[8px] font-black text-red-400 hover:text-red-600 uppercase tracking-widest">Terminate Record</button>
-                                        )}
-                                    </form>
-                                )}
-
-                                {activeTab === 'bindings' && (
-                                    <div className="space-y-3 animate-in fade-in duration-300">
-                                        <div className="flex items-center justify-between mb-1 px-1"><h4 className="text-[8px] font-black text-system-gray uppercase tracking-widest">One-Click Network Sync</h4></div>
-                                        <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1.5 custom-scrollbar">
-                                            {routes.map(r => {
-                                                const isAssigned = (stopRouteMap[selectedStop.id] || []).some(assigned => assigned.id === r.id);
-                                                return (
-                                                    <div key={r.id} onMouseEnter={() => handleRouteHover(r.id)} onMouseLeave={() => handleRouteHover(null)} className={`p-2.5 rounded-xl flex items-center justify-between transition-all border ${isAssigned ? 'border-system-blue bg-system-blue/5 shadow-sm scale-[1.02]' : 'border-black/5 bg-white hover:border-black/10'}`}>
-                                                        <div onClick={() => toggleStopInRoute(selectedStop, r.id)} className="flex-1 flex items-center gap-2.5 cursor-pointer">
-                                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: `#${r.color}` }} />
-                                                            <span className="font-black text-[10px] tracking-tight text-black">{r.short_name} &mdash; {r.long_name}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1">
-                                                            <button onClick={(e) => { e.stopPropagation(); setSelectedEntityId(r.id); navigate('/routes'); }} className="p-1 hover:bg-system-blue hover:text-white rounded-md transition-all text-system-blue/40" title="Go to Studio"><Bus size={12} /></button>
-                                                            {isAssigned ? <CheckCircle2 size={14} className="text-system-blue" /> : <Plus size={14} className="text-system-gray opacity-20" />}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="p-4 bg-white/50 backdrop-blur-md border-t border-black/5 rounded-b-[1.5rem] sticky bottom-0">
-                                <button onClick={handleSave} disabled={!isDirty} className="w-full py-3.5 bg-system-blue text-white rounded-xl font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase">
-                                    <Save size={16}/> Commit Changes
-                                </button>
-                            </div>
-                        </>
-                    )}
+                    {!isCollapsed && (<><div className="px-4 py-2 shrink-0"><div className="bg-black/5 p-1 rounded-lg flex gap-0.5 border border-black/5">{(['info', 'bindings'] as const).map((tab) => (<button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-1.5 rounded-md text-[9px] font-black uppercase tracking-tight transition-all ${activeTab === tab ? 'bg-white text-system-blue shadow-sm' : 'text-zinc-400 hover:text-black'}`}>{tab === 'info' ? 'Details' : 'Links'}</button>))}</div></div><div className="flex-1 overflow-y-auto p-4 pt-2 custom-scrollbar">{activeTab === 'info' && (<form onSubmit={handleSave} className="space-y-4 animate-in fade-in duration-300"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Name</label><div className="relative"><input className="hig-input text-[11px] font-bold py-1.5 pr-8" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />{isNaming && <Loader2 size={12} className="animate-spin absolute right-2.5 top-2.5 text-system-blue" />}</div></div><div className="grid grid-cols-2 gap-3"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Lat</label><input type="number" step="any" className="hig-input text-[10px] font-mono py-1.5" value={formData.lat} onChange={e => setFormData({...formData, lat: parseFloat(e.target.value)})} required /></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Lon</label><input type="number" step="any" className="hig-input text-[10px] font-mono py-1.5" value={formData.lon} onChange={e => setFormData({...formData, lon: parseFloat(e.target.value)})} required /></div></div><div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100 text-center"><p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Drag marker on map to move.</p></div>{selectedStop.id !== 0 && (<button type="button" onClick={() => { if(window.confirm('Wipe record?')) api.delete(`/stops/${selectedStop.id}`).then(fetchInitialData).then(() => setSelectedStop(null)); }} className="w-full py-2 text-[8px] font-black text-red-400 hover:text-red-600 uppercase tracking-widest">Delete Record</button>)}</form>)}{activeTab === 'bindings' && (<div className="space-y-3 animate-in fade-in duration-300"><div className="flex items-center justify-between mb-1 px-1"><h4 className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">One-Click Toggle</h4></div><div className="space-y-1.5 max-h-96 overflow-y-auto pr-1.5 custom-scrollbar">{routes.map(r => {const isAssigned = (stopRouteMap[selectedStop.id] || []).some(assigned => assigned.id === r.id);return (<div key={r.id} onMouseEnter={() => handleRouteHover(r.id)} onMouseLeave={() => handleRouteHover(null)} className={`p-2.5 rounded-xl flex items-center justify-between transition-all border ${isAssigned ? 'border-system-blue bg-system-blue/5 shadow-sm scale-[1.02]' : 'border-black/5 bg-white hover:border-black/10'}`}><div onClick={() => toggleStopInRoute(selectedStop, r.id)} className="flex-1 flex items-center gap-2.5 cursor-pointer"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: `#${r.color}` }} /><span className="font-black text-[10px] text-zinc-900">{r.short_name} &mdash; {r.long_name}</span></div><div className="flex items-center gap-1"><button onClick={(e) => { e.stopPropagation(); setSelectedEntityId(r.id); navigate('/routes'); }} className="p-1 hover:bg-system-blue hover:text-white rounded-md transition-all text-system-blue/40"><Bus size={12} /></button>{isAssigned ? <CheckCircle2 size={14} className="text-system-blue" /> : <Plus size={14} className="text-zinc-200" />}</div></div>);})}</div></div>)}</div><div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0"><button onClick={handleSave} disabled={!isDirty} className="w-full py-3.5 bg-system-blue text-white rounded-xl font-black text-[9px] shadow-xl shadow-system-blue/20 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"><Save size={16}/> Save Changes</button></div></>)}
                 </motion.div>
             )}
         </div>
