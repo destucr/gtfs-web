@@ -75,36 +75,35 @@ const Home: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center shadow-xl"><LayoutDashboard size={20}/></div>
           <div>
-            <h1 className="text-xl font-black tracking-tight text-black leading-none">Network Command Center</h1>
-            <p className="text-[9px] text-system-gray font-black uppercase tracking-[0.2em] mt-1.5 opacity-50">Global Infrastructure Registry Audit</p>
+            <h1 className="text-xl font-black tracking-tight text-black leading-none">Dashboard</h1>
+            <p className="text-[10px] text-system-gray font-bold uppercase tracking-widest mt-1.5 opacity-60">Overview of your transit network</p>
           </div>
         </div>
         <div className="flex gap-2">
             <div className={`px-3 py-1.5 rounded-lg flex items-center gap-2 border shadow-sm ${health === 'online' ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
                 <div className={`w-1 h-1 rounded-full ${health === 'online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                <span className="text-[8px] font-black uppercase tracking-widest">Core Engine: {health.toUpperCase()}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest">{health === 'online' ? 'All systems operational' : 'System connection error'}</span>
             </div>
-            <button onClick={fetchStats} className="p-2 hover:bg-black/5 rounded-lg text-system-gray transition-all active:rotate-180 duration-500" title="System: Reloading full registry."><RotateCcw size={14}/></button>
+            <button onClick={fetchStats} className="p-2 hover:bg-black/5 rounded-lg text-system-gray transition-all active:rotate-180 duration-500" title="Refresh data"><RotateCcw size={14}/></button>
         </div>
       </header>
 
       <div className="grid grid-cols-12 gap-6">
-        {/* Main Intelligence Columns */}
         <div className="col-span-8 space-y-6">
           {/* Detailed Routes Manifest */}
           <section className="bg-white border border-black/5 rounded-2xl overflow-hidden shadow-sm">
             <div className="px-5 py-3 bg-black/[0.02] border-b border-black/5 flex items-center justify-between">
-              <h3 className="text-[9px] font-black uppercase tracking-widest flex items-center gap-2 text-black/60"><RouteIcon size={12}/> Service Line Manifest</h3>
-              <span className="text-[8px] font-black text-system-blue bg-system-blue/5 px-2 py-0.5 rounded uppercase">{stats.routes.length} Active Records</span>
+              <h3 className="text-[9px] font-black uppercase tracking-widest flex items-center gap-2 text-black/60"><RouteIcon size={12}/> Service Lines</h3>
+              <span className="text-[8px] font-black text-system-blue bg-system-blue/5 px-2 py-0.5 rounded uppercase">{stats.routes.length} Active Routes</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead className="bg-black/[0.01] border-b border-black/[0.03]">
                   <tr>
-                    <th className="px-5 py-2.5 text-[8px] font-black text-system-gray uppercase tracking-widest">Signature</th>
-                    <th className="px-5 py-2.5 text-[8px] font-black text-system-gray uppercase tracking-widest">Public Name</th>
+                    <th className="px-5 py-2.5 text-[8px] font-black text-system-gray uppercase tracking-widest">Line</th>
+                    <th className="px-5 py-2.5 text-[8px] font-black text-system-gray uppercase tracking-widest">Route Name</th>
                     <th className="px-5 py-2.5 text-[8px] font-black text-system-gray uppercase tracking-widest">Operator</th>
-                    <th className="px-5 py-2.5 text-[8px] font-black text-system-gray uppercase tracking-widest text-right">Integrity</th>
+                    <th className="px-5 py-2.5 text-[8px] font-black text-system-gray uppercase tracking-widest text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/[0.02]">
@@ -118,10 +117,10 @@ const Home: React.FC = () => {
                       </td>
                       <td className="px-5 py-3 text-[11px] font-bold text-black truncate max-w-[200px]">{r.long_name}</td>
                       <td className="px-5 py-3 text-[9px] font-black text-system-gray uppercase tracking-tight">
-                        {stats.agencies.find(a => a.id === r.agency_id)?.name || 'Unknown'}
+                        {stats.agencies.find(a => a.id === r.agency_id)?.name || 'No Operator'}
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <div className="inline-flex items-center gap-1 text-[8px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded uppercase">Verified</div>
+                        <div className="inline-flex items-center gap-1 text-[8px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded uppercase">Live</div>
                       </td>
                     </tr>
                   ))}
@@ -129,58 +128,57 @@ const Home: React.FC = () => {
               </table>
             </div>
             <div className="p-3 border-t border-black/5 bg-black/[0.01] text-center">
-              <Link to="/routes" className="text-[8px] font-black text-system-blue uppercase tracking-[0.2em] hover:underline">Access Studio for Full Manifest &rarr;</Link>
+              <Link to="/routes" className="text-[8px] font-black text-system-blue uppercase tracking-[0.2em] hover:underline">View all routes in Studio &rarr;</Link>
             </div>
           </section>
 
           {/* Infrastructure Health Audit */}
           <section className="bg-white border border-black/5 rounded-2xl overflow-hidden shadow-sm">
             <div className="px-5 py-3 bg-black/[0.02] border-b border-black/5 flex items-center justify-between">
-              <h3 className="text-[9px] font-black uppercase tracking-widest flex items-center gap-2 text-black/60"><ShieldCheck size={12}/> Network Infrastructure Audit</h3>
+              <h3 className="text-[9px] font-black uppercase tracking-widest flex items-center gap-2 text-black/60"><ShieldCheck size={12}/> Network Health</h3>
             </div>
             <div className="p-5 grid grid-cols-2 gap-8">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2"><MapPin size={14} className="text-orange-500"/><span className="text-[10px] font-black uppercase tracking-widest text-black/80">Physical Nodes</span></div>
+                  <div className="flex items-center gap-2"><MapPin size={14} className="text-orange-500"/><span className="text-[10px] font-black uppercase tracking-widest text-black/80">Stops</span></div>
                   <span className="text-[11px] font-mono font-black">{stats.stops.length}</span>
                 </div>
                 <div className="flex items-center justify-between border-t border-black/[0.03] pt-3">
-                  <div className="flex items-center gap-2"><Database size={14} className="text-purple-500"/><span className="text-[10px] font-black uppercase tracking-widest text-black/80">Trip Bindings</span></div>
+                  <div className="flex items-center gap-2"><Database size={14} className="text-purple-500"/><span className="text-[10px] font-black uppercase tracking-widest text-black/80">Active Trips</span></div>
                   <span className="text-[11px] font-mono font-black">{stats.trips.length}</span>
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="p-3 bg-system-blue/5 rounded-xl border border-system-blue/10 flex items-center justify-between">
-                  <span className="text-[8px] font-black text-system-blue uppercase tracking-widest">Active Shapes</span>
+                  <span className="text-[8px] font-black text-system-blue uppercase tracking-widest">Mapped Paths</span>
                   <span className="text-[10px] font-black text-system-blue">{stats.trips.filter(t => t.shape_id).length} Verified</span>
                 </div>
                 <div className="p-3 bg-green-50 rounded-xl border border-green-100 flex items-center justify-between">
-                  <span className="text-[8px] font-black text-green-700 uppercase tracking-widest">Orphan Filter</span>
-                  <span className="text-[10px] font-black text-green-700">0 Anomalies</span>
+                  <span className="text-[8px] font-black text-green-700 uppercase tracking-widest">Disconnected Stops</span>
+                  <span className="text-[10px] font-black text-green-700">0 Found</span>
                 </div>
               </div>
             </div>
           </section>
         </div>
 
-        {/* Action & Metadata Sidebars */}
         <div className="col-span-4 space-y-6">
           <section className="bg-gradient-to-br from-zinc-900 to-black p-6 rounded-2xl text-white shadow-2xl relative overflow-hidden group border border-white/5">
             <div className="relative z-10">
               <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center mb-4"><Zap size={20} className="text-yellow-400 animate-pulse"/></div>
-              <h2 className="text-lg font-black mb-1 tracking-tight">GIS Studio Pro</h2>
-              <p className="text-white/40 text-[8px] font-black uppercase tracking-[0.2em] mb-6">Trace • Link • Synchronize</p>
-              <Link to="/routes" className="flex items-center justify-center w-full py-3 bg-white text-black rounded-xl font-black text-[9px] shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">Initialize Drafting Engine</Link>
+              <h2 className="text-lg font-black mb-1 tracking-tight">Route Studio</h2>
+              <p className="text-white/40 text-[8px] font-black uppercase tracking-[0.2em] mb-6">Create and edit routes on the map</p>
+              <Link to="/routes" className="flex items-center justify-center w-full py-3 bg-white text-black rounded-xl font-black text-[9px] shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">Open Designer</Link>
             </div>
             <TrendingUp size={120} className="absolute -right-8 -bottom-8 text-white/[0.03] -rotate-12 group-hover:rotate-0 transition-transform duration-1000 pointer-events-none" />
           </section>
 
           <section className="bg-white border border-black/5 rounded-2xl p-5 shadow-sm">
-            <h3 className="text-[9px] font-black uppercase tracking-widest text-black/60 mb-4 flex items-center gap-2"><Clock size={12}/> Session Info</h3>
+            <h3 className="text-[9px] font-black uppercase tracking-widest text-black/60 mb-4 flex items-center gap-2"><Clock size={12}/> Session Details</h3>
             <div className="space-y-3">
-              <div className="flex justify-between items-center"><span className="text-[9px] font-bold text-system-gray uppercase">Last Sync</span><span className="text-[9px] font-black text-black">Just Now</span></div>
-              <div className="flex justify-between items-center"><span className="text-[9px] font-bold text-system-gray uppercase">Registry Mode</span><span className="text-[9px] font-black text-system-blue uppercase bg-system-blue/5 px-1.5 py-0.5 rounded">Deterministic</span></div>
-              <div className="flex justify-between items-center pt-3 border-t border-black/[0.03]"><span className="text-[9px] font-bold text-system-gray uppercase">Admin Status</span><span className="text-[9px] font-black text-green-600 uppercase">Verified</span></div>
+              <div className="flex justify-between items-center"><span className="text-[9px] font-bold text-system-gray uppercase">Last Update</span><span className="text-[9px] font-black text-black">Just now</span></div>
+              <div className="flex justify-between items-center"><span className="text-[9px] font-bold text-system-gray uppercase">Data Sync</span><span className="text-[9px] font-black text-system-blue uppercase bg-system-blue/5 px-1.5 py-0.5 rounded">Active</span></div>
+              <div className="flex justify-between items-center pt-3 border-t border-black/[0.03]"><span className="text-[9px] font-bold text-system-gray uppercase">Permissions</span><span className="text-[9px] font-black text-green-600 uppercase">Administrator</span></div>
             </div>
           </section>
         </div>
@@ -231,10 +229,10 @@ const MapHUD: React.FC = () => {
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] font-black uppercase tracking-[0.15em]">
-              {status?.isDirty ? 'Local edits detected' : 'Registry Synchronized'}
+              {status?.isDirty ? 'Unsaved changes detected' : 'Registry synchronized'}
             </span>
             <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">
-              {status?.isDirty ? 'Commit changes to update database' : 'Workspace matches cloud manifest'}
+              {status?.isDirty ? 'Click Save to update the database' : 'Your workspace matches the server'}
             </p>
           </div>
         </div>
@@ -248,9 +246,9 @@ const MapHUD: React.FC = () => {
               {quickMode === 'add-stop' ? <MapPin size={18} /> : <Zap size={18} />}
             </div>
             <div>
-              <span className="text-[11px] font-black uppercase tracking-[0.1em] block">GIS Creative Mode</span>
+              <span className="text-[11px] font-black uppercase tracking-[0.1em] block">Interactive Mode</span>
               <p className="text-[9px] font-bold text-white/60 uppercase tracking-widest">
-                {quickMode === 'add-stop' ? 'Click Map to Record Node' : 'Click Map to Extend Path'}
+                {quickMode === 'add-stop' ? 'Click on the map to add a stop' : 'Click on the map to trace your route'}
               </p>
             </div>
           </div>
@@ -287,23 +285,23 @@ const QuickActionMenu: React.FC = () => {
         <button 
           onClick={() => handleAction('add-stop')}
           className={`group flex items-center gap-3 p-3 rounded-[1rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-stop' ? 'bg-orange-500 shadow-xl shadow-orange-500/30 text-white' : 'hover:bg-black/5 text-orange-600'}`}
-          title="New Stop Node"
+          title="Add Stop"
         >
           <MapPin size={18} />
           <div className={`flex flex-col items-start transition-all overflow-hidden ${sidebarOpen || quickMode === 'add-stop' ? 'w-28 opacity-100' : 'w-0 opacity-0 group-hover:w-28 group-hover:opacity-100'}`}>
-            <span className="text-[9px] font-black uppercase tracking-tight leading-none">Node Capture</span>
-            <span className="text-[7px] font-bold opacity-60 uppercase whitespace-nowrap">Add station to map</span>
+            <span className="text-[9px] font-black uppercase tracking-tight leading-none">Add Stop</span>
+            <span className="text-[7px] font-bold opacity-60 uppercase whitespace-nowrap">Click map to place</span>
           </div>
         </button>
         <button 
           onClick={() => handleAction('add-route')}
-          className={`group flex items-center gap-4 p-3 rounded-[1rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-route' ? 'bg-system-blue shadow-xl shadow-system-blue/20 text-white' : 'hover:bg-black/5 text-system-blue'}`}
-          title="Trace Geometry"
+          className={`group flex items-center gap-3 p-3 rounded-[1rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-route' ? 'bg-system-blue shadow-xl shadow-system-blue/30 text-white' : 'hover:bg-black/5 text-system-blue'}`}
+          title="Trace Route"
         >
           <RouteIcon size={18} />
           <div className={`flex flex-col items-start transition-all overflow-hidden ${sidebarOpen || quickMode === 'add-route' ? 'w-28 opacity-100' : 'w-0 opacity-0 group-hover:w-28 group-hover:opacity-100'}`}>
-            <span className="text-[9px] font-black uppercase tracking-tight leading-none">Path Trace</span>
-            <span className="text-[7px] font-bold opacity-60 uppercase whitespace-nowrap">Draw route on road</span>
+            <span className="text-[9px] font-black uppercase tracking-tight leading-none">Trace Path</span>
+            <span className="text-[7px] font-bold opacity-60 uppercase whitespace-nowrap">Follow the roads</span>
           </div>
         </button>
       </div>
