@@ -194,6 +194,7 @@ const RouteStudio: React.FC = () => {
     // Map Click Handler
     const handleMapClick = useCallback(async (latlng: { lat: number, lng: number }) => {
         if (selectedRoute && activeSection === 'path') {
+            if (quickMode === 'add-route') setQuickMode(null);
             const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
             const newPoint = { lat: latlng.lat, lon: latlng.lng, sequence: shapePoints.length + 1, shape_id: sId };
             if (autoRoute && shapePoints.length > 0) {
@@ -266,7 +267,6 @@ const RouteStudio: React.FC = () => {
     };
 
     const handleAddNew = () => {
-        setQuickMode(null);
         setSelectedRoute({ id: 0, short_name: '', long_name: '', color: '007AFF', agency_id: agencies[0]?.id || 0 });
         setShapePoints([]); setAssignedStops([]); setActiveSection('info'); setIsDirty(true);
     };

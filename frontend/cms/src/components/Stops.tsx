@@ -98,6 +98,7 @@ const Stops: React.FC = () => {
         if (selectedStop || quickMode === 'add-stop') {
             setFormData(prev => ({ ...prev, lat: latlng.lat, lon: latlng.lng }));
             setIsNaming(true);
+            if (quickMode === 'add-stop') setQuickMode(null);
             try {
                 const res = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latlng.lat}&lon=${latlng.lng}`);
                 if (res.data) {
@@ -144,7 +145,6 @@ const Stops: React.FC = () => {
     };
 
     const handleAddNew = () => {
-        setQuickMode(null);
         const newStop = { id: 0, name: '', lat: 0, lon: 0 };
         setSelectedStop(newStop);
         setFormData(newStop);
