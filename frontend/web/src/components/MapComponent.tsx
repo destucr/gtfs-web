@@ -23,10 +23,33 @@ const FitBounds: React.FC<{ points: [number, number][] }> = ({ points }) => {
     useEffect(() => {
         if (points && points.length > 0) {
             const bounds = L.latLngBounds(points);
-            map.fitBounds(bounds, { padding: [100, 100], maxZoom: 15, animate: true });
+            // Account for sidebar (400px left) and bottom cards (100px bottom)
+            map.fitBounds(bounds, { 
+                paddingTopLeft: [420, 40], 
+                paddingBottomRight: [40, 120], 
+                maxZoom: 15, 
+                animate: true 
+            });
         }
     }, [points, map]);
     return null;
+};
+
+const RecenterControl: React.FC<{ center: [number, number], zoom: number }> = ({ center, zoom }) => {
+    const map = useMap();
+    return (
+        <Box pos="absolute" top={20} right={20} style={{ zIndex: 1000 }}>
+            <Tooltip label="Recenter Network" position="left" withArrow>
+                <ActionIcon 
+                    size={44} radius="md" variant="white" shadow="md" color="blue" 
+                    style={{ border: '1px solid rgba(0,0,0,0.1)', backgroundColor: 'white' }} 
+                    onClick={() => map.setView(center, zoom)}
+                >
+                    <Locate size={20} strokeWidth={2} />
+                </ActionIcon>
+            </Tooltip>
+        </Box>
+    );
 };
 
 const MapComponent: React.FC = () => {
@@ -80,11 +103,13 @@ const MapComponent: React.FC = () => {
 
     if (loading && routes.length === 0) {
         return (
-            <Box h="100vh" className="flex items-center justify-center bg-slate-50">
-                <Stack align="center" gap="md">
-                    <Loader size="xl" variant="dots" color="blue" />
-                    <Text fw={800} size="xl" c="blue" style={{ letterSpacing: '2px' }}>INITIALIZING TRANSIT NETWORK</Text>
-                    <Text size="xs" c="dimmed" fw={700}>ESTABLISHING DATA SYNC...</Text>
+            <Box h="100vh" className="flex items-center justify-center" bg={dark ? '#141517' : '#F8F9FA'}>
+                <Stack align="center" gap="xl">
+                    <Loader size="xl" variant="bars" color="blue" />
+                    <Stack gap={4} align="center">
+                        <Text fw={700} size="xl" c={dark ? 'white' : 'blue.9'}>Initializing Network</Text>
+                        <Text size="sm" c="dimmed" fw={500}>System is synchronizing with GTFS real-time feeds...</Text>
+                    </Stack>
                 </Stack>
             </Box>
         );
@@ -92,55 +117,60 @@ const MapComponent: React.FC = () => {
 
     return (
         <Box pos="relative" h="100vh" w="100%" bg={dark ? '#141517' : '#F8F9FA'}>
-            <Box pos="absolute" top={20} left={20} bottom={20} w={360} style={{ zIndex: 1000, pointerEvents: 'none' }}>
-                <Card shadow="2xl" radius="lg" padding="xl" h="100%" style={{ 
+            {/* Sidebar Navigation */}
+            <Box pos="absolute" top={20} left={20} bottom={20} w={380} style={{ zIndex: 1000, pointerEvents: 'none' }}>
+                <Card shadow="xl" radius="md" padding="lg" h="100%" style={{ 
                     pointerEvents: 'auto', 
-                    backdropFilter: 'blur(20px)', 
-                    backgroundColor: dark ? 'rgba(20, 21, 23, 0.85)' : 'rgba(255, 255, 255, 0.9)',
-                    border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
+                    backdropFilter: 'blur(16px)', 
+                    backgroundColor: dark ? 'rgba(26, 27, 30, 0.9)' : 'rgba(255, 255, 255, 0.92)',
+                    border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
                     display: 'flex',
                     flexDirection: 'column'
                 }}>
-                    <Stack gap="xl" h="100%">
-                        <Group justify="space-between" align="start">
-                            <Stack gap={2}>
-                                <Text fw={900} size="24px" style={{ letterSpacing: '-1px', lineHeight: 1 }} c={dark ? 'white' : 'black'}>Transit Live</Text>
-                                <Text size="10px" c="blue" fw={800} style={{ letterSpacing: '1px' }}>PURBALINGGA FLEET TERMINAL</Text>
+                    <Stack gap="lg" h="100%">
+                        <Group justify="space-between" align="center">
+                            <Stack gap={0}>
+                                <Text fw={800} size="22px" style={{ letterSpacing: '-0.5px' }} c={dark ? 'white' : 'blue.9'}>Transit Explorer</Text>
+                                <Text size="10px" c="dimmed" fw={700} style={{ letterSpacing: '0.5px' }}>PURBALINGGA FLEET TERMINAL</Text>
                             </Stack>
-                            <Tooltip label={dark ? "Switch to Day Mode" : "Switch to Night Mode"} position="bottom" withArrow>
-                                <ActionIcon 
-                                    variant="light" 
-                                    color="blue" 
-                                    onClick={() => toggleColorScheme()} 
-                                    radius="md" 
-                                    size="lg"
-                                >
-                                    {dark ? <Sun size={18} /> : <Moon size={18} />}
-                                </ActionIcon>
-                            </Tooltip>
+                            <ActionIcon 
+                                variant="subtle" 
+                                color="gray" 
+                                onClick={() => toggleColorScheme()} 
+                                radius="md" 
+                                size="lg"
+                            >
+                                {dark ? <Sun size={18} /> : <Moon size={18} />}
+                            </ActionIcon>
                         </Group>
 
                         <TextInput
-                            placeholder="Find a route or destination..."
-                            leftSection={<Search size={16} strokeWidth={3} />}
+                            placeholder="Search routes or stations..."
+                            leftSection={<Search size={16} />}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.currentTarget.value)}
                             radius="md"
-                            size="md"
                             variant="filled"
-                            styles={{ input: { fontWeight: 600 } }}
+                            styles={(theme) => ({
+                                input: { 
+                                    backgroundColor: dark ? theme.colors.dark[6] : theme.colors.gray[1],
+                                    fontWeight: 500 
+                                }
+                            })}
                         />
 
-                        <ScrollArea scrollbars="y" flex={1} offsetScrollbars className="pr-2 font-bold">
-                            <Stack gap="xs">
+                        <ScrollArea scrollbars="y" flex={1} offsetScrollbars>
+                            <Stack gap="xs" pr="md">
                                 {selectedRouteId === null && searchQuery === '' && (
-                                    <Box py="xl" px="md" style={{ border: '2px dashed rgba(0,0,0,0.05)', borderRadius: '12px' }}>
-                                        <Stack align="center" gap={8} className="text-center">
-                                            <InfoIcon size={24} className="text-blue-400" />
-                                            <Text fw={800} size="sm">Welcome to the Explorer</Text>
-                                            <Text size="xs" c="dimmed" fw={600} style={{ lineHeight: 1.4 }}>
-                                                Select a service line below to visualize its geographic path and station sequence.
-                                            </Text>
+                                    <Box py="xl" px="md" style={{ border: `1px dashed ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: '12px' }}>
+                                        <Stack align="center" gap={12} className="text-center">
+                                            <InfoIcon size={20} color="#228be6" />
+                                            <Box>
+                                                <Text fw={600} size="sm">Ready to explore?</Text>
+                                                <Text size="xs" c="dimmed" mt={4} style={{ lineHeight: 1.5 }}>
+                                                    Select a service line below to visualize its journey. The map will automatically focus on the route path and highlight all station stops.
+                                                </Text>
+                                            </Box>
                                         </Stack>
                                     </Box>
                                 )}
@@ -150,68 +180,81 @@ const MapComponent: React.FC = () => {
                                         key={route.id} withBorder padding="sm" radius="md"
                                         style={{ 
                                             cursor: 'pointer',
-                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            transition: 'all 0.15s ease',
                                             borderColor: selectedRouteId === route.id ? `#${route.color}` : undefined,
-                                            backgroundColor: selectedRouteId === route.id ? (dark ? 'rgba(255,255,255,0.05)' : 'white') : (dark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
-                                            transform: selectedRouteId === route.id ? 'scale(1.02)' : 'scale(1)',
-                                            boxShadow: selectedRouteId === route.id ? '0 10px 20px rgba(0,0,0,0.1)' : 'none'
+                                            backgroundColor: selectedRouteId === route.id ? (dark ? 'rgba(34, 139, 230, 0.1)' : 'rgba(34, 139, 230, 0.05)') : undefined,
+                                            borderWidth: selectedRouteId === route.id ? '2px' : '1px'
                                         }}
                                         onClick={() => setSelectedRouteId(selectedRouteId === route.id ? null : route.id)}
                                     >
                                         <Group wrap="nowrap" gap="md">
-                                            <Box w={42} h={42} bg={`#${route.color}`} style={{ borderRadius: '10px', display: 'flex', color: 'white', flexShrink: 0, boxShadow: `0 4px 12px #${route.color}40` }}>
-                                                <Bus size={20} strokeWidth={3} style={{ margin: 'auto' }} />
+                                            <Box w={40} h={40} bg={`#${route.color}`} style={{ borderRadius: '8px', display: 'flex', color: 'white', flexShrink: 0 }}>
+                                                <Bus size={18} strokeWidth={2.5} style={{ margin: 'auto' }} />
                                             </Box>
                                             <Box flex={1} style={{ minWidth: 0 }}>
-                                                <Text fw={900} size="sm" tracking="tight">{route.short_name}</Text>
-                                                <Text size="11px" c="dimmed" truncate fw={700}>{route.long_name.toUpperCase()}</Text>
+                                                <Text fw={700} size="sm" truncate>{route.short_name}</Text>
+                                                <Text size="11px" c="dimmed" truncate fw={500}>{route.long_name}</Text>
                                             </Box>
-                                            {selectedRouteId === route.id && <Target size={16} className="text-blue-500 animate-pulse" />}
+                                            {selectedRouteId === route.id && <Target size={14} color={`#${route.color}`} />}
                                         </Group>
                                     </Card>
                                 ))}
                             </Stack>
                         </ScrollArea>
 
-                        <Stack gap="xs" pt="md" style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
+                        <Stack gap="sm" pt="md" style={{ borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}` }}>
                             <Group justify="space-between">
                                 <Group gap={6}>
-                                    <Badge color="blue" variant="light" radius="sm" leftSection={<MapPin size={10} strokeWidth={3} />}>{stops.length} STATIONS</Badge>
-                                    <Badge color="orange" variant="light" radius="sm" leftSection={<Navigation size={10} strokeWidth={3} />}>{routes.length} LINES</Badge>
+                                    <Badge color="blue" variant="light" size="sm" radius="sm">{stops.length} STATIONS</Badge>
+                                    <Badge color="gray" variant="light" size="sm" radius="sm">{routes.length} ROUTES</Badge>
                                 </Group>
-                                <Tooltip label="Live Data Frequency: 5s" position="top">
-                                    <Group gap={4} opacity={0.6}>
-                                        <Radio size={10} className="text-green-500 fill-green-500 animate-ping" />
-                                        <Text size="9px" fw={900}>LIVE SYNC</Text>
-                                    </Group>
-                                </Tooltip>
+                                <Group gap={4}>
+                                    <Box w={8} h={8} bg="green" style={{ borderRadius: '50%' }} className="animate-pulse" />
+                                    <Text size="10px" fw={700} c="dimmed">LIVE SYNC</Text>
+                                </Group>
                             </Group>
-                            <Group gap={4} opacity={0.4}>
-                                <Clock size={10} />
-                                <Text size="9px" fw={800}>LAST UPDATED: {lastSync.toLocaleTimeString()}</Text>
+                            <Group gap={4} opacity={0.6}>
+                                <Clock size={12} />
+                                <Text size="10px" fw={500}>System updated: {lastSync.toLocaleTimeString()}</Text>
                             </Group>
                         </Stack>
                     </Stack>
                 </Card>
             </Box>
 
-            <Box pos="absolute" top={20} right={20} style={{ zIndex: 1000 }}>
-                <Tooltip label="Center Map on Network" position="left" withArrow>
-                    <ActionIcon size={50} radius="xl" variant="white" shadow="xl" color="blue" style={{ border: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
-                        <Locate size={24} strokeWidth={2.5} />
-                    </ActionIcon>
-                </Tooltip>
-            </Box>
-
             {!selectedRouteId && (
-                <Box pos="absolute" bottom={40} left="50%" style={{ zIndex: 1000, transform: 'translateX(-50%)', pointerEvents: 'none' }}>
-                    <Badge size="xl" radius="xl" variant="white" shadow="xl" p="md" leftSection={<InfoIcon size={14}/>} style={{ border: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
-                        <Text fw={800} size="xs" c="blue">TIP: CLICK ANY ROUTE TO VIEW DETAILED PATH</Text>
-                    </Badge>
+                <Box pos="absolute" bottom={30} left="50%" style={{ zIndex: 1000, transform: 'translateX(-50%)', pointerEvents: 'none' }}>
+                    <Card shadow="md" radius="xl" py={6} px={16} withBorder style={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid rgba(34, 139, 230, 0.2)' }}>
+                        <Group gap={8}>
+                            <InfoIcon size={14} color="#228be6" />
+                            <Text fw={600} size="xs" c="blue.7">Tip: Select a route below to see its path on the map</Text>
+                        </Group>
+                    </Card>
+                </Box>
+            )}
+
+            {selectedRouteId && (
+                <Box pos="absolute" bottom={30} right={30} style={{ zIndex: 1000 }}>
+                    <Card shadow="lg" radius="md" padding="md" withBorder style={{ 
+                        backdropFilter: 'blur(8px)',
+                        backgroundColor: dark ? 'rgba(26, 27, 30, 0.8)' : 'rgba(255, 255, 255, 0.9)',
+                        border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(34, 139, 230, 0.3)'}`
+                    }}>
+                        <Stack gap={4}>
+                            <Text size="10px" fw={700} c="dimmed" style={{ letterSpacing: '0.5px' }}>NOW VIEWING</Text>
+                            <Text fw={700} size="sm">
+                                {routes.find(r => r.id === selectedRouteId)?.long_name}
+                            </Text>
+                            <Button variant="light" size="compact-xs" color="red" mt={4} onClick={() => setSelectedRouteId(null)} radius="sm">
+                                Clear Selection
+                            </Button>
+                        </Stack>
+                    </Card>
                 </Box>
             )}
 
             <MapContainer center={[-7.393, 109.360]} zoom={14} zoomControl={false} style={{ height: '100%', width: '100%' }}>
+                <RecenterControl center={[-7.393, 109.360]} zoom={14} />
                 <TileLayer
                     url={dark 
                         ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"

@@ -224,7 +224,7 @@ const Stops: React.FC = () => {
                     
                     <div className="space-y-2">
                         <div className="flex items-center justify-between px-1">
-                            <h3 className="text-[8px] font-black text-system-gray uppercase tracking-[0.2em]">Focus Context</h3>
+                            <h3 className="text-[8px] font-black text-system-gray uppercase tracking-[0.2em]">Assign to Line</h3>
                             {focusedRouteId && <button onClick={() => setFocusedRouteId(null)} className="text-[8px] font-black text-red-500 hover:underline uppercase">Clear</button>}
                         </div>
                         <div className="flex flex-wrap gap-1.5">
