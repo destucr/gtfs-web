@@ -339,7 +339,16 @@ const RouteStudio: React.FC = () => {
                         <div key={r.id} onMouseEnter={() => handleRouteHoverEffect(r.id)} onMouseLeave={() => handleRouteHoverEffect(null)} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-black/[0.02] cursor-pointer transition-all flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`}>
                             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm font-black text-[10px]" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#','')}` }}>{r.short_name}</div>
                             <div className="flex-1 min-w-0"><div className="text-sm text-black truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-system-gray uppercase tracking-tighter">Line #{r.id}</div></div>
-                            <ChevronRight size={14} className={`transition-all ${selectedRoute?.id === r.id ? 'opacity-100 text-system-blue translate-x-1' : 'opacity-0 group-hover:opacity-100'}`} />
+                            <div className="flex items-center gap-1">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); if(window.confirm('Wipe this line from registry?')) api.delete(`/routes/${r.id}`).then(refreshData); }} 
+                                    className="p-1.5 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                    title="System: Terminating route record."
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                                <ChevronRight size={14} className={`transition-all ${selectedRoute?.id === r.id ? 'opacity-100 text-system-blue translate-x-1' : 'opacity-0 group-hover:opacity-100'}`} />
+                            </div>
                         </div>
                     ))}
                 </div>

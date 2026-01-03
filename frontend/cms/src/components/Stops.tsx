@@ -220,40 +220,63 @@ const Stops: React.FC = () => {
             >
                 <SidebarHeader title="Inventory" Icon={MapPin} actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all" title="Initialize New Node Record"><Plus size={18} /></button>} />
                 <div className="p-4 px-6 border-b border-black/5 bg-white shrink-0">
-                    <div className="relative"><Search size={14} className="absolute left-3 top-3 text-system-gray" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search inventory..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
-                    {focusedRouteId && (
-                        <div className="mt-3 flex items-center justify-between animate-in slide-in-from-top-2">
-                            <div className="bg-system-blue/10 text-system-blue px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter flex items-center gap-2"><Filter size={10}/> Line {routes.find(r=>r.id===focusedRouteId)?.short_name}</div>
-                            <button onClick={() => setFocusedRouteId(null)} className="text-[10px] font-black text-red-500 hover:underline uppercase">Clear</button>
+                    <div className="relative mb-4"><Search size={14} className="absolute left-3 top-3 text-system-gray" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search inventory..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
+                    
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between px-1">
+                            <h3 className="text-[8px] font-black text-system-gray uppercase tracking-[0.2em]">Focus Context</h3>
+                            {focusedRouteId && <button onClick={() => setFocusedRouteId(null)} className="text-[8px] font-black text-red-500 hover:underline uppercase">Clear</button>}
                         </div>
-                    )}
+                        <div className="flex flex-wrap gap-1.5">
+                            {routes.map(r => (
+                                <button 
+                                    key={r.id} 
+                                    onClick={() => { if(focusedRouteId === r.id) setFocusedRouteId(null); else setFocusedRouteId(r.id); }} 
+                                    className={`px-2.5 py-1 rounded-lg text-[9px] font-black transition-all border ${focusedRouteId === r.id ? 'bg-black text-white border-black shadow-lg scale-105' : 'bg-white text-system-gray border-black/5 hover:border-black/10'}`}
+                                >
+                                    {r.short_name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
+
                 <div className="flex-1 overflow-y-auto divide-y divide-black/5">
                     {filteredStops.map(stop => (
-                        <div key={stop.id} onMouseEnter={() => handleStopHover(stop.id)} onMouseLeave={() => handleStopHover(null)} className={`p-4 hover:bg-black/[0.02] cursor-pointer transition-all group flex items-center justify-between ${selectedStop?.id === stop.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} onClick={() => handleSelectStop(stop)}>
+                        <div 
+                            key={stop.id} 
+                            onMouseEnter={() => handleStopHover(stop.id)}
+                            onMouseLeave={() => handleStopHover(null)}
+                            className={`p-4 hover:bg-black/[0.02] cursor-pointer transition-all group flex items-center justify-between ${selectedStop?.id === stop.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} 
+                            onClick={() => handleSelectStop(stop)}
+                        >
                             <div className="flex-1 min-w-0">
                                 <div className="font-black text-sm text-black uppercase tracking-tight truncate mb-1">{stop.name}</div>
-                                <div className="flex flex-wrap gap-1">{(stopRouteMap[stop.id] || []).map(r => (<div key={r.id} className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} />))}</div>
+                                <div className="flex flex-wrap gap-1">{(stopRouteMap[stop.id] || []).map(r => (<div key={r.id} className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} title={r.short_name} />))}</div>
                             </div>
                             <div className="flex gap-1 items-center shrink-0">
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                    {focusedRouteId ? (
-                                        <button onClick={(e) => { e.stopPropagation(); toggleStopInRoute(stop, focusedRouteId); }} className={`p-1.5 rounded-lg transition-all shadow-sm ${ (stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? 'bg-orange-500 text-white' : 'bg-system-blue text-white' }`}>{(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? <X size={14}/> : <Plus size={14}/>}</button>
-                                    ) : (
-                                        <button onClick={(e) => { e.stopPropagation(); handleSelectStop(stop); }} className="p-1.5 bg-system-blue/10 text-system-blue rounded-lg hover:bg-system-blue hover:text-white transition-all"><Plus size={14}/></button>
+                                    {focusedRouteId && (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); toggleStopInRoute(stop, focusedRouteId); }} 
+                                            className={`p-1.5 rounded-lg transition-all shadow-sm ${ (stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? 'bg-orange-500 text-white' : 'bg-system-blue text-white' }`}
+                                            title={(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? 'System: Removing node from line.' : 'System: Adding node to line.'}
+                                        >
+                                            {(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? <X size={14}/> : <Plus size={14}/>}
+                                        </button>
                                     )}
-                                    <button onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete node?')) api.delete(`/stops/${stop.id}`).then(fetchInitialData); }} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"><Trash2 size={14}/></button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); if(window.confirm('Wipe this node from registry?')) api.delete(`/stops/${stop.id}`).then(fetchInitialData); }} 
+                                        className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"
+                                        title="System: Terminating node record."
+                                    >
+                                        <Trash2 size={14}/>
+                                    </button>
                                 </div>
                                 <ChevronRight size={18} className={`text-system-gray ml-2 transition-all ${selectedStop?.id === stop.id ? 'translate-x-1 text-system-blue' : ''}`} />
                             </div>
                         </div>
                     ))}
-                </div>
-                <div className="p-6 border-t border-black/5 bg-white shrink-0">
-                    <h3 className="text-[10px] font-black text-system-gray uppercase tracking-widest mb-3 flex items-center gap-2"><Layers size={12} /> Registry Filter</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {routes.map(r => ( <button key={r.id} onClick={() => { if(focusedRouteId === r.id) setFocusedRouteId(null); else setFocusedRouteId(r.id); }} className={`px-3 py-1.5 rounded-full text-[10px] font-black transition-all border ${focusedRouteId === r.id ? 'bg-black text-white border-black shadow-xl scale-105' : 'bg-white text-system-gray border-black/10 hover:border-black/20'}`}>{r.short_name}</button> ))}
-                    </div>
                 </div>
             </motion.div>
 
