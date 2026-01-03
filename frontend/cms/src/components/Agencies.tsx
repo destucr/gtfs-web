@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { Globe, Plus, Trash2, Search, Landmark, RotateCcw, ExternalLink, ChevronRight, X, Maximize2, Minimize2 } from 'lucide-react';
+import { Globe, Plus, Trash2, Search, Landmark, RotateCcw, ExternalLink, ChevronRight, X, Maximize2, Minimize2, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../api';
 import { SidebarHeader } from './SidebarHeader';
