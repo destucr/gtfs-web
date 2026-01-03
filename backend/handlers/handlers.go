@@ -387,24 +387,52 @@ func UpdateStopRoutes(c *gin.Context) {
 	}
 
 	tx := database.DB.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
+		return
+	}
+
 	// 1. Find all trips for the stop to remove them
+	// We don't strictly need to find them first if we just want to delete them effectively,
+	// but if we want to confirm what we are deleting or use existingTripStops for logic, keep it.
+	// The user request kept the Find but added error handlers.
 	var existingTripStops []models.TripStop
-	tx.Where("stop_id = ?", stopID).Find(&existingTripStops)
-	tx.Where("stop_id = ?", stopID).Delete(&models.TripStop{})
+	if err := tx.Where("stop_id = ?", stopID).Find(&existingTripStops).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find existing trip stops"})
+		return
+	}
+
+	if err := tx.Where("stop_id = ?", stopID).Delete(&models.TripStop{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete existing trip stops"})
+		return
+	}
 
 	// 2. Add new assignments to all trips of selected routes
 	for _, rid := range selectedRouteIDs {
 		var trips []models.Trip
-		tx.Where("route_id = ?", rid).Find(&trips)
+		if err := tx.Where("route_id = ?", rid).Find(&trips).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find trips for route"})
+			return
+		}
 		for _, t := range trips {
-			tx.Create(&models.TripStop{
+			if err := tx.Create(&models.TripStop{
 				TripID:   t.ID,
 				StopID:   stopID,
 				Sequence: 1, // Default sequence, usually managed in Route Studio
-			})
+			}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create trip stop"})
+				return
+			}
 		}
 	}
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "Stop route assignments updated"})
 }
 

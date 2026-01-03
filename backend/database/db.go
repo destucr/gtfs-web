@@ -127,7 +127,9 @@ func Connect() {
 				}
 			}
 		}
-		tx.Commit()
+		if err := tx.Commit().Error; err != nil {
+			log.Fatalf("Migration failed: Could not commit transaction: %v", err)
+		}
 
 		// 5. Verify & Cleanup
 		if count > 0 {
