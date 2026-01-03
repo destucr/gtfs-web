@@ -21,32 +21,38 @@ const Agencies: React.FC = () => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const initialFormData = useRef<string>('');
-    const [loading, setLoading] = useState(true);
     const [agencyStats, setAgencyStats] = useState<Record<number, { routes: number, stops: number }>>({});
 
     const fetchInitialData = useCallback(async () => {
-        setLoading(true);
         setStatus({ message: 'Syncing Data...', type: 'loading' });
         try {
             const [aRes, rRes, sRes, srRes, tRes] = await Promise.all([
                 api.get('/agencies'), api.get('/routes'), api.get('/stops'), api.get('/stop-routes'), api.get('/trips')
             ]);
-            setAgencies(aRes.data || []);
-            setAllRoutes(rRes.data || []);
-            setAllStops(sRes.data || []);
-            setStopRouteMap(srRes.data || []);
-            setAllTrips(tRes.data || []);
+            
+            const agenciesData = aRes.data || [];
+            const routesData = rRes.data || [];
+            const stopsData = sRes.data || [];
+            const srData = srRes.data || [];
+            const tripsData = tRes.data || [];
+
+            setAgencies(agenciesData);
+            setAllRoutes(routesData);
+            setAllStops(stopsData);
+            setStopRouteMap(srData);
+            setAllTrips(tripsData);
+
             const stats: Record<number, { routes: number, stops: number }> = {};
-            (aRes.data || []).forEach((agency: Agency) => {
+            agenciesData.forEach((agency: Agency) => {
                 if (agency.id === undefined) return;
-                const agencyRoutes = (rRes.data || []).filter((r: Route) => r.agency_id === agency.id);
+                const agencyRoutes = routesData.filter((r: Route) => r.agency_id === agency.id);
                 const routeIds = agencyRoutes.map((r: Route) => r.id);
-                const stopIds = [...new Set((srRes.data || []).filter((sr: RouteStop) => routeIds.includes(sr.route_id)).map((sr: RouteStop) => sr.stop_id))];
+                const stopIds = [...new Set(srData.filter((sr: RouteStop) => routeIds.includes(sr.route_id)).map((sr: RouteStop) => sr.stop_id))];
                 stats[agency.id] = { routes: agencyRoutes.length, stops: stopIds.length };
             });
             setAgencyStats(stats);
             setStatus(null);
-        } catch (e) { setStatus({ message: 'Sync failed', type: 'error' }); } finally { setLoading(false); }
+        } catch (e) { setStatus({ message: 'Sync failed', type: 'error' }); }
     }, [setStatus]);
 
     useEffect(() => { fetchInitialData(); }, [fetchInitialData]);
@@ -61,7 +67,7 @@ const Agencies: React.FC = () => {
 
     useEffect(() => {
         if (!selectedAgency || selectedAgency.id === undefined) {
-            setMapLayers({ routes: [], stops: [], focusedPoints: [], activeShape: [] });
+            setMapLayers({ routes: [], stops: [], focusedPoints: [], activeShape: [], activeStop: null });
             return;
         }
         const updateGeometry = async () => {
@@ -75,7 +81,8 @@ const Agencies: React.FC = () => {
                 if (trip.shape_id) {
                     try {
                         const res = await api.get(`/shapes/${trip.shape_id}`);
-                        const poly = (res.data || []).sort((a:any,b:any) => a.sequence - b.sequence).map((p:any) => [p.lat, p.lon] as [number, number]);
+                        const points: ShapePoint[] = res.data;
+                        const poly = points.sort((a,b) => a.sequence - b.sequence).map(p => [p.lat, p.lon] as [number, number]);
                         const route = agencyRoutes.find(r => r.id === trip.route_id);
                         if (route) shapeGeometries.push({ id: trip.id, color: route.color, positions: poly });
                     } catch (e) {}
@@ -85,7 +92,8 @@ const Agencies: React.FC = () => {
                 routes: shapeGeometries.map(g => ({ ...g, isFocused: true })),
                 stops: agencyStops.map(s => ({ ...s, isSmall: false, hidePopup: false })),
                 focusedPoints: shapeGeometries.flatMap(g => g.positions),
-                activeShape: []
+                activeShape: [],
+                activeStop: null
             });
         };
         updateGeometry();
@@ -157,11 +165,7 @@ const Agencies: React.FC = () => {
                         <div className="flex items-center gap-3 flex-1 min-w-0"><div className="w-8 h-8 rounded-lg flex items-center justify-center bg-system-blue text-white shadow-lg shrink-0"><Landmark size={16} /></div><div className="min-w-0"><h2 className="text-sm font-black tracking-tight truncate leading-none mb-0.5">{formData.name || 'New'}</h2><p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest truncate">Operator Details</p></div></div>
                         <div className="flex items-center gap-0.5"><button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400">{isCollapsed ? <Maximize2 size={14}/> : <Minimize2 size={14}/>}</button><button onClick={() => setSelectedAgency(null)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400 transition-all hover:rotate-90"><X size={16}/></button></div>
                     </div>
-                    {!isCollapsed && (<><div className="flex-1 overflow-y-auto p-4 pt-2 custom-scrollbar"><form onSubmit={handleSave} className="space-y-4"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Operator Name</label><input className="hig-input text-[11px] font-bold py-1.5" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Website</label><div className="relative"><input className="hig-input text-[11px] font-bold py-1.5 pr-8" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} required /><ExternalLink size={12} className="absolute right-2.5 top-2.5 text-zinc-400" /></div></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Timezone</label><select className="hig-input text-[11px] font-bold py-1.5" value={formData.timezone} onChange={e => setFormData({...formData, timezone: e.target.value})} required><option value="">Select...</option><option value="Asia/Jakarta">Jakarta</option></select></div><div className="grid grid-cols-2 gap-2 pt-2"><div className="bg-zinc-50 p-2 rounded-xl text-center"><div className="text-lg font-black text-zinc-900 leading-none mb-0.5">{selectedAgency.id ? agencyStats[selectedAgency.id]?.routes || 0 : 0}</div><div className="text-[7px] font-black text-zinc-400 uppercase">Lines</div></div><div className="bg-zinc-50 p-2 rounded-xl text-center"><div className="text-lg font-black text-zinc-900 leading-none mb-0.5">{selectedAgency.id ? agencyStats[selectedAgency.id]?.stops || 0 : 0}</div><div className="text-[7px] font-black text-zinc-400 uppercase">Nodes</div></div></div>                                    {selectedAgency.id && (
-                                        <div className="pt-4 mt-4 border-t border-black/[0.03]">
-                                            <button type="button" onClick={() => { if(window.confirm('Delete this operator record permanently?')) api.delete(`/agencies/${selectedAgency.id}`).then(fetchInitialData).then(() => setSelectedAgency(null)); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button>
-                                        </div>
-                                    )}</form></div><div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0 flex justify-center"><button onClick={() => handleSave()} disabled={!isDirty} className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"><Save size={14}/> Commit Changes</button></div></>)}
+                    {!isCollapsed && (<><div className="flex-1 overflow-y-auto p-4 pt-2 custom-scrollbar"><form onSubmit={handleSave} className="space-y-4"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Operator Name</label><input className="hig-input text-[11px] font-bold py-1.5" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Website</label><div className="relative"><input className="hig-input text-[11px] font-bold py-1.5 pr-8" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} required /><ExternalLink size={12} className="absolute right-2.5 top-2.5 text-zinc-400" /></div></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Timezone</label><select className="hig-input text-[11px] font-bold py-1.5" value={formData.timezone} onChange={e => setFormData({...formData, timezone: e.target.value})} required><option value="">Select...</option><option value="Asia/Jakarta">Jakarta</option></select></div><div className="grid grid-cols-2 gap-2 pt-2"><div className="bg-zinc-50 p-2 rounded-xl text-center"><div className="text-lg font-black text-zinc-900 leading-none mb-0.5">{selectedAgency.id ? agencyStats[selectedAgency.id]?.routes || 0 : 0}</div><div className="text-[7px] font-black text-zinc-400 uppercase">Lines</div></div><div className="bg-zinc-50 p-2 rounded-xl text-center"><div className="text-lg font-black text-zinc-900 leading-none mb-0.5">{selectedAgency.id ? agencyStats[selectedAgency.id]?.stops || 0 : 0}</div><div className="text-[7px] font-black text-zinc-400 uppercase">Nodes</div></div></div>{selectedAgency.id && (<div className="pt-4 mt-4 border-t border-black/[0.03]"><button type="button" onClick={() => { if(window.confirm('Delete this operator record permanently?')) api.delete(`/agencies/${selectedAgency.id}`).then(fetchInitialData).then(() => setSelectedAgency(null)); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}</form></div><div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0 flex justify-center"><button onClick={() => handleSave()} disabled={!isDirty} className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"><Save size={14}/> Commit Changes</button></div></>)}
                 </motion.div>
             )}
         </div>

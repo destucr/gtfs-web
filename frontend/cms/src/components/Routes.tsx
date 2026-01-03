@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { Info, Map as MapIcon, MapPin, Plus, Save, RotateCcw, Zap, ChevronRight, Bus, Loader2, GripVertical, Undo2, Search, ChevronDown, ChevronUp, X, Trash2, Maximize2, Minimize2 } from 'lucide-react';
+import { MapPin, Plus, Save, Zap, ChevronRight, Bus, Loader2, Search, X, Trash2, Maximize2, Minimize2 } from 'lucide-react';
 import { Reorder, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
@@ -10,7 +10,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { Route, Stop, Agency, Trip, ShapePoint, RouteStop } from '../types';
 
 const RouteStudio: React.FC = () => {
-    const { setMapLayers, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, hoveredEntityId, setHoveredEntityId } = useWorkspace();
+    const { setMapLayers, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId } = useWorkspace();
     const navigate = useNavigate();
     const [routes, setRoutes] = useState<Route[]>([]);
     const [allStops, setAllStops] = useState<Stop[]>([]);
@@ -49,13 +49,6 @@ const RouteStudio: React.FC = () => {
     }, [refreshAllData]);
 
     useEffect(() => { refreshData(); }, [refreshData]);
-
-    // Handle Quick Mode Entry
-    useEffect(() => {
-        if (quickMode === 'add-route' && !selectedRoute) {
-            handleAddNew();
-        }
-    }, [quickMode, selectedRoute]);
 
     // Handle Deep Linking Entry
     useEffect(() => {
@@ -260,12 +253,19 @@ const RouteStudio: React.FC = () => {
         } catch (e) {}
     };
 
-    const handleAddNew = () => {
+    const handleAddNew = useCallback(() => {
         setQuickMode(null);
         setFocusType('select');
         setSelectedRoute({ id: 0, short_name: '', long_name: '', color: '007AFF', agency_id: agencies[0]?.id || 0 });
         setShapePoints([]); setAssignedStops([]); setActiveSection('info'); setIsDirty(true);
-    };
+    }, [agencies, setQuickMode]);
+
+    // Handle Quick Mode Entry
+    useEffect(() => {
+        if (quickMode === 'add-route' && !selectedRoute) {
+            handleAddNew();
+        }
+    }, [quickMode, selectedRoute, handleAddNew]);
 
     const snapPointsToRoads = async () => {
         if (shapePoints.length === 0) return;

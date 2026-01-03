@@ -1,229 +1,180 @@
-import React, { useEffect, useRef, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import React, { useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { useWorkspace } from '../context/useWorkspace';
+import 'leaflet/dist/leaflet.css';
 
-const BusStopIcon = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
-    iconSize: [24, 24], iconAnchor: [12, 24], popupAnchor: [0, -24]
+const BusStopIcon = L.divIcon({
+  className: 'custom-stop-icon',
+  html: `<div class="w-4 h-4 bg-orange-500 border-2 border-white rounded-full shadow-lg flex items-center justify-center">
+            <div class="w-1 h-1 bg-white rounded-full"></div>
+          </div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8]
 });
 
-const ActiveStopIcon = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', // Red pin or similar
-    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32]
-});
+const MapController: React.FC = () => {
+  const { mapLayers } = useWorkspace();
+  const map = useMap();
 
-const MapController: React.FC<{ focusedPoints: [number, number][], focusType?: 'select' | 'hover' | null }> = ({ focusedPoints, focusType }) => {
-    const map = useMap();
-    useEffect(() => {
-        if (focusedPoints && focusedPoints.length > 0) {
-            const bounds = L.latLngBounds(focusedPoints);
-            const currentBounds = map.getBounds();
-            const inView = currentBounds.contains(bounds);
+  useEffect(() => {
+    if (mapLayers.focusedPoints && mapLayers.focusedPoints.length > 0) {
+      const bounds = L.latLngBounds(mapLayers.focusedPoints);
+      map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
+    }
+  }, [mapLayers.focusedPoints, map]);
 
-            if (focusType === 'select') {
-                // Hard focus: center and zoom in
-                if (focusedPoints.length === 1) {
-                    map.flyTo(focusedPoints[0], 16, { animate: true, duration: 1.5 });
-                } else {
-                    map.fitBounds(bounds, { padding: [100, 100], animate: true, duration: 1.5 });
-                }
-            } else if (focusType === 'hover' && !inView) {
-                // Soft focus: zoom out to encompass both current view and target
-                const combined = currentBounds.extend(bounds);
-                map.fitBounds(combined, { padding: [80, 80], animate: true, duration: 1.2 });
-            }
-        }
-    }, [focusedPoints, focusType, map]);
-    return null;
+  return null;
 };
 
-const MapEventListener: React.FC = () => {
-    const { onMapClick } = useWorkspace();
-    useMapEvents({
-        click(e) {
-            if (onMapClick) onMapClick(e.latlng);
-        }
-    });
-    return null;
-};
-
-const DraggableMarker: React.FC<{ position: [number, number], onDragEnd: (latlng: L.LatLng) => void }> = ({ position, onDragEnd }) => {
-    const markerRef = useRef<L.Marker>(null);
-    const eventHandlers = useMemo(() => ({
-        dragend() {
-            const marker = markerRef.current;
-            if (marker != null) onDragEnd(marker.getLatLng());
-        },
-    }), [onDragEnd]);
-
-    return (
-        <Marker
-            draggable={true}
-            eventHandlers={eventHandlers}
-            position={position}
-            icon={ActiveStopIcon}
-            ref={markerRef}
-            zIndexOffset={1000}
-        />
-    );
-};
-
-const DraggableShapeMarker: React.FC<{ index: number, position: [number, number], onDragEnd: (index: number, latlng: L.LatLng) => void, onDelete: (index: number) => void }> = ({ index, position, onDragEnd, onDelete }) => {
-    const markerRef = useRef<L.Marker>(null);
-    const eventHandlers = useMemo(() => ({
-        dragend() {
-            const marker = markerRef.current;
-            if (marker != null) onDragEnd(index, marker.getLatLng());
-        },
-        contextmenu() {
-            onDelete(index);
-        }
-    }), [index, onDragEnd, onDelete]);
-
-    return (
-        <Marker
-            draggable={true}
-            eventHandlers={eventHandlers}
-            position={position}
-            icon={L.divIcon({ className: 'bg-white border-2 border-system-blue w-3 h-3 rounded-full shadow-lg cursor-move', iconSize: [12, 12] })}
-            ref={markerRef}
-            zIndexOffset={500}
-        />
-    );
+const MapEvents: React.FC = () => {
+  const { onMapClick } = useWorkspace();
+  useMapEvents({
+    click(e) {
+      if (onMapClick) onMapClick(e.latlng);
+    }
+  });
+  return null;
 };
 
 const UnifiedMap: React.FC = () => {
-    const { mapLayers, onMapClick, onShapePointMove, onShapePointDelete, onShapePointInsert } = useWorkspace();
+  const { mapLayers, onShapePointMove, onShapePointDelete, onShapePointInsert, onMapClick } = useWorkspace();
 
-    const handleActiveDrag = (latlng: L.LatLng) => {
-        if (mapLayers.activeStop) {
-            if (onMapClick) onMapClick({ lat: latlng.lat, lng: latlng.lng });
-        }
-    };
+  return (
+    <div className="w-full h-full relative bg-zinc-100">
+      <MapContainer
+        center={[-7.393, 109.360] as [number, number]}
+        zoom={14}
+        zoomControl={false}
+        className="w-full h-full"
+        style={{ height: '100%', width: '100%' }}
+      >
+        <MapController />
+        <MapEvents />
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution="&copy; CARTO"
+        />
 
-    const handlePolylineClick = (e: L.LeafletMouseEvent) => {
-        if (!onShapePointInsert || mapLayers.activeShape.length < 2) return;
-        
-        // Find the segment where the click happened
-        const clickPt = e.latlng;
-        let minDocs = Infinity;
-        let insertIndex = -1;
+        {/* Halo Layer */}
+        {mapLayers.previewRoutes?.map(route => (
+          <Polyline
+            key={`halo-${route.id}`}
+            positions={route.positions}
+            pathOptions={{
+              color: 'white',
+              weight: 8,
+              opacity: 0.6,
+              lineCap: 'round'
+            }}
+          />
+        ))}
 
-        for (let i = 0; i < mapLayers.activeShape.length - 1; i++) {
-            const p1 = mapLayers.activeShape[i];
-            const p2 = mapLayers.activeShape[i+1];
-            
-            // Simple distance to segment
-            const dist = L.LineUtil.pointToSegmentDistance(
-                L.CRS.EPSG3857.project(clickPt),
-                L.CRS.EPSG3857.project(L.latLng(p1.lat, p1.lon)),
-                L.CRS.EPSG3857.project(L.latLng(p2.lat, p2.lon))
-            );
+        {/* Preview Layer */}
+        {mapLayers.previewRoutes?.map(route => (
+          <Polyline
+            key={`preview-${route.id}`}
+            positions={route.positions}
+            pathOptions={{
+              color: `#${route.color.replace('#', '')}`,
+              weight: 4,
+              opacity: 0.8,
+              lineCap: 'round'
+            }}
+          />
+        ))}
 
-            if (dist < minDocs) {
-                minDocs = dist;
-                insertIndex = i + 1;
-            }
-        }
+        {/* Registry Routes */}
+        {mapLayers.routes.map(route => (
+          <Polyline
+            key={route.id}
+            positions={route.positions}
+            pathOptions={{
+              color: `#${route.color.replace('#', '')}`,
+              weight: 4,
+              opacity: route.isFocused ? 1 : 0.3
+            }}
+          />
+        ))}
 
-        if (insertIndex !== -1) {
-            onShapePointInsert(insertIndex, { lat: clickPt.lat, lng: clickPt.lng });
-        }
-    };
+        {/* Registry Stops */}
+        {mapLayers.stops
+          .filter(stop => !mapLayers.activeStop || stop.id !== mapLayers.activeStop.id)
+          .map(stop => (
+            <Marker
+              key={stop.id}
+              position={[stop.lat, stop.lon]}
+              icon={stop.isCustom ? stop.icon : (stop.isSmall ? L.divIcon({ className: 'bg-white border-2 border-black/20 w-2 h-2 rounded-full', iconSize: [8, 8] }) : BusStopIcon)}
+            />
+          ))}
 
-    return (
-        <MapContainer 
-            center={[-7.393, 109.360]} 
-            zoom={14} 
-            zoomControl={false} 
-            className="h-full w-full"
-            style={{ height: '100%', width: '100%' }}
-        >
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="&copy; CARTO" />
-            
-            <MapController focusedPoints={mapLayers.focusedPoints} focusType={mapLayers.focusType} />
-            <MapEventListener />
+        {/* Active Shape Editor */}
+        {mapLayers.activeShape.map((p, i) => (
+          <Marker
+            key={`shape-${i}`}
+            position={[p.lat, p.lon]}
+            draggable={true}
+            eventHandlers={{
+              dragend: (e) => {
+                if (onShapePointMove) onShapePointMove(i, e.target.getLatLng());
+              },
+              contextmenu: () => {
+                if (onShapePointDelete) onShapePointDelete(i);
+              }
+            }}
+            icon={L.divIcon({
+              className: 'bg-system-blue border-2 border-white w-3 h-3 rounded-full shadow-lg',
+              iconSize: [12, 12]
+            })}
+          />
+        ))}
 
-            {/* Render Polylines */}
-            {mapLayers.routes.map(route => (
-                <Polyline 
-                    key={`route-${route.id}-${route.color}`} 
-                    positions={route.positions} 
-                    color={`#${route.color.replace('#', '')}`} 
-                    weight={route.isFocused ? 8 : 4} 
-                    opacity={route.isFocused ? 0.9 : 0.3} 
-                    dashArray={route.isFocused ? "" : "10, 10"}
-                    lineCap="round"
-                />
-            ))}
+        {/* Insertion points */}
+        {mapLayers.activeShape.length > 1 && mapLayers.activeShape.slice(0, -1).map((p, i) => {
+          const next = mapLayers.activeShape[i + 1];
+          const midLat = (p.lat + next.lat) / 2;
+          const midLon = (p.lon + next.lon) / 2;
+          return (
+            <Marker
+              key={`mid-${i}`}
+              position={[midLat, midLon]}
+              icon={L.divIcon({
+                className: 'bg-white border-2 border-system-blue/40 w-2 h-2 rounded-full opacity-0 hover:opacity-100 transition-opacity cursor-pointer',
+                iconSize: [8, 8]
+              })}
+              eventHandlers={{
+                click: (e) => {
+                  if (onShapePointInsert) onShapePointInsert(i + 1, e.latlng);
+                }
+              }}
+            />
+          );
+        })}
 
-            {/* Render Hover Preview Routes with Halo Effect */}
-            {mapLayers.previewRoutes && mapLayers.previewRoutes.map(route => (
-                <React.Fragment key={`preview-${route.id}`}>
-                    {/* The Halo (Background) */}
-                    <Polyline 
-                        positions={route.positions} 
-                        color="white" 
-                        weight={12} 
-                        opacity={0.6} 
-                        lineCap="round"
-                    />
-                    {/* The Route (Foreground) */}
-                    <Polyline 
-                        positions={route.positions} 
-                        color={`#${route.color.replace('#', '')}`} 
-                        weight={6} 
-                        opacity={0.9} 
-                        lineCap="round"
-                    />
-                </React.Fragment>
-            ))}
-
-            {/* Render Static Stops */}
-            {mapLayers.stops.map(stop => (
-                <Marker 
-                    key={`stop-${stop.id}`} 
-                    position={[stop.lat, stop.lon]} 
-                    icon={stop.isCustom ? stop.icon : (stop.isSmall ? L.divIcon({ className: 'bg-white border-2 border-black/20 w-2 h-2 rounded-full', iconSize: [8,8] }) : BusStopIcon)}
-                >
-                    {!stop.hidePopup && (
-                        <Popup>
-                            <div className="font-bold text-xs uppercase">{stop.name}</div>
-                        </Popup>
-                    )}
-                </Marker>
-            ))}
-
-            {/* Draggable Active Stop */}
-            {mapLayers.activeStop && (
-                <DraggableMarker 
-                    position={[mapLayers.activeStop.lat, mapLayers.activeStop.lon]} 
-                    onDragEnd={handleActiveDrag} 
-                />
-            )}
-
-            {/* Active Drawing Layer (Shapes) */}
-            {mapLayers.activeShape.length > 1 && (
-                <Polyline 
-                    positions={mapLayers.activeShape.map(p => [p.lat, p.lon] as [number, number])} 
-                    color="#007AFF" 
-                    weight={6}
-                    eventHandlers={{ click: handlePolylineClick }}
-                />
-            )}
-            {mapLayers.activeShape.map((p, i) => (
-                <DraggableShapeMarker 
-                    key={`edit-${i}-${p.lat}-${p.lon}`} 
-                    index={i} 
-                    position={[p.lat, p.lon]} 
-                    onDragEnd={(idx, latlng) => onShapePointMove?.(idx, { lat: latlng.lat, lng: latlng.lng })}
-                    onDelete={(idx) => onShapePointDelete?.(idx)}
-                />
-            ))}
-        </MapContainer>
-    );
+        {/* Active Stop */}
+        {mapLayers.activeStop && (
+          <Marker
+            position={[mapLayers.activeStop.lat, mapLayers.activeStop.lon]}
+            draggable={true}
+            eventHandlers={{
+              dragend: (e) => {
+                if (onMapClick) onMapClick(e.target.getLatLng());
+              }
+            }}
+            icon={L.divIcon({
+              className: 'relative',
+              html: `<div class="flex items-center justify-center">
+                                    <div class="absolute w-6 h-6 bg-system-blue/30 rounded-full animate-ping"></div>
+                                    <div class="w-3 h-3 bg-system-blue border-2 border-white rounded-full shadow-lg relative z-10"></div>
+                                   </div>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            })}
+          />
+        )}
+      </MapContainer>
+    </div>
+  );
 };
 
 export default UnifiedMap;

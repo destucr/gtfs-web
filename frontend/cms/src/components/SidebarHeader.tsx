@@ -1,6 +1,5 @@
 import React from 'react';
 import { ChevronLeft, LucideIcon } from 'lucide-react';
-import { useWorkspace } from '../context/useWorkspace';
 
 interface SidebarHeaderProps {
   title: string;
@@ -10,8 +9,6 @@ interface SidebarHeaderProps {
 }
 
 export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ title, Icon, onBack, actions }) => {
-  const { setSidebarOpen } = useWorkspace();
-
   return (
     <div className="p-6 border-b border-black/5 flex items-center justify-between shrink-0 bg-white sticky top-0 z-50">
       <div className="flex items-center gap-3">

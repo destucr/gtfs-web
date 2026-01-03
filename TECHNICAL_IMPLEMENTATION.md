@@ -22,37 +22,35 @@ The project is structured into a Go-based Backend and two TypeScript-powered Fro
 - **Database**: PostgreSQL (v15+)
 - **Framework**: Gin
 - **ORM**: GORM (with Auto-Migrate enabled)
-- **Responsibilities**:
-    - Manage GTFS data (Agencies, Routes, Stops, Trips, Shapes).
-    - Database migrations and connection management.
+- **Optionality Handling**: Pointer types used for optional GTFS fields (`route_type`, `text_color`, etc.) to ensure correct `null` serialization for the frontend.
 
 ## Frontend: CMS (High-Density GIS IDE)
 - **Framework**: React + TypeScript (Vite)
 - **Design Pattern**: **High-Density Proximal Hub Architecture**
 - **UI Standard**: **X-Style High-Density** (11px base typography, monochromatic zinc palette)
-- **Key Architectural Patterns**:
-    - **Absolute Overlay Architecture**: The map is Layer 0 (`z-0`). All UI (Sidebar, Hubs, HUD) is Layer 10+ using `absolute inset-0` with `pointer-events-none` on parents and `pointer-events-auto` on interactive children.
-    - **Intelligent Ghost Mode**: Floating hubs automatically fade to 20% opacity and become click-through (`pointer-events-none`) when the user is actively drawing on the map, restoring full opacity on hover.
-    - **Unified Registry Explorer**: A single-view dashboard that dynamically switches data manifests (Operators, Stops, Routes, Bindings) without page reloads using a dynamic Pane Engine.
-    - **Holistic Deep-Linking**: Bi-directional "teleportation" between modules (e.g., jump from a stop in a route sequence directly to that stop's editor).
-    - **Deterministic Feedback**: All system actions follow the formula: `[System Status] + [Action Warning/Instruction]`.
+
+### Key Architectural Patterns:
+- **Absolute Overlay Architecture**: Map is Layer 0 (`z-0`). UI is Layer 10+ using `absolute inset-0` with optimized `pointer-events` management.
+- **State Handler Stability**: Implemented the `setX(() => handler)` pattern for context-based callback functions. This prevents unintended function execution during React's state reconciliation cycle.
+- **Intelligent Visual Filtering**: To prevent icon flickering and double-rendering, the map logic dynamically filters active/selected entities out of the general registry layer.
+- **Multi-Layer Highlighting**:
+    - **Selection (Persistent)**: Solid high-opacity lines representing the active editing context.
+    - **Discovery (Transient)**: "Halo Previews" (colored lines with white background halos) triggered by hover for high-contrast data discovery.
+- **Unified Registry Explorer**: Dynamic Pane Engine allows switching between data manifests without page reloads.
+- **Deterministic UX**: Standardized **"Commit Changes"** primary CTAs and **"Delete Record"** secondary CTAs across all modules.
 
 ## Frontend: Web (Public Viewer)
 - **Framework**: React + TypeScript (Vite)
 - **UI Library**: Mantine UI v7
-- **Purpose**: Immersive, public-facing transit map.
+- **Features**: Immersive fullscreen map with dark mode and 5s real-time data sync.
 
 ---
 
-## Technical Change Log (Recent Overhaul)
+## Technical Change Log (Refinement Phase)
 
-### Jan 2, 2026 - High-Density UX Overhaul
-- **UI Layering**: Implemented Absolute Overlay pattern to prevent map-clipping and ensure hubs are above the GIS layer.
-- **Draggable Hubs**: All editor windows are now `framer-motion` powered draggable and collapsible components.
-- **Ghost Mode**: Added spatial awareness to UI—editors become transparent during map-drawing.
-- **Unified Explorer**: Refactored the Home Dashboard into a data-first multi-pane explorer with sorting and filtering.
-- **Terminology Polish**: Removed technical jargon (Registry/Manifest) in favor of functional human terms (List/Details).
-- **Branding Audit**: Removed all non-functional branding ("Pro Tools") to maintain utility-first neutrality.
-- **High-Density Standard**: Standardized on a 320px compact width and 11px typography across all editor hubs.
-- **Spatial Intelligence**: Enhanced the Map Controller with smooth auto-focus logic for selections and "Soft Zoom" for hover-based discovery.
-- **Visual Standard**: Implemented "Halo Previews" for routes—colored lines with high-contrast white background halos for better visibility without data confusion.
+### Jan 2, 2026 - UX & Stability Audit
+- **State Logic**: Refactored `WorkspaceContext` to use stable functional setters for map handlers.
+- **Visual Cleanup**: Simplified stop markers to a single-pulse design. Resolved double-render overlap bugs.
+- **Type Safety**: Achieved 100% TS compliance across both frontends. Fixed missing properties in `MapLayers` and asset import errors.
+- **Highlighting**: Implemented persistent vs. transient route highlighting logic in the Stops module.
+- **Standardization**: Unified button labeling, layout (flex-centered), and positioning for all record lifecycle actions.

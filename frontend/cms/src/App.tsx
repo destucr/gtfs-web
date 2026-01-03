@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import Agencies from './components/Agencies';
 import Stops from './components/Stops';
@@ -9,12 +9,11 @@ import api from './api';
 import { WorkspaceProvider } from './context/WorkspaceContext';
 import { useWorkspace } from './context/useWorkspace';
 import UnifiedMap from './components/UnifiedMap';
-import { 
-  LayoutDashboard, Globe, MapPin, Route as RouteIcon, Database, 
-  ArrowRight, Activity, ShieldCheck, Zap, AlertCircle, Loader2, TrendingUp, 
+import {
+  Globe, MapPin, Route as RouteIcon, Database, 
+  ArrowRight, ShieldCheck, Zap, AlertCircle, Loader2, 
   ChevronRight, ChevronLeft, X, RotateCcw, Hash, Clock, ArrowUpDown, Filter
 } from 'lucide-react';
-
 const ShortcutManager: React.FC = () => {
   const navigate = useNavigate();
   const { setSelectedEntityId, setQuickMode } = useWorkspace();
@@ -62,7 +61,12 @@ const Home: React.FC = () => {
       ]);
       setStats({ agencies: a.data || [], stops: s.data || [], routes: r.data || [], trips: t.data || [] });
       setHealth('online');
-    } catch { setHealth('error'); } finally { setLoading(false); }
+    } catch (err) {
+      console.error('System: Failed to fetch registry statistics.', err);
+      setHealth('error');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
@@ -203,8 +207,12 @@ const Home: React.FC = () => {
                     ) : activeType === 'stops' ? (
                       <>
                         <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100">{item.name}</td>
-                        <td className="px-5 py-2.5 font-mono text-zinc-400 border-r border-zinc-100">{item.lat.toFixed(6)}</td>
-                        <td className="px-5 py-2.5 font-mono text-zinc-400">{item.lon.toFixed(6)}</td>
+                        <td className="px-5 py-2.5 font-mono text-zinc-400 border-r border-zinc-100">
+                          {typeof item.lat === 'number' && isFinite(item.lat) ? item.lat.toFixed(6) : '0.000000'}
+                        </td>
+                        <td className="px-5 py-2.5 font-mono text-zinc-400">
+                          {typeof item.lon === 'number' && isFinite(item.lon) ? item.lon.toFixed(6) : '0.000000'}
+                        </td>
                       </>
                     ) : activeType === 'agencies' ? (
                       <>

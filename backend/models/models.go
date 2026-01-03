@@ -15,15 +15,15 @@ type Stop struct {
 }
 
 type Route struct {
-	ID        uint   `gorm:"primaryKey" json:"id"`
-	ShortName string `json:"short_name"`
-	LongName  string `json:"long_name"`
-	Color     string `json:"color"`
-	TextColor string `json:"text_color"`
-	RouteType int    `json:"route_type"`
-	RouteDesc string `json:"route_desc"`
-	RouteUrl  string `json:"route_url"`
-	AgencyID  uint   `json:"agency_id"`
+	ID        uint    `gorm:"primaryKey" json:"id"`
+	ShortName string  `json:"short_name"`
+	LongName  string  `json:"long_name"`
+	Color     string  `json:"color"`
+	TextColor *string `json:"text_color,omitempty"`
+	RouteType *int    `json:"route_type,omitempty"`
+	RouteDesc *string `json:"route_desc,omitempty"`
+	RouteUrl  *string `json:"route_url,omitempty"`
+	AgencyID  uint    `json:"agency_id"`
 }
 
 type Trip struct {
