@@ -33,7 +33,14 @@ func ExportGTFS(c *gin.Context) {
 
 	// 1. agency.txt
 	var agencies []models.Agency
-	database.DB.Find(&agencies)
+	if result := database.DB.Find(&agencies); result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query agencies: " + result.Error.Error()})
+		return
+	}
+	if len(agencies) == 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "No agencies found. At least one agency is required for GTFS export."})
+		return
+	}
 	agencyData := [][]string{}
 	for _, a := range agencies {
 		agencyData = append(agencyData, []string{
@@ -47,7 +54,10 @@ func ExportGTFS(c *gin.Context) {
 
 	// 2. stops.txt
 	var stops []models.Stop
-	database.DB.Find(&stops)
+	if result := database.DB.Find(&stops); result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query stops: " + result.Error.Error()})
+		return
+	}
 	stopData := [][]string{}
 	for _, s := range stops {
 		stopData = append(stopData, []string{
@@ -61,7 +71,10 @@ func ExportGTFS(c *gin.Context) {
 
 	// 3. routes.txt
 	var routes []models.Route
-	database.DB.Find(&routes)
+	if result := database.DB.Find(&routes); result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query routes: " + result.Error.Error()})
+		return
+	}
 	routeData := [][]string{}
 	for _, r := range routes {
 		rType := "3" // Bus default
@@ -79,7 +92,10 @@ func ExportGTFS(c *gin.Context) {
 
 	// 4. trips.txt
 	var trips []models.Trip
-	database.DB.Find(&trips)
+	if result := database.DB.Find(&trips); result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query trips: " + result.Error.Error()})
+		return
+	}
 	tripData := [][]string{}
 	for _, t := range trips {
 		sID := t.ServiceID
@@ -97,14 +113,20 @@ func ExportGTFS(c *gin.Context) {
 
 	// 5. stop_times.txt
 	var routeStops []models.RouteStop
-	database.DB.Find(&routeStops)
+	if result := database.DB.Find(&routeStops); result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query route stops: " + result.Error.Error()})
+		return
+	}
 	// We need to map RouteID to TripIDs because our model links stops to routes
 	// Standard GTFS links stops to trips.
 	stopTimeData := [][]string{}
 	for _, rs := range routeStops {
 		// Find all trips for this route
 		var tripsForRoute []models.Trip
-		database.DB.Where("route_id = ?", rs.RouteID).Find(&tripsForRoute)
+		if result := database.DB.Where("route_id = ?", rs.RouteID).Find(&tripsForRoute); result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query trips for route: " + result.Error.Error()})
+			return
+		}
 		for _, t := range tripsForRoute {
 			arr := rs.ArrivalTime
 			if arr == "" {
@@ -126,7 +148,10 @@ func ExportGTFS(c *gin.Context) {
 
 	// 6. shapes.txt
 	var shapePoints []models.ShapePoint
-	database.DB.Order("shape_id, sequence asc").Find(&shapePoints)
+	if result := database.DB.Order("shape_id, sequence asc").Find(&shapePoints); result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query shape points: " + result.Error.Error()})
+		return
+	}
 	shapeData := [][]string{}
 	for _, p := range shapePoints {
 		shapeData = append(shapeData, []string{
@@ -319,12 +344,12 @@ func GetStopRoutes(c *gin.Context) {
 	stopID := c.Param("id")
 	var routeStops []models.RouteStop
 	database.DB.Preload("Stop").Where("stop_id = ?", stopID).Find(&routeStops)
-	
+
 	var routeIDs []uint
 	for _, rs := range routeStops {
 		routeIDs = append(routeIDs, rs.RouteID)
 	}
-	
+
 	var routes []models.Route
 	if len(routeIDs) > 0 {
 		database.DB.Where("id IN ?", routeIDs).Find(&routes)
@@ -334,8 +359,8 @@ func GetStopRoutes(c *gin.Context) {
 
 func GetAllStopRoutes(c *gin.Context) {
 	var routeStops []models.RouteStop
-	// Preload Route to get names/colors directly if possible, 
-	// but models.RouteStop only has Stop relation. 
+	// Preload Route to get names/colors directly if possible,
+	// but models.RouteStop only has Stop relation.
 	// Let's just get the raw associations.
 	database.DB.Find(&routeStops)
 	c.JSON(http.StatusOK, routeStops)
@@ -352,7 +377,7 @@ func UpdateStopRoutes(c *gin.Context) {
 	tx := database.DB.Begin()
 	// 1. Remove existing route assignments for this stop
 	tx.Where("stop_id = ?", stopID).Delete(&models.RouteStop{})
-	
+
 	// 2. Add new assignments
 	for _, rid := range selectedRouteIDs {
 		tx.Create(&models.RouteStop{
@@ -429,7 +454,7 @@ func CreateShape(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No points provided"})
 		return
 	}
-	
+
 	// Transaction to ensure atomicity
 	tx := database.DB.Begin()
 	for _, p := range points {
@@ -465,7 +490,7 @@ func UpdateShape(c *gin.Context) {
 	// 2. Insert new points
 	for _, p := range points {
 		// Ensure the ID in the body matches the URL (or overwrite it)
-		p.ShapeID = shapeID 
+		p.ShapeID = shapeID
 		if err := tx.Create(&p).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert new points"})
@@ -500,7 +525,7 @@ func GetBulkShapes(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database retrieval failure: " + err.Error()})
 		return
 	}
-	
+
 	// Group points by shape_id
 	result := make(map[string][]models.ShapePoint)
 	for _, p := range points {
