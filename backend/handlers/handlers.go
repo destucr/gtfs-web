@@ -332,19 +332,38 @@ func DeleteTrip(c *gin.Context) {
 
 func GetStopRoutes(c *gin.Context) {
 	stopID := c.Param("id")
+	// Find all trips passing through this stop
 	var tripStops []models.TripStop
-	database.DB.Where("stop_id = ?", stopID).Find(&tripStops)
+	if err := database.DB.Where("stop_id = ?", stopID).Find(&tripStops).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch trip stops: " + err.Error()})
+		return
+	}
 
-	routeIDs := make(map[uint]bool)
+	// Get unique trips
+	tripMap := make(map[uint]bool)
+	var routeIDs []uint
+
 	for _, ts := range tripStops {
-		var trip models.Trip
-		if err := database.DB.First(&trip, ts.TripID).Error; err == nil {
-			routeIDs[trip.RouteID] = true
+		if !tripMap[ts.TripID] {
+			tripMap[ts.TripID] = true
+			var trip models.Trip
+			if err := database.DB.First(&trip, ts.TripID).Error; err != nil {
+				// If a trip associated with a tripStop is not found, skip it.
+				// This might indicate data inconsistency, but we proceed with valid data.
+				continue
+			}
+			routeIDs = append(routeIDs, trip.RouteID)
 		}
 	}
 
+	// Get unique route IDs
+	uniqueRouteIDs := make(map[uint]bool)
+	for _, rID := range routeIDs {
+		uniqueRouteIDs[rID] = true
+	}
+
 	var routes []models.Route
-	for rID := range routeIDs {
+	for rID := range uniqueRouteIDs {
 		var route models.Route
 		if err := database.DB.First(&route, rID).Error; err == nil {
 			routes = append(routes, route)
@@ -394,7 +413,10 @@ func UpdateStopRoutes(c *gin.Context) {
 func GetTripStops(c *gin.Context) {
 	tripID := c.Param("id")
 	var tripStops []models.TripStop
-	database.DB.Preload("Stop").Where("trip_id = ?", tripID).Order("sequence asc").Find(&tripStops)
+	if err := database.DB.Preload("Stop").Where("trip_id = ?", tripID).Order("sequence asc").Find(&tripStops).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch trip stops: " + err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, tripStops)
 }
 
@@ -404,7 +426,10 @@ func AddStopToTrip(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Create(&ts)
+	if err := database.DB.Create(&ts).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add stop to trip: " + err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, ts)
 }
 
@@ -417,12 +442,36 @@ func UpdateTripStops(c *gin.Context) {
 	}
 
 	tx := database.DB.Begin()
-	tx.Where("trip_id = ?", tripID).Delete(&models.TripStop{})
-	for _, ts := range tripStops {
-		ts.TripID = uint(castToUint(tripID))
-		tx.Create(&ts)
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction: " + tx.Error.Error()})
+		return
 	}
-	tx.Commit()
+
+	if err := tx.Where("trip_id = ?", tripID).Delete(&models.TripStop{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete old stops: " + err.Error()})
+		return
+	}
+
+	// Verify tripID conversion
+	tID := castToUint(tripID)
+	// castToUint returns 0 on failure or if empty, could check if tripID was "0" but likely it's a valid ID from URL.
+	// We can check if it's 0 and handle safely, though standard castToUint handles sscanf.
+
+	for _, ts := range tripStops {
+		ts.TripID = uint(tID)
+		if err := tx.Create(&ts).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create trip stop: " + err.Error()})
+			return
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction: " + err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Trip stops updated"})
 }
 

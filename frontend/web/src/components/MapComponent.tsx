@@ -2,14 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Search, Bus, Sun, Moon, Target, Locate, Info as InfoIcon, Clock } from 'lucide-react';
-import { 
-    Box, 
-    Paper, 
-    TextInput, 
-    Stack, 
-    Text, 
-    ActionIcon, 
-    ScrollArea, 
+import {
+    Box,
+    Paper,
+    TextInput,
+    Stack,
+    Text,
+    ActionIcon,
+    ScrollArea,
     Group,
     Badge,
     UnstyledButton,
@@ -72,7 +72,7 @@ const MapComponent: React.FC = () => {
                 if (trip.shape_id && !shapeData[trip.shape_id]) {
                     const res = await api.get(`/shapes/${trip.shape_id}`);
                     const points: ShapePoint[] = res.data || [];
-                    shapeData[trip.shape_id] = points.sort((a,b)=>a.sequence-b.sequence).map(p => [p.lat, p.lon] as [number, number]);
+                    shapeData[trip.shape_id] = points.sort((a, b) => a.sequence - b.sequence).map(p => [p.lat, p.lon] as [number, number]);
                 }
             }));
             setShapes(shapeData);
@@ -89,7 +89,7 @@ const MapComponent: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
-    const filteredRoutes = routes.filter(r => 
+    const filteredRoutes = routes.filter(r =>
         r.long_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.short_name.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -103,9 +103,9 @@ const MapComponent: React.FC = () => {
     return (
         <Box h="100vh" w="100vw" pos="relative" style={{ overflow: 'hidden' }}>
             {/* Immersive Sidebar */}
-            <Paper 
-                pos="absolute" top={20} left={20} 
-                style={{ 
+            <Paper
+                pos="absolute" top={20} left={20}
+                style={{
                     zIndex: 1000,
                     width: 340,
                     borderRadius: '24px',
@@ -124,7 +124,7 @@ const MapComponent: React.FC = () => {
                             <Text fw={900} size="xl" c="blue.6">GTFS TERMINAL</Text>
                             <Text size="xs" fw={800} c="dimmed">LIVE NETWORK FEED</Text>
                         </Stack>
-                        <ActionIcon 
+                        <ActionIcon
                             size="lg" radius="md" variant="light"
                             onClick={() => setIsDarkMode(!isDarkMode)}
                         >
@@ -132,7 +132,7 @@ const MapComponent: React.FC = () => {
                         </ActionIcon>
                     </Group>
 
-                    <TextInput 
+                    <TextInput
                         placeholder="Search routes..."
                         leftSection={<Search size={16} />}
                         radius="md" size="md"
@@ -146,10 +146,10 @@ const MapComponent: React.FC = () => {
                     <ScrollArea scrollbars="y" style={{ flex: 1 }}>
                         <Stack gap="xs">
                             {filteredRoutes.map(route => (
-                                <UnstyledButton 
+                                <UnstyledButton
                                     key={route.id}
                                     onClick={() => setSelectedRouteId(selectedRouteId === route.id ? null : route.id)}
-                                    p="md" 
+                                    p="md"
                                     style={{
                                         borderRadius: '12px',
                                         backgroundColor: selectedRouteId === route.id ? (isDarkMode ? '#2c2e33' : '#f1f3f5') : 'transparent',
@@ -159,8 +159,8 @@ const MapComponent: React.FC = () => {
                                 >
                                     <Group justify="space-between" wrap="nowrap">
                                         <Group wrap="nowrap">
-                                            <ThemeIcon 
-                                                size={40} radius="md" 
+                                            <ThemeIcon
+                                                size={40} radius="md"
                                                 style={{ backgroundColor: `#${route.color}` }}
                                             >
                                                 <Bus size={20} color="white" />
@@ -191,15 +191,15 @@ const MapComponent: React.FC = () => {
                 </Stack>
             </Paper>
 
-            <MapContainer 
-                center={[-7.393, 109.360] as [number, number]} 
-                zoom={14} 
-                zoomControl={false} 
+            <MapContainer
+                center={[-7.393, 109.360] as [number, number]}
+                zoom={14}
+                zoomControl={false}
                 style={{ height: '100%', width: '100%' }}
             >
                 <MapController focusedPoints={activeShape} />
                 <TileLayer
-                    url={isDarkMode 
+                    url={isDarkMode
                         ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                         : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                     }
@@ -211,13 +211,13 @@ const MapComponent: React.FC = () => {
                     const route = routes.find(r => r.id === trip.route_id);
                     const isSelected = selectedRouteId === trip.route_id;
                     return (
-                        <Polyline 
+                        <Polyline
                             key={trip.id}
                             positions={shapes[trip.shape_id]}
                             pathOptions={{
-                                color: isSelected ? `#${route?.color}` : (isDarkMode ? '#444' : '#ccc'),
-                                weight: isSelected ? 6 : 3,
-                                opacity: isSelected ? 1 : 0.3,
+                                color: (selectedRouteId === null || isSelected) ? `#${route?.color || '007AFF'}` : (isDarkMode ? '#444' : '#ccc'),
+                                weight: isSelected ? 6 : (selectedRouteId === null ? 4 : 3),
+                                opacity: (selectedRouteId === null || isSelected) ? (isDarkMode ? 0.8 : 0.8) : 0.3,
                                 lineCap: 'round',
                                 lineJoin: 'round'
                             }}
@@ -253,7 +253,7 @@ const MapComponent: React.FC = () => {
 
             <Box pos="absolute" bottom={30} right={20} style={{ zIndex: 1000 }}>
                 <Stack gap="xs">
-                    <ActionIcon 
+                    <ActionIcon
                         size={44} radius="md" variant="white" color="blue"
                         onClick={() => window.location.reload()}
                         style={{ border: '1px solid #e9ecef', backgroundColor: 'white' }}
