@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "screenshots": "node scripts/capture_screenshots.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "seed": "docker exec -i gtfs_postgres psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} < backend/seed_purbalingga.sql"
   },
   "repository": {
     "type": "git",

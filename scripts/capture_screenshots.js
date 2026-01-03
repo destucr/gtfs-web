@@ -13,15 +13,14 @@ const PAGES = [
 const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
 
 (async () => {
-  console.log('🚀 Starting automated screenshot capture...');
+  console.log('🚀 Starting automated screenshot capture with framed mockups...');
   const browser = await chromium.launch();
   const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
+    viewport: { width: 1600, height: 1000 }, // Larger viewport to accommodate frame
     deviceScaleFactor: 2,
   });
   const page = await context.newPage();
 
-  // Set a longer timeout
   page.setDefaultTimeout(60000);
 
   for (const item of PAGES) {
@@ -58,10 +57,36 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
             await page.waitForTimeout(3000);
         }
 
+        // --- Inject Frame Effect ---
+        await page.evaluate(() => {
+            // Apply a frame/window look to the entire body
+            const body = document.body;
+            body.style.backgroundColor = '#F2F2F7'; // Frame color
+            body.style.padding = '40px';
+            body.style.display = 'flex';
+            body.style.justifyContent = 'center';
+            body.style.alignItems = 'center';
+            body.style.height = '100vh';
+            body.style.boxSizing = 'border-box';
+
+            const root = document.getElementById('root');
+            if (root) {
+                root.style.width = '1440px';
+                root.style.height = '850px';
+                root.style.backgroundColor = 'white';
+                root.style.borderRadius = '16px';
+                root.style.boxShadow = '0 30px 60px rgba(0,0,0,0.12), 0 0 1px rgba(0,0,0,0.1)';
+                root.style.overflow = 'hidden';
+                root.style.position = 'relative';
+                root.style.border = '1px solid rgba(0,0,0,0.05)';
+            }
+        });
+
         await page.screenshot({ 
             path: path.join(OUTPUT_DIR, `${item.name}.jpg`),
-            quality: 85,
-            type: 'jpeg'
+            quality: 90,
+            type: 'jpeg',
+            fullPage: true // Capture the entire framed viewport
         });
     } catch (err) {
         console.error(`❌ Failed to capture ${item.name}: ${err.message}`);
@@ -69,5 +94,5 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
   }
 
   await browser.close();
-  console.log('✅ All screenshots updated in assets/screenshots/');
+  console.log('✅ All framed screenshots updated in assets/screenshots/');
 })();

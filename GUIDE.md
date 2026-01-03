@@ -1,6 +1,6 @@
 # GTFS Platform User Guide
 
-Welcome to the GTFS Transit Management Platform. This guide explains how to effectively manage your transit network.
+Welcome to the GTFS Transit Management Platform. This guide explains how to effectively manage your transit network using our professional GIS-integrated workspace.
 
 ## 🏁 Getting Started
 
@@ -11,7 +11,7 @@ The platform follows a natural data lifecycle. For a fully functional network, f
 3.  **Routes**: Design the service lines and paths.
 4.  **Trips**: Bind the paths to specific service schedules.
 
-**Note on Navigation**: The map workspace is persistent. When you switch between modules (e.g., from Stops to Routes), the map stays active and simply updates its layers, ensuring a zero-flicker experience.
+**Note on Workspace**: The platform uses an immersive GIS layout. Left sidebars handle data management and filtering, while the map remains persistent and reactive across all modules for a zero-flicker experience.
 
 ---
 
@@ -19,26 +19,27 @@ The platform follows a natural data lifecycle. For a fully functional network, f
 
 ### 1. Transit Operators (Agencies) `^1`
 *   Register official names, URLs, and timezones.
-*   **Visualization**: Select an agency to see its entire coverage network on the map.
+*   **Network View**: Select an operator from the sidebar to instantly visualize their entire service area, including all associated lines and stations.
 
 ### 2. Stops Inventory `^2`
+*   **Inventory List**: Browse and search all station points in the left sidebar.
 *   **Adding Stops**: Click anywhere on the map to drop a new anchor.
-*   **Auto-Naming**: The system uses reverse geocoding to suggest a name based on the location.
-*   **Draggable Adjustment**: Grab any blue marker to fine-tune its position. The coordinates update instantly.
-*   **Route Bindings**: Click the `+` icon in the sidebar to assign a stop to multiple lines.
+*   **Auto-Naming**: The system automatically suggests a name based on real-world landmarks using reverse geocoding.
+*   **Draggable Adjustment**: Grab any marker on the map to fine-tune its position; coordinates update in real-time.
+*   **Route Bindings**: Click the `+` icon in any table row to assign a stop to multiple transit lines.
 
 ### 3. Route Studio `^3`
-*   **Info**: Configure route numbers and branding colors.
-*   **Geographic Path**: 
-    *   Left-click the map to add anchor nodes.
-    *   Click **Snap to Road Network** to generate a precise line following real streets.
-    *   **Undo (`^Z`)**: Revert any mistakes instantly.
-    *   **Auto-Save**: Changes are saved in the background while you draw.
-*   **Stop Sequence**: Drag and drop stops from your library to set the arrival order.
+*   **Persistent Switching**: Switch between lines in the left sidebar without leaving the editor context.
+*   **Unified Property Panel**: Use the floating right panel to manage:
+    *   **Info**: Route numbers and branding colors (with a visual color picker).
+    *   **Path**: Left-click the map to add nodes. Use **Snap to Road Network** (`^R`) for precision.
+    *   **Sequence**: Drag and drop stops from your library to set the arrival order.
+*   **Live Persistence**: Every map edit or reordering is automatically synchronized to the cloud in real-time.
+*   **Undo (`^Z`)**: Revert any node placement or construction step instantly.
 
 ### 4. Trip Mapping `^4`
-*   Bind your designed paths to specific destinations (Headsigns).
-*   Preview the final geometry before it goes live to the public.
+*   Finalize service bindings by linking paths to target destinations (Headsigns).
+*   Preview the high-resolution geometry before it goes live.
 
 ---
 
@@ -59,7 +60,7 @@ The platform follows a natural data lifecycle. For a fully functional network, f
 
 ## 🌐 Public Web Viewer
 
-The viewer is located at `http://localhost:3000`.
-*   **Live Updates**: Every edit in the CMS is visible within 5 seconds.
-*   **Route Discovery**: Use the search bar to find lines.
-*   **Dark Mode**: Use the moon/sun icon for high-contrast night viewing.
+Accessible at `http://localhost:3000`.
+*   **Real-time Synchronization**: CMS edits are visible to the public within 5 seconds.
+*   **Dark Mode**: High-contrast night viewing support.
+*   **Route Search**: Instant discovery and interactive line highlighting.

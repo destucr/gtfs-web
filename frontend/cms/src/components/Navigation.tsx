@@ -1,11 +1,17 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Globe, MapPin, Route, LayoutDashboard, Database } from 'lucide-react';
+import { Globe, MapPin, Route, LayoutDashboard, Database, LucideIcon } from 'lucide-react';
 
-const Navigation = () => {
+interface NavLink {
+    path: string;
+    name: string;
+    icon: LucideIcon;
+}
+
+const Navigation: React.FC = () => {
     const location = useLocation();
 
-    const links = [
+    const links: NavLink[] = [
         { path: '/', name: 'Dashboard', icon: LayoutDashboard },
         { path: '/agencies', name: 'Agencies', icon: Globe },
         { path: '/stops', name: 'Stops & Routes', icon: MapPin },
@@ -19,7 +25,7 @@ const Navigation = () => {
                 <div className="w-8 h-8 bg-system-blue rounded-lg flex items-center justify-center text-white shadow-lg shadow-system-blue/20">
                     <Route size={20} />
                 </div>
-                <span className="font-bold text-lg tracking-tight">GTFS Studio</span>
+                <span className="font-bold text-lg tracking-tight text-black">GTFS Studio</span>
             </div>
 
             <div className="flex items-center gap-1">
