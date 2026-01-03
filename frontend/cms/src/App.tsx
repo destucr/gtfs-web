@@ -154,10 +154,10 @@ const MapHUD: React.FC = () => {
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] font-black uppercase tracking-[0.15em]">
-              {status?.isDirty ? 'Workspace Dirty' : 'Manifest Integrity'}
+              {status?.isDirty ? 'Local edits detected' : 'Registry Synchronized'}
             </span>
             <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">
-              {status?.isDirty ? 'Pending Local Buffer' : 'Cloud Synchronized'}
+              {status?.isDirty ? 'Commit changes to update database' : 'Workspace matches cloud manifest'}
             </p>
           </div>
         </div>

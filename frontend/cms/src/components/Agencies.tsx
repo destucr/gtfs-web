@@ -55,8 +55,8 @@ const Agencies: React.FC = () => {
         const current = JSON.stringify({ name: formData.name, url: formData.url, timezone: formData.timezone });
         const dirty = current !== initialFormData.current && initialFormData.current !== '';
         setIsDirty(dirty);
-        if (dirty) setStatus({ message: 'Pending sync', type: 'info', isDirty: true });
-        else if (selectedAgency) setStatus({ message: 'Synchronized', type: 'info', isDirty: false });
+        if (dirty) setStatus({ message: 'Unsaved local edits. Commit to sync.', type: 'info', isDirty: true });
+        else if (selectedAgency) setStatus({ message: 'Operator registry synchronized.', type: 'info', isDirty: false });
     }, [formData, selectedAgency, setStatus]);
 
     useEffect(() => {

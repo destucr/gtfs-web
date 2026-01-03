@@ -69,9 +69,13 @@ const RouteStudio: React.FC = () => {
 
     // Sync isDirty to Global Status
     useEffect(() => {
-        if (isDirty) setStatus({ message: 'Unsaved Changes', type: 'info', isDirty: true });
-        else if (selectedRoute) setStatus({ message: 'All Changes Synced', type: 'info', isDirty: false });
-        else setStatus(null);
+        if (isDirty) {
+            setStatus({ message: 'Unsaved local edits. Commit to sync.', type: 'info', isDirty: true });
+        } else if (selectedRoute) {
+            setStatus({ message: 'Successfully synchronized.', type: 'info', isDirty: false });
+        } else {
+            setStatus(null);
+        }
     }, [isDirty, selectedRoute, setStatus]);
 
     // --- Persistence ---
@@ -104,26 +108,28 @@ const RouteStudio: React.FC = () => {
     const handleShapePointInsert = useCallback(async (index: number, latlng: { lat: number, lng: number }) => {
         const sId = selectedRoute?.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute?.id}`;
         
-        if (autoRoute && index > 0 && index < shapePoints.length) {
-            setStatus({ message: 'Routing via Roads...', type: 'loading' });
-            try {
-                const prev = shapePoints[index - 1];
-                const next = shapePoints[index];
-                const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${prev.lon},${prev.lat};${latlng.lng},${latlng.lat};${next.lon},${next.lat}?overview=full&geometries=geojson`);
-                if (res.data.routes && res.data.routes[0]) {
-                    const geometry: [number, number][] = res.data.routes[0].geometry.coordinates;
-                    const newPoints = [...shapePoints];
-                    const intermediatePoints = geometry.slice(1, -1).map((c) => ({ shape_id: sId, lat: c[1], lon: c[0], sequence: 0 }));
-                    newPoints.splice(index, 0, ...intermediatePoints);
-                    const reordered = newPoints.map((p, i) => ({ ...p, sequence: i + 1 }));
-                    pushToHistory(reordered);
-                    setStatus({ message: 'Point Inserted (Road Snapped)', type: 'success' });
-                    setTimeout(() => setStatus(null), 2000);
-                    return;
-                }
-            } catch (e) { setStatus({ message: 'Routing failed', type: 'error' }); }
-        }
-        const newPoints = [...shapePoints];
+                if (autoRoute && index > 0 && index < shapePoints.length) {
+                    setStatus({ message: 'System calculating path. Please wait.', type: 'loading' });
+                    try {
+                        const prev = shapePoints[index - 1];
+                        const next = shapePoints[index];
+                        const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${prev.lon},${prev.lat};${latlng.lng},${latlng.lat};${next.lon},${next.lat}?overview=full&geometries=geojson`);
+                        
+                        if (res.data.routes && res.data.routes[0]) {
+                            const geometry: [number, number][] = res.data.routes[0].geometry.coordinates;
+                            const newPoints = [...shapePoints];
+                            const intermediatePoints = geometry.slice(1, -1).map((c) => ({
+                                shape_id: sId, lat: c[1], lon: c[0], sequence: 0
+                            }));
+                            newPoints.splice(index, 0, ...intermediatePoints);
+                            const reordered = newPoints.map((p, i) => ({ ...p, sequence: i + 1 }));
+                            pushToHistory(reordered);
+                            setStatus({ message: 'Road path generated. Commit to save.', type: 'success' });
+                            setTimeout(() => setStatus(null), 2000);
+                            return;
+                        }
+                    } catch (e) { console.error(e); setStatus({ message: 'Routing failed. Check network.', type: 'error' }); }
+                }        const newPoints = [...shapePoints];
         newPoints.splice(index, 0, { lat: latlng.lat, lon: latlng.lng, sequence: index + 1, shape_id: sId });
         pushToHistory(newPoints.map((p, i) => ({ ...p, sequence: i + 1 })));
     }, [shapePoints, selectedRoute, autoRoute, pushToHistory, setStatus]);

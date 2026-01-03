@@ -39,8 +39,8 @@ const Trips: React.FC = () => {
         const current = JSON.stringify(formData);
         const dirty = current !== initialFormData.current && initialFormData.current !== '';
         setIsDirty(dirty);
-        if (dirty) setStatus({ message: 'Pending sync', type: 'info', isDirty: true });
-        else if (selectedTrip) setStatus({ message: 'Synchronized', type: 'info', isDirty: false });
+        if (dirty) setStatus({ message: 'Unsaved local edits. Commit to sync.', type: 'info', isDirty: true });
+        else if (selectedTrip) setStatus({ message: 'Binding manifest synchronized.', type: 'info', isDirty: false });
     }, [formData, selectedTrip, setStatus]);
 
     useEffect(() => {
