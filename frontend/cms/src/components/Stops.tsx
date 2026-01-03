@@ -31,7 +31,7 @@ const Stops: React.FC = () => {
     const [focusedRouteId, setFocusedRouteId] = useState<number | null>(null);
     const [selectedRouteIds, setSelectedRouteIds] = useState<number[]>([]);
     const [routeShapes, setRouteShapes] = useState<Record<number, [number, number][]>>({});
-    const [hoveredRouteId, setHoveredRouteId] = useState<number | null>(null);
+    const [hoveredRouteIds, setHoveredRouteIds] = useState<number[]>([]);
 
     const fetchInitialData = useCallback(async () => {
         setLoading(true);
@@ -63,8 +63,12 @@ const Stops: React.FC = () => {
     }, [selectedEntityId, stops, setSelectedEntityId]);
 
     const handleRouteHover = async (routeId: number | null) => {
-        setHoveredRouteId(routeId);
-        if (routeId && !routeShapes[routeId]) {
+        if (routeId === null) {
+            setHoveredRouteIds([]);
+            return;
+        }
+        setHoveredRouteIds(prev => [...new Set([...prev, routeId])]);
+        if (!routeShapes[routeId]) {
             try {
                 const tripsRes: { data: Trip[] } = await api.get('/trips');
                 const routeTrips = tripsRes.data.filter(t => t.route_id === routeId);
@@ -81,8 +85,9 @@ const Stops: React.FC = () => {
         setHoveredEntityId(stopId);
         if (stopId) {
             const routesForStop = stopRouteMap[stopId] || [];
+            setHoveredRouteIds([]); 
             await Promise.all(routesForStop.map(r => handleRouteHover(r.id)));
-        } else { handleRouteHover(null); }
+        } else { setHoveredRouteIds([]); }
     };
 
     useEffect(() => {
@@ -173,13 +178,11 @@ const Stops: React.FC = () => {
                 isCustom: s.id === hoveredEntityId,
                 icon: s.id === hoveredEntityId ? L.divIcon({ 
                     className: '',
-                    html: `
-                        <div class="relative w-full h-full flex items-center justify-center">
+                    html: `<div class="relative w-full h-full flex items-center justify-center">
                             <div class="absolute w-8 h-8 bg-orange-500/40 rounded-full animate-ping"></div>
                             <div class="absolute w-5 h-5 bg-orange-500/60 rounded-full animate-pulse"></div>
                             <div class="absolute w-3 h-3 bg-orange-600 border-2 border-white rounded-full shadow-2xl scale-125"></div>
-                        </div>
-                    `,
+                        </div>`,
                     iconSize: [32, 32],
                     iconAnchor: [16, 16]
                 }) : undefined
@@ -188,12 +191,12 @@ const Stops: React.FC = () => {
                 ? [[formData.lat, formData.lon]] 
                 : (hoveredStop ? [[hoveredStop.lat, hoveredStop.lon]] : []),
             activeStop: (formData.lat !== 0 && formData.lon !== 0) ? { ...formData, isDraggable: true } : null,
-            previewRoute: hoveredRouteId ? {
-                id: hoveredRouteId, color: routes.find(r => r.id === hoveredRouteId)?.color || '007AFF',
-                positions: routeShapes[hoveredRouteId] || [], isFocused: false
-            } : null
+            previewRoutes: hoveredRouteIds.map(rid => ({
+                id: rid, color: routes.find(r => r.id === rid)?.color || '007AFF',
+                positions: routeShapes[rid] || [], isFocused: false
+            }))
         }));
-    }, [stops, selectedRouteIds, routeShapes, formData, routes, focusedRouteId, hoveredRouteId, hoveredEntityId, setMapLayers]);
+    }, [stops, selectedRouteIds, routeShapes, formData, routes, focusedRouteId, hoveredRouteIds, hoveredEntityId, setMapLayers]);
 
     const filteredStops = stops.filter(s => {
         const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -203,7 +206,6 @@ const Stops: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
-            {/* Sidebar: Registry */}
             <motion.div 
                 animate={{ x: sidebarOpen ? 0 : -400 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
@@ -326,11 +328,10 @@ const Stops: React.FC = () => {
                             </div>
 
                             <div className="p-4 bg-white/50 backdrop-blur-md border-t border-black/5 rounded-b-[1.5rem] sticky bottom-0">
-                                <button onClick={handleSave} disabled={!isDirty} className="w-full py-3.5 bg-system-blue text-white rounded-xl font-black text-[9px] shadow-xl shadow-system-blue/20 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase">
+                                <button onClick={handleSave} disabled={!isDirty} className="w-full py-3.5 bg-system-blue text-white rounded-xl font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase">
                                     <Save size={16}/> Commit Changes
                                 </button>
                             </div>
-
                         </>
                     )}
                 </motion.div>

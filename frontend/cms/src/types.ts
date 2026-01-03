@@ -61,5 +61,5 @@ export interface MapLayers {
   focusedPoints: [number, number][];
   activeShape: ShapePoint[];
   activeStop: (Stop & { isDraggable?: boolean }) | null;
-  previewRoute?: MapLayerRoute | null;
+  previewRoutes?: MapLayerRoute[] | null;
 }

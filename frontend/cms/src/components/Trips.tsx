@@ -24,7 +24,7 @@ const Trips: React.FC = () => {
 
     const fetchInitialData = useCallback(async () => {
         setLoading(true);
-        setStatus({ message: 'Syncing Mappings...', type: 'loading' });
+        setStatus({ message: 'Syncing...', type: 'loading' });
         try {
             const [tRes, rRes] = await Promise.all([api.get('/trips'), api.get('/routes')]);
             setTrips(tRes.data || []);
@@ -101,7 +101,6 @@ const Trips: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
-            {/* Sidebar: Registry */}
             <motion.div 
                 animate={{ x: sidebarOpen ? 0 : -400 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}

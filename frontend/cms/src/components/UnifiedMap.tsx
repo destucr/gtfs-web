@@ -149,17 +149,27 @@ const UnifiedMap: React.FC = () => {
                 />
             ))}
 
-            {/* Render Hover Preview Route */}
-            {mapLayers.previewRoute && (
-                <Polyline 
-                    positions={mapLayers.previewRoute.positions} 
-                    color={`#${mapLayers.previewRoute.color.replace('#', '')}`} 
-                    weight={6} 
-                    opacity={0.6} 
-                    dashArray="5, 10"
-                    lineCap="round"
-                />
-            )}
+            {/* Render Hover Preview Routes with Halo Effect */}
+            {mapLayers.previewRoutes && mapLayers.previewRoutes.map(route => (
+                <React.Fragment key={`preview-${route.id}`}>
+                    {/* The Halo (Background) */}
+                    <Polyline 
+                        positions={route.positions} 
+                        color="white" 
+                        weight={12} 
+                        opacity={0.6} 
+                        lineCap="round"
+                    />
+                    {/* The Route (Foreground) */}
+                    <Polyline 
+                        positions={route.positions} 
+                        color={`#${route.color.replace('#', '')}`} 
+                        weight={6} 
+                        opacity={0.9} 
+                        lineCap="round"
+                    />
+                </React.Fragment>
+            ))}
 
             {/* Render Static Stops */}
             {mapLayers.stops.map(stop => (
