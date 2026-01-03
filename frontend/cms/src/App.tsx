@@ -130,7 +130,10 @@ const Home: React.FC = () => {
         </div>
         <div className="p-4 bg-zinc-900 text-white group cursor-pointer overflow-hidden relative" onClick={() => navigate('/routes')}>
           <div className="relative z-10 flex items-center justify-between w-full">
-            <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest">Map Designer</span><span className="text-[7px] text-white/40 uppercase font-black">Professional Tools</span></div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-100">Map Designer</span>
+              <span className="text-[7px] text-white/40 uppercase font-black">Interactive Editor</span>
+            </div>
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </div>
           <Zap size={60} className="absolute -right-4 -bottom-4 text-white/5 -rotate-12 group-hover:scale-110 transition-all duration-500" />
