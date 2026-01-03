@@ -221,10 +221,8 @@ const Stops: React.FC = () => {
                             </div>
                             <div className="flex gap-1 items-center shrink-0">
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                    {focusedRouteId ? (
+                                    {focusedRouteId && (
                                         <button onClick={(e) => { e.stopPropagation(); toggleStopInRoute(stop, focusedRouteId); }} className={`p-1.5 rounded-lg transition-all shadow-sm ${ (stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? 'bg-orange-500 text-white' : 'bg-system-blue text-white' }`}>{(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? <X size={14}/> : <Plus size={14}/>}</button>
-                                    ) : (
-                                        <button onClick={(e) => { e.stopPropagation(); handleSelectStop(stop); }} className="p-1.5 bg-system-blue/10 text-system-blue rounded-lg hover:bg-system-blue hover:text-white transition-all"><Plus size={14}/></button>
                                     )}
                                     <button onClick={(e) => { e.stopPropagation(); if(window.confirm('Wipe record?')) api.delete(`/stops/${stop.id}`).then(fetchInitialData); }} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"><Trash2 size={14}/></button>
                                 </div>
