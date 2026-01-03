@@ -112,34 +112,24 @@ func ExportGTFS(c *gin.Context) {
 	}
 
 	// 5. stop_times.txt
-	var routeStops []models.RouteStop
-	if result := database.DB.Find(&routeStops); result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query route stops: " + result.Error.Error()})
+	var tripStops []models.TripStop
+	if result := database.DB.Find(&tripStops); result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query trip stops: " + result.Error.Error()})
 		return
 	}
-	// We need to map RouteID to TripIDs because our model links stops to routes
-	// Standard GTFS links stops to trips.
 	stopTimeData := [][]string{}
-	for _, rs := range routeStops {
-		// Find all trips for this route
-		var tripsForRoute []models.Trip
-		if result := database.DB.Where("route_id = ?", rs.RouteID).Find(&tripsForRoute); result.Error != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query trips for route: " + result.Error.Error()})
-			return
+	for _, ts := range tripStops {
+		arr := ts.ArrivalTime
+		if arr == "" {
+			arr = "08:00:00"
 		}
-		for _, t := range tripsForRoute {
-			arr := rs.ArrivalTime
-			if arr == "" {
-				arr = "08:00:00"
-			}
-			dep := rs.DepartureTime
-			if dep == "" {
-				dep = "08:00:00"
-			}
-			stopTimeData = append(stopTimeData, []string{
-				strconv.Itoa(int(t.ID)), arr, dep, strconv.Itoa(int(rs.StopID)), strconv.Itoa(rs.Sequence),
-			})
+		dep := ts.DepartureTime
+		if dep == "" {
+			dep = "08:00:00"
 		}
+		stopTimeData = append(stopTimeData, []string{
+			strconv.Itoa(int(ts.TripID)), arr, dep, strconv.Itoa(int(ts.StopID)), strconv.Itoa(ts.Sequence),
+		})
 	}
 	if err := createCSV("stop_times.txt", []string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"}, stopTimeData); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create stop_times.txt: " + err.Error()})
@@ -342,28 +332,31 @@ func DeleteTrip(c *gin.Context) {
 
 func GetStopRoutes(c *gin.Context) {
 	stopID := c.Param("id")
-	var routeStops []models.RouteStop
-	database.DB.Preload("Stop").Where("stop_id = ?", stopID).Find(&routeStops)
+	var tripStops []models.TripStop
+	database.DB.Where("stop_id = ?", stopID).Find(&tripStops)
 
-	var routeIDs []uint
-	for _, rs := range routeStops {
-		routeIDs = append(routeIDs, rs.RouteID)
+	routeIDs := make(map[uint]bool)
+	for _, ts := range tripStops {
+		var trip models.Trip
+		if err := database.DB.First(&trip, ts.TripID).Error; err == nil {
+			routeIDs[trip.RouteID] = true
+		}
 	}
 
 	var routes []models.Route
-	if len(routeIDs) > 0 {
-		database.DB.Where("id IN ?", routeIDs).Find(&routes)
+	for rID := range routeIDs {
+		var route models.Route
+		if err := database.DB.First(&route, rID).Error; err == nil {
+			routes = append(routes, route)
+		}
 	}
 	c.JSON(http.StatusOK, routes)
 }
 
 func GetAllStopRoutes(c *gin.Context) {
-	var routeStops []models.RouteStop
-	// Preload Route to get names/colors directly if possible,
-	// but models.RouteStop only has Stop relation.
-	// Let's just get the raw associations.
-	database.DB.Find(&routeStops)
-	c.JSON(http.StatusOK, routeStops)
+	var tripStops []models.TripStop
+	database.DB.Preload("Trip").Find(&tripStops)
+	c.JSON(http.StatusOK, tripStops)
 }
 
 func UpdateStopRoutes(c *gin.Context) {
@@ -375,16 +368,22 @@ func UpdateStopRoutes(c *gin.Context) {
 	}
 
 	tx := database.DB.Begin()
-	// 1. Remove existing route assignments for this stop
-	tx.Where("stop_id = ?", stopID).Delete(&models.RouteStop{})
+	// 1. Find all trips for the stop to remove them
+	var existingTripStops []models.TripStop
+	tx.Where("stop_id = ?", stopID).Find(&existingTripStops)
+	tx.Where("stop_id = ?", stopID).Delete(&models.TripStop{})
 
-	// 2. Add new assignments
+	// 2. Add new assignments to all trips of selected routes
 	for _, rid := range selectedRouteIDs {
-		tx.Create(&models.RouteStop{
-			RouteID:  rid,
-			StopID:   stopID,
-			Sequence: 1, // Default sequence, usually managed in Route Studio
-		})
+		var trips []models.Trip
+		tx.Where("route_id = ?", rid).Find(&trips)
+		for _, t := range trips {
+			tx.Create(&models.TripStop{
+				TripID:   t.ID,
+				StopID:   stopID,
+				Sequence: 1, // Default sequence, usually managed in Route Studio
+			})
+		}
 	}
 	tx.Commit()
 	c.JSON(http.StatusOK, gin.H{"message": "Stop route assignments updated"})
@@ -392,39 +391,39 @@ func UpdateStopRoutes(c *gin.Context) {
 
 // --- RouteStops ---
 
-func GetRouteStops(c *gin.Context) {
-	routeID := c.Param("id")
-	var routeStops []models.RouteStop
-	database.DB.Preload("Stop").Where("route_id = ?", routeID).Order("sequence asc").Find(&routeStops)
-	c.JSON(http.StatusOK, routeStops)
+func GetTripStops(c *gin.Context) {
+	tripID := c.Param("id")
+	var tripStops []models.TripStop
+	database.DB.Preload("Stop").Where("trip_id = ?", tripID).Order("sequence asc").Find(&tripStops)
+	c.JSON(http.StatusOK, tripStops)
 }
 
-func AddStopToRoute(c *gin.Context) {
-	var rs models.RouteStop
-	if err := c.ShouldBindJSON(&rs); err != nil {
+func AddStopToTrip(c *gin.Context) {
+	var ts models.TripStop
+	if err := c.ShouldBindJSON(&ts); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Create(&rs)
-	c.JSON(http.StatusOK, rs)
+	database.DB.Create(&ts)
+	c.JSON(http.StatusOK, ts)
 }
 
-func UpdateRouteStops(c *gin.Context) {
-	routeID := c.Param("id")
-	var routeStops []models.RouteStop
-	if err := c.ShouldBindJSON(&routeStops); err != nil {
+func UpdateTripStops(c *gin.Context) {
+	tripID := c.Param("id")
+	var tripStops []models.TripStop
+	if err := c.ShouldBindJSON(&tripStops); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	tx := database.DB.Begin()
-	tx.Where("route_id = ?", routeID).Delete(&models.RouteStop{})
-	for _, rs := range routeStops {
-		rs.RouteID = uint(castToUint(routeID)) // Helper would be needed or just simple cast
-		tx.Create(&rs)
+	tx.Where("trip_id = ?", tripID).Delete(&models.TripStop{})
+	for _, ts := range tripStops {
+		ts.TripID = uint(castToUint(tripID))
+		tx.Create(&ts)
 	}
 	tx.Commit()
-	c.JSON(http.StatusOK, gin.H{"message": "Route stops updated"})
+	c.JSON(http.StatusOK, gin.H{"message": "Trip stops updated"})
 }
 
 func castToUint(s string) uint {

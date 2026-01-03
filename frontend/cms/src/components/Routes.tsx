@@ -5,10 +5,10 @@ import { Reorder, motion } from 'framer-motion';
 import api from '../api';
 import axios from 'axios';
 import { SidebarHeader } from './SidebarHeader';
-import { Route, Agency, Trip, ShapePoint, RouteStop } from '../types';
+import { Route, Agency, Trip, ShapePoint, TripStop } from '../types';
 
 const RouteStudio: React.FC = () => {
-    const { setMapLayers, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId } = useWorkspace();
+    const { setMapLayers, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert } = useWorkspace();
     const [routes, setRoutes] = useState<Route[]>([]);
     const [agencies, setAgencies] = useState<Agency[]>([]);
 
@@ -17,8 +17,8 @@ const RouteStudio: React.FC = () => {
     const [originalRoute, setOriginalRoute] = useState<Route | null>(null);
     const [shapePoints, setShapePoints] = useState<ShapePoint[]>([]);
     const [originalShape, setOriginalShape] = useState<ShapePoint[]>([]);
-    const [assignedStops, setAssignedStops] = useState<RouteStop[]>([]);
-    const [originalAssignedStops, setOriginalAssignedStops] = useState<RouteStop[]>([]);
+    const [assignedStops, setAssignedStops] = useState<TripStop[]>([]);
+    const [originalAssignedStops, setOriginalAssignedStops] = useState<TripStop[]>([]);
 
     const [history, setHistory] = useState<ShapePoint[][]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -156,17 +156,28 @@ const RouteStudio: React.FC = () => {
         setSelectedRoute(route);
         setOriginalRoute(route);
         try {
-            const [tripsRes, stopsRes] = await Promise.all([api.get('/trips'), api.get(`/routes/${route.id}/stops`)]);
-            const sData = stopsRes.data || [];
-            setAssignedStops(sData);
-            setOriginalAssignedStops(sData);
-            const trip: Trip | undefined = tripsRes.data.find((t: Trip) => t.route_id === route.id);
-            if (trip?.shape_id) {
-                const shapeRes = await api.get(`/shapes/${trip.shape_id}`);
-                const points = (shapeRes.data || []).sort((a: any, b: any) => a.sequence - b.sequence);
-                setShapePoints(points);
-                setOriginalShape(points);
-            } else { setShapePoints([]); setOriginalShape([]); }
+            const tripsRes = await api.get('/trips');
+            const routeTrips: Trip[] = tripsRes.data || [];
+            const trip = routeTrips.find(t => t.route_id === route.id);
+
+            if (trip) {
+                const stopsRes = await api.get(`/trips/${trip.id}/stops`);
+                const sData = stopsRes.data || [];
+                setAssignedStops(sData);
+                setOriginalAssignedStops(sData);
+
+                if (trip.shape_id) {
+                    const shapeRes = await api.get(`/shapes/${trip.shape_id}`);
+                    const points = (shapeRes.data || []).sort((a: any, b: any) => a.sequence - b.sequence);
+                    setShapePoints(points);
+                    setOriginalShape(points);
+                } else { setShapePoints([]); setOriginalShape([]); }
+            } else {
+                setAssignedStops([]);
+                setOriginalAssignedStops([]);
+                setShapePoints([]);
+                setOriginalShape([]);
+            }
         } catch (e: any) {
             console.error('Failed to load route data:', e);
             setStatus({ message: 'Failed to load route data', type: 'error' });
@@ -182,15 +193,14 @@ const RouteStudio: React.FC = () => {
             setStatus({ message: 'No agency found. Create an agency first.', type: 'error' });
             return;
         }
-        setQuickMode(null);
         setFocusType('select');
         const newRoute = { id: 0, short_name: '', long_name: '', color: '007AFF', agency_id: agencies[0].id || 0 };
         setSelectedRoute(newRoute);
         setOriginalRoute(newRoute);
         setShapePoints([]); setOriginalShape([]);
         setAssignedStops([]); setOriginalAssignedStops([]);
-        setActiveSection('info');
-    }, [agencies, setQuickMode, setStatus]);
+        setActiveSection(quickMode === 'add-route' ? 'path' : 'info');
+    }, [agencies, quickMode, setStatus]);
 
     const togglePersistentRoute = async (routeId: number) => {
         if (persistentRouteIds.includes(routeId)) {
@@ -216,8 +226,8 @@ const RouteStudio: React.FC = () => {
     };
 
     useEffect(() => {
-        if (quickMode === 'add-route' && !selectedRoute) handleAddNew();
-    }, [quickMode, selectedRoute, handleAddNew]);
+        if (quickMode === 'add-route') handleAddNew();
+    }, [quickMode, handleAddNew]);
 
     useEffect(() => {
         if (selectedEntityId && routes.length > 0) {
@@ -245,9 +255,13 @@ const RouteStudio: React.FC = () => {
                 setOriginalShape(shapePoints);
             }
             if (selectedRoute.id) {
-                const reordered = assignedStops.map((s, i) => ({ ...s, sequence: i + 1 }));
-                await api.put(`/routes/${selectedRoute.id}/stops`, reordered);
-                setOriginalAssignedStops(assignedStops);
+                const tripsRes = await api.get('/trips');
+                const trip = (tripsRes.data || []).find((t: Trip) => t.route_id === selectedRoute.id);
+                if (trip) {
+                    const reordered = assignedStops.map((s, i) => ({ ...s, sequence: i + 1, trip_id: trip.id }));
+                    await api.put(`/trips/${trip.id}/stops`, reordered);
+                    setOriginalAssignedStops(assignedStops);
+                }
             }
             if (!isAuto) { setStatus({ message: 'Saved successfully', type: 'success' }); setTimeout(() => setStatus(null), 2000); }
             await refreshAllData();
@@ -276,6 +290,81 @@ const RouteStudio: React.FC = () => {
             } catch (e) { }
         } else { setMapLayers(prev => ({ ...prev, previewRoutes: [] })); }
     }, [routes, setHoveredEntityId, setMapLayers]);
+
+    useEffect(() => {
+        if (!selectedRoute) {
+            setOnMapClick(null);
+            setOnShapePointMove(undefined);
+            setOnShapePointDelete(undefined);
+            setOnShapePointInsert(undefined);
+            return;
+        }
+
+        const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
+
+        const handleMapClick = async (latlng: { lat: number, lng: number }) => {
+            if (activeSection !== 'path') setActiveSection('path');
+            if (quickMode === 'add-route') setQuickMode(null);
+            const newPoint: ShapePoint = {
+                shape_id: sId,
+                lat: latlng.lat,
+                lon: latlng.lng,
+                sequence: shapePoints.length + 1
+            };
+
+            if (autoRoute && shapePoints.length > 0) {
+                const prev = shapePoints[shapePoints.length - 1];
+                try {
+                    const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${prev.lon},${prev.lat};${newPoint.lon},${newPoint.lat}?overview=full&geometries=geojson`);
+                    if (res.data.routes?.[0]) {
+                        const coords: [number, number][] = res.data.routes[0].geometry.coordinates;
+                        const newSegment = coords.map((c, i) => ({
+                            shape_id: sId,
+                            lat: c[1],
+                            lon: c[0],
+                            sequence: shapePoints.length + i + 1
+                        }));
+                        // Skip first point of new segment if it overlaps with last point
+                        pushToHistory([...shapePoints, ...newSegment.slice(1)]);
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Auto-route failed, falling back to straight line", e);
+                }
+            }
+            pushToHistory([...shapePoints, newPoint]);
+        };
+
+        const handleMove = (index: number, latlng: { lat: number, lng: number }) => {
+            const newPoints = [...shapePoints];
+            newPoints[index] = { ...newPoints[index], lat: latlng.lat, lon: latlng.lng };
+            pushToHistory(newPoints);
+        };
+
+        const handleDelete = (index: number) => {
+            const newPoints = shapePoints.filter((_, i) => i !== index).map((p, i) => ({ ...p, sequence: i + 1 }));
+            pushToHistory(newPoints);
+        };
+
+        const handleInsert = (index: number, latlng: { lat: number, lng: number }) => {
+            const newPoints = [...shapePoints];
+            newPoints.splice(index, 0, { shape_id: sId, lat: latlng.lat, lon: latlng.lng, sequence: 0 });
+            const resequenced = newPoints.map((p, i) => ({ ...p, sequence: i + 1 }));
+            pushToHistory(resequenced);
+        };
+
+        setOnMapClick(handleMapClick);
+        setOnShapePointMove(handleMove);
+        setOnShapePointDelete(handleDelete);
+        setOnShapePointInsert(handleInsert);
+
+        return () => {
+            setOnMapClick(null);
+            setOnShapePointMove(undefined);
+            setOnShapePointDelete(undefined);
+            setOnShapePointInsert(undefined);
+        };
+    }, [selectedRoute, activeSection, shapePoints, autoRoute, quickMode, setQuickMode, pushToHistory, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert]);
 
     useEffect(() => {
         const pRoutes = persistentRouteIds.map(id => ({

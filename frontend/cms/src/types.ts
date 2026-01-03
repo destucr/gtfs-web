@@ -42,9 +42,9 @@ export interface ShapePoint {
   sequence: number;
 }
 
-export interface RouteStop {
+export interface TripStop {
   id?: number;
-  route_id: number;
+  trip_id: number;
   stop_id: number;
   stop?: Stop;
   sequence: number;

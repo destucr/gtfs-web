@@ -35,14 +35,20 @@ func Connect() {
 	}
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Shanghai", host, user, password, dbname, port)
-	
+
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database!", err)
 	}
 
-	err = DB.AutoMigrate(&models.Agency{}, &models.Stop{}, &models.Route{}, &models.Trip{}, &models.ShapePoint{}, &models.RouteStop{})
+	// Clean up old schema if it exists to ensure consistency
+	if DB.Migrator().HasTable("route_stops") {
+		log.Println("Old table route_stops found. Dropping to migrate to trip_stops...")
+		DB.Migrator().DropTable("route_stops")
+	}
+
+	err = DB.AutoMigrate(&models.Agency{}, &models.Stop{}, &models.Route{}, &models.Trip{}, &models.ShapePoint{}, &models.TripStop{})
 	if err != nil {
 		log.Fatal("Failed to migrate database!", err)
 	}

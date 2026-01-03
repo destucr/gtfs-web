@@ -7,7 +7,7 @@ import api from '../api';
 import axios from 'axios';
 import L from 'leaflet';
 import { SidebarHeader } from './SidebarHeader';
-import { Route, Stop, RouteStop, Trip, ShapePoint } from '../types';
+import { Route, Stop, TripStop, Trip, ShapePoint } from '../types';
 
 const Stops: React.FC = () => {
     const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, hoveredEntityId } = useWorkspace();
@@ -53,10 +53,12 @@ const Stops: React.FC = () => {
             setStops(sData);
             setRoutes(rData);
             const map: Record<number, Route[]> = {};
-            srData.forEach((assoc: RouteStop) => {
+            srData.forEach((assoc: TripStop & { trip: Trip }) => {
                 if (!map[assoc.stop_id]) map[assoc.stop_id] = [];
-                const r = rData.find((rt: Route) => rt.id === assoc.route_id);
-                if (r) map[assoc.stop_id].push(r);
+                const r = rData.find((rt: Route) => rt.id === assoc.trip?.route_id);
+                if (r && !map[assoc.stop_id].some(existing => existing.id === r.id)) {
+                    map[assoc.stop_id].push(r);
+                }
             });
             setStopRouteMap(map);
             setStatus(null);
@@ -65,7 +67,7 @@ const Stops: React.FC = () => {
 
     useEffect(() => { fetchInitialData(); }, [fetchInitialData]);
 
-    const handleRouteHighlight = async (routeId: number, isPersistent: boolean) => {
+    const handleRouteHighlight = useCallback(async (routeId: number, isPersistent: boolean) => {
         if (isPersistent) {
             // No-op for persistent in this context as we are just highlighting
         } else {
@@ -84,7 +86,7 @@ const Stops: React.FC = () => {
                 }
             } catch (e) { }
         }
-    };
+    }, [routeShapes, setHoveredRouteIds, setRouteShapes]);
 
     const handleSelectStop = useCallback(async (stop: Stop) => {
         setQuickMode(null);
@@ -97,7 +99,7 @@ const Stops: React.FC = () => {
         const routesForStop = stopRouteMap[stop.id] || [];
         setSelectedStopRouteIds(routesForStop.map(r => r.id));
         await Promise.all(routesForStop.map(r => handleRouteHighlight(r.id, true)));
-    }, [stopRouteMap, setQuickMode]);
+    }, [stopRouteMap, setQuickMode, handleRouteHighlight]);
 
     useEffect(() => {
         if (selectedEntityId && stops.length > 0) {
