@@ -31,6 +31,7 @@ const RouteStudio: React.FC = () => {
     const [isDirty, setIsDirty] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
+    const [focusType, setFocusType] = useState<'select' | 'hover' | null>(null);
 
     const refreshAllData = useCallback(async () => {
         const [rRes, sRes, aRes] = await Promise.all([
@@ -69,16 +70,11 @@ const RouteStudio: React.FC = () => {
 
     // Sync isDirty to Global Status
     useEffect(() => {
-        if (isDirty) {
-            setStatus({ message: 'Unsaved local edits. Save to sync.', type: 'info', isDirty: true });
-        } else if (selectedRoute) {
-            setStatus({ message: 'All changes saved to server.', type: 'info', isDirty: false });
-        } else {
-            setStatus(null);
-        }
+        if (isDirty) setStatus({ message: 'Unsaved local edits. Save to sync.', type: 'info', isDirty: true });
+        else if (selectedRoute) setStatus({ message: 'All changes saved to server.', type: 'info', isDirty: false });
+        else setStatus(null);
     }, [isDirty, selectedRoute, setStatus]);
 
-    // --- Persistence ---
     const pushToHistory = useCallback((newPoints: ShapePoint[]) => {
         setHistory(prev => [...prev.slice(-19), shapePoints]);
         setShapePoints(newPoints);
@@ -93,7 +89,6 @@ const RouteStudio: React.FC = () => {
         setIsDirty(true);
     }, [history]);
 
-    // --- Shape Editing ---
     const handleShapePointMove = useCallback((index: number, latlng: { lat: number, lng: number }) => {
         const newPoints = [...shapePoints];
         newPoints[index] = { ...newPoints[index], lat: latlng.lat, lon: latlng.lng };
@@ -182,14 +177,12 @@ const RouteStudio: React.FC = () => {
         } catch (e) { setStatus({ message: 'Save failed. Check connection.', type: 'error' }); }
     }, [selectedRoute, shapePoints, assignedStops, refreshAllData, setStatus]);
 
-    // Auto-save
     useEffect(() => {
         if (!isDirty || !selectedRoute?.id) return;
         const timer = setTimeout(() => saveChanges(true), 2000);
         return () => clearTimeout(timer);
     }, [isDirty, shapePoints, assignedStops, selectedRoute, saveChanges]);
 
-    // Map Click Handler
     const handleMapClick = useCallback(async (latlng: { lat: number, lng: number }) => {
         if (selectedRoute && activeSection === 'path') {
             if (quickMode === 'add-route') setQuickMode(null);
@@ -216,6 +209,7 @@ const RouteStudio: React.FC = () => {
 
     const handleRouteHoverEffect = async (routeId: number | null) => {
         setHoveredEntityId(routeId);
+        setFocusType(routeId ? 'hover' : null);
         if (routeId) {
             try {
                 const tripsRes: { data: Trip[] } = await api.get('/trips');
@@ -244,12 +238,14 @@ const RouteStudio: React.FC = () => {
             stops: assignedStops.map(rs => ({ ...(rs.stop as Stop), hidePopup: false })),
             activeShape: activeSection === 'path' ? shapePoints : [],
             focusedPoints: shapePoints.length > 0 ? shapePoints.map(p => [p.lat, p.lon] as [number, number]) : [],
-            activeStop: null
+            activeStop: null,
+            focusType
         }));
-    }, [selectedRoute, shapePoints, assignedStops, activeSection, setMapLayers]);
+    }, [selectedRoute, shapePoints, assignedStops, activeSection, focusType, setMapLayers]);
 
     const handleSelectRoute = async (route: Route) => {
         setQuickMode(null);
+        setFocusType('select');
         if (isDirty) await saveChanges(true);
         setSelectedRoute(route);
         setIsDirty(false);
@@ -266,8 +262,45 @@ const RouteStudio: React.FC = () => {
 
     const handleAddNew = () => {
         setQuickMode(null);
+        setFocusType('select');
         setSelectedRoute({ id: 0, short_name: '', long_name: '', color: '007AFF', agency_id: agencies[0]?.id || 0 });
         setShapePoints([]); setAssignedStops([]); setActiveSection('info'); setIsDirty(true);
+    };
+
+    const snapPointsToRoads = async () => {
+        if (shapePoints.length === 0) return;
+        setStatus({ message: 'Snapping anchors...', type: 'loading' });
+        try {
+            const snappedPoints = await Promise.all(shapePoints.map(async (p) => {
+                try {
+                    const res = await axios.get(`https://router.project-osrm.org/nearest/v1/driving/${p.lon},${p.lat}`);
+                    if (res.data.waypoints?.[0]) {
+                        const snapped = res.data.waypoints[0].location;
+                        return { ...p, lat: snapped[1], lon: snapped[0] };
+                    }
+                } catch (e) {}
+                return p;
+            }));
+            pushToHistory(snappedPoints);
+            setStatus({ message: 'Anchors aligned', type: 'success' });
+            setTimeout(() => setStatus(null), 2000);
+        } finally {}
+    };
+
+    const snapToRoads = async () => {
+        if (shapePoints.length < 2 || !selectedRoute) return;
+        setStatus({ message: 'Re-routing full path...', type: 'loading' });
+        const coords = shapePoints.map(p => `${p.lon},${p.lat}`).join(';');
+        const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
+        try {
+            const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+            if (res.data.routes?.[0]) {
+                const geometry: [number, number][] = res.data.routes[0].geometry.coordinates;
+                pushToHistory(geometry.map((c, i) => ({ shape_id: sId, lat: c[1], lon: c[0], sequence: i + 1 })));
+                setStatus({ message: 'Path fully snapped', type: 'success' });
+                setTimeout(() => setStatus(null), 2000);
+            }
+        } catch (e) { setStatus({ message: 'Routing error', type: 'error' }); }
     };
 
     const filteredRoutes = routes.filter(r => r.long_name.toLowerCase().includes(searchQuery.toLowerCase()) || r.short_name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -288,12 +321,20 @@ const RouteStudio: React.FC = () => {
                 </div>
                 <div className="flex-1 overflow-y-auto divide-y divide-black/5">
                     {filteredRoutes.map(r => (
-                        <div key={r.id} onMouseEnter={() => handleRouteHoverEffect(r.id)} onMouseLeave={() => handleRouteHoverEffect(null)} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-zinc-50 cursor-pointer transition-all flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`}>
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm font-black text-[10px]" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#','')}` }}>{r.short_name}</div>
-                            <div className="flex-1 min-w-0"><div className="text-sm text-black truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-zinc-400 uppercase tracking-tighter">Line #{r.id}</div></div>
+                        <div key={r.id} onMouseEnter={() => handleRouteHoverEffect(r.id)} onMouseLeave={() => handleRouteHoverEffect(null)} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-zinc-50 cursor-pointer transition-all group flex items-center justify-between ${selectedRoute?.id === r.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`}>
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm font-black text-[10px]" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#','')}` }}>{r.short_name}</div>
+                                <div className="min-w-0"><div className="text-sm text-black truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-zinc-400 uppercase tracking-tighter">Line #{r.id}</div></div>
+                            </div>
                             <div className="flex items-center gap-1">
-                                <button onClick={(e) => { e.stopPropagation(); if(window.confirm('Wipe this route?')) api.delete(`/routes/${r.id}`).then(refreshData); }} className="p-1.5 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all shadow-sm" title="Delete route"><Trash2 size={14} /></button>
-                                <ChevronRight size={14} className={`transition-all ${selectedRoute?.id === r.id ? 'opacity-100 text-system-blue translate-x-1' : 'opacity-0 group-hover:opacity-100'}`} />
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); if(window.confirm('Wipe this route?')) api.delete(`/routes/${r.id}`).then(refreshData); }} 
+                                    className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+                                    title="System: Terminating route record."
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                                <ChevronRight size={14} className={`text-zinc-300 transition-all ${selectedRoute?.id === r.id ? 'translate-x-1 text-system-blue opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                             </div>
                         </div>
                     ))}
@@ -333,8 +374,8 @@ const RouteStudio: React.FC = () => {
                                 {activeSection === 'info' && (
                                     <div className="space-y-3 animate-in fade-in duration-300">
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Operator</label><select className="hig-input text-[11px] py-1.5 font-bold" value={selectedRoute.agency_id} onChange={e => { setSelectedRoute({...selectedRoute, agency_id: parseInt(e.target.value)}); setIsDirty(true); }}>{agencies.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
-                                            <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Type</label><select className="hig-input text-[11px] py-1.5 font-bold" value={selectedRoute.route_type} onChange={e => { setSelectedRoute({...selectedRoute, route_type: parseInt(e.target.value)}); setIsDirty(true); }}><option value={3}>Bus</option><option value={0}>Tram</option><option value={1}>Subway</option></select></div>
+                                            <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Operator</label><select className="hig-input text-[11px] font-bold" value={selectedRoute.agency_id} onChange={e => { setSelectedRoute({...selectedRoute, agency_id: parseInt(e.target.value)}); setIsDirty(true); }}>{agencies.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
+                                            <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Type</label><select className="hig-input text-[11px] font-bold" value={selectedRoute.route_type} onChange={e => { setSelectedRoute({...selectedRoute, route_type: parseInt(e.target.value)}); setIsDirty(true); }}><option value={3}>Bus</option><option value={0}>Tram</option><option value={1}>Subway</option></select></div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Short Name</label><input className="hig-input text-[11px] py-1.5 font-bold uppercase" value={selectedRoute.short_name} onChange={e => { setSelectedRoute({...selectedRoute, short_name: e.target.value}); setIsDirty(true); }} /></div>
@@ -342,6 +383,12 @@ const RouteStudio: React.FC = () => {
                                         </div>
                                         <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Public Name</label><input className="hig-input text-[11px] py-1.5 font-bold" value={selectedRoute.long_name} onChange={e => { setSelectedRoute({...selectedRoute, long_name: e.target.value}); setIsDirty(true); }} /></div>
                                         <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Description</label><textarea className="hig-input text-[11px] font-bold min-h-[60px] py-1.5" value={selectedRoute.route_desc || ''} onChange={e => { setSelectedRoute({...selectedRoute, route_desc: e.target.value}); setIsDirty(true); }} /></div>
+                                        
+                                        {selectedRoute.id !== 0 && (
+                                            <div className="pt-4 mt-4 border-t border-black/[0.03]">
+                                                <button type="button" onClick={() => { if(window.confirm('Terminate this route record?')) api.delete(`/routes/${selectedRoute.id}`).then(refreshData).then(() => setSelectedRoute(null)); }} className="w-full py-2 text-[8px] font-black text-rose-400 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Terminate Record</button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -350,7 +397,7 @@ const RouteStudio: React.FC = () => {
                                         <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-100"><div className="flex items-center gap-2"><Zap size={12} className={autoRoute ? "text-system-blue" : "text-zinc-400"} /><span className="text-[9px] font-black uppercase tracking-tight">Auto-snap to roads</span></div><button onClick={() => setAutoRoute(!autoRoute)} className={`w-8 h-4 rounded-full transition-all relative ${autoRoute ? 'bg-system-blue' : 'bg-zinc-200'}`}><div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${autoRoute ? 'left-4.5' : 'left-0.5'}`} /></button></div>
                                         <div className="grid grid-cols-2 gap-2"><button onClick={snapToRoads} className="py-2.5 bg-system-blue text-white rounded-xl font-black text-[9px] uppercase hover:bg-blue-600 shadow-lg">Full Path</button><button onClick={snapPointsToRoads} className="py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl font-black text-[9px] uppercase hover:bg-zinc-50">Snap Anchors</button></div>
                                         <div className="grid grid-cols-2 gap-2"><button onClick={undo} disabled={history.length === 0} className="py-2 bg-white border border-zinc-200 rounded-lg text-[9px] font-black text-zinc-400 hover:bg-zinc-50 uppercase">Undo</button><button onClick={() => { if(window.confirm('Clear all?')) pushToHistory([]); }} className="py-2 bg-white border border-zinc-200 rounded-lg text-[9px] font-black text-red-400 hover:bg-red-50 uppercase">Clear All</button></div>
-                                        <div className="p-3 bg-zinc-50/50 rounded-xl border border-zinc-100"><p className="text-[9px] text-zinc-400 leading-relaxed font-bold italic text-center text-balance">Click map to add stops. Drag to move. Right-click to remove.</p></div>
+                                        <div className="p-3 bg-zinc-50/50 rounded-xl border border-zinc-100"><p className="text-[9px] text-zinc-400 leading-relaxed font-bold italic text-center text-balance">Click map to add stops. Drag to move. Right-click to remove. Click path to insert.</p></div>
                                     </div>
                                 )}
 
@@ -371,18 +418,14 @@ const RouteStudio: React.FC = () => {
                                                 ))}
                                             </Reorder.Group>
                                         </div>
-                                        <div className="pt-4 border-t border-zinc-100"><div className="flex items-center justify-between mb-2"><h4 className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Available Stops</h4><input className="hig-input text-[9px] px-2 py-1 h-6 w-28 font-black bg-zinc-50 border-none" placeholder="SEARCH..." value={stopSearchQuery} onChange={e => setStopSearchQuery(e.target.value)} /></div><div className="space-y-1 max-h-40 overflow-y-auto pr-1 custom-scrollbar">{allStops.filter(s => !assignedStops.find(rs => rs.stop_id === s.id)).filter(s => s.name.toLowerCase().includes(stopSearchQuery.toLowerCase())).map(s => (<div key={s.id} className="flex items-center justify-between p-2.5 hover:bg-white rounded-xl cursor-pointer group transition-all border border-transparent hover:border-zinc-100 shadow-sm" onClick={() => { setAssignedStops([...assignedStops, {stop_id: s.id, stop: s, sequence: assignedStops.length+1, route_id: selectedRoute.id}]); setIsDirty(true); setStatus({ message: 'Stop added. Save to sync.', type: 'success' }); setTimeout(()=>setStatus(null), 1000); }}><span className="text-zinc-900 font-black text-[10px] uppercase truncate mr-2">{s.name}</span><Plus size={14} className="text-system-blue opacity-40 group-hover:opacity-100" /></div>))}</div></div>
+                                        <div className="pt-4 border-t border-zinc-100"><div className="flex items-center justify-between mb-2"><h4 className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Available Stops</h4><input className="hig-input text-[9px] px-2 py-1 h-6 w-28 font-black bg-zinc-50 border-none focus:bg-white transition-all" placeholder="SEARCH..." value={stopSearchQuery} onChange={e => setStopSearchQuery(e.target.value)} /></div><div className="space-y-1 max-h-40 overflow-y-auto pr-1 custom-scrollbar">{allStops.filter(s => !assignedStops.find(rs => rs.stop_id === s.id)).filter(s => s.name.toLowerCase().includes(stopSearchQuery.toLowerCase())).map(s => (<div key={s.id} className="flex items-center justify-between p-2.5 hover:bg-white rounded-xl cursor-pointer group transition-all border border-transparent hover:border-zinc-100 shadow-sm" onClick={() => { setAssignedStops([...assignedStops, {stop_id: s.id, stop: s, sequence: assignedStops.length+1, route_id: selectedRoute.id}]); setIsDirty(true); setStatus({ message: 'Stop added. Save to sync.', type: 'success' }); setTimeout(()=>setStatus(null), 1000); }}><span className="text-zinc-900 font-black text-[10px] uppercase truncate mr-2">{s.name}</span><Plus size={14} className="text-system-blue opacity-40 group-hover:opacity-100" /></div>))}</div></div>
                                     </div>
                                 )}
                             </div>
 
                             <div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0 flex justify-center">
-                                <button 
-                                    onClick={() => saveChanges()} 
-                                    disabled={!isDirty} 
-                                    className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-lg shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"
-                                >
-                                    <Save size={14}/> Save Changes
+                                <button onClick={() => saveChanges()} disabled={!isDirty} className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-lg shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase">
+                                    <Save size={14}/> Commit Changes
                                 </button>
                             </div>
                         </>
