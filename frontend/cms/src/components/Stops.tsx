@@ -171,7 +171,16 @@ const Stops: React.FC = () => {
             stops: stops.map(s => ({ 
                 ...s, isSmall: true, hidePopup: false,
                 isCustom: s.id === hoveredEntityId,
-                icon: s.id === hoveredEntityId ? L.divIcon({ className: 'bg-orange-500 border-2 border-white w-3 h-3 rounded-full shadow-lg scale-150 transition-all', iconSize: [12, 12] }) : undefined
+                icon: s.id === hoveredEntityId ? L.divIcon({ 
+                    className: 'relative flex items-center justify-center',
+                    html: `
+                        <div class="absolute w-8 h-8 bg-orange-500/30 rounded-full animate-ping"></div>
+                        <div class="absolute w-6 h-6 bg-orange-500/50 rounded-full animate-pulse"></div>
+                        <div class="relative w-4 h-4 bg-orange-600 border-2 border-white rounded-full shadow-2xl scale-125"></div>
+                    `,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                }) : undefined
             })),
             focusedPoints: (formData.lat !== 0 && formData.lon !== 0) 
                 ? [[formData.lat, formData.lon]] 
