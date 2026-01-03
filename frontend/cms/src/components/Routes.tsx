@@ -376,8 +376,14 @@ const RouteStudio: React.FC = () => {
                                 )}
                             </div>
 
-                            <div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0">
-                                <button onClick={() => saveChanges()} disabled={!isDirty} className="w-full py-3.5 bg-system-blue text-white rounded-xl font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"><Save size={16}/> Save Changes</button>
+                            <div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0 flex justify-center">
+                                <button 
+                                    onClick={() => saveChanges()} 
+                                    disabled={!isDirty} 
+                                    className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-lg shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"
+                                >
+                                    <Save size={14}/> Save Changes
+                                </button>
                             </div>
                         </>
                     )}

@@ -104,10 +104,10 @@ const Home: React.FC = () => {
 
   return (
     <div className="flex h-full bg-white text-zinc-900 overflow-hidden font-bold select-none animate-in fade-in duration-500 pointer-events-auto">
-      {/* Network Items Sidebar */}
+      {/* Registry Tree Sidebar */}
       <div className="w-64 border-r border-zinc-100 flex flex-col bg-zinc-50/30 shrink-0">
         <div className="p-4 border-b border-zinc-100 flex items-center justify-between text-zinc-500">
-          <div className="flex items-center gap-2"><Database size={14} /><span className="text-[10px] font-black uppercase tracking-widest">Network Items</span></div>
+          <div className="flex items-center gap-2"><Database size={14} /><span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Network Items</span></div>
           <button onClick={fetchStats} className={`hover:text-zinc-900 transition-transform ${loading ? 'animate-spin' : 'active:rotate-180'}`}><RotateCcw size={12}/></button>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -117,12 +117,19 @@ const Home: React.FC = () => {
             { label: 'Routes', type: 'routes', count: stats.routes.length, icon: RouteIcon },
             { label: 'Trips', type: 'trips', count: stats.trips.length, icon: Hash },
           ].map(item => (
-            <div key={item.label} onClick={() => setActiveType(item.type as any)} className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all cursor-pointer ${activeType === item.type ? 'bg-white shadow-md border border-zinc-100' : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900'}`}>
-              <div className="flex items-center gap-3"><item.icon size={14} className={activeType === item.type ? 'text-system-blue' : ''} /><span className="text-[11px] font-black uppercase tracking-tight">{item.label}</span></div>
-              <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-lg border ${activeType === item.type ? 'text-system-blue border-system-blue/20 bg-system-blue/5' : 'text-zinc-400 border-zinc-100 bg-white'}`}>{loading ? '...' : item.count}</span>
+            <div 
+              key={item.label} 
+              onClick={() => setActiveType(item.type as any)} 
+              className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer ${activeType === item.type ? 'bg-white shadow-sm border border-zinc-100' : 'hover:bg-zinc-100 text-zinc-400 hover:text-zinc-900'}`}
+            >
+              <div className="flex items-center gap-3">
+                <item.icon size={12} className={activeType === item.type ? 'text-system-blue' : ''} />
+                <span className={`text-[11px] uppercase tracking-tight ${activeType === item.type ? 'font-black text-zinc-900' : 'font-bold'}`}>{item.label}</span>
+              </div>
+              <span className={`text-[9px] font-mono font-black px-1.5 py-0.5 rounded border ${activeType === item.type ? 'text-system-blue border-system-blue/20 bg-system-blue/5' : 'text-zinc-300 border-zinc-50 bg-white'}`}>{loading ? '...' : item.count}</span>
             </div>
           ))}
-          <div className="pt-6 px-3 pb-2 text-[9px] font-black text-zinc-300 uppercase tracking-widest border-t border-zinc-100 mt-4">System Status</div>
+          <div className="pt-6 px-3 pb-2 text-[8px] font-black text-zinc-300 uppercase tracking-[0.2em] border-t border-zinc-100 mt-4">System Status</div>
           <div className="px-3 py-2.5 flex items-center gap-3 bg-white mx-2 rounded-xl border border-zinc-100 shadow-sm">
             <div className={`w-1.5 h-1.5 rounded-full ${health === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
             <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">{health === 'online' ? 'All systems ready' : 'Server error'}</span>
@@ -130,28 +137,24 @@ const Home: React.FC = () => {
         </div>
         <div className="p-4 bg-zinc-900 text-white group cursor-pointer overflow-hidden relative" onClick={() => navigate('/routes')}>
           <div className="relative z-10 flex items-center justify-between w-full">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-100">Map Designer</span>
-              <span className="text-[7px] text-white/40 uppercase font-black">Interactive Editor</span>
-            </div>
+            <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest text-zinc-100">Map Designer</span><span className="text-[7px] text-white/40 uppercase font-black">Professional Tools</span></div>
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </div>
           <Zap size={60} className="absolute -right-4 -bottom-4 text-white/5 -rotate-12 group-hover:scale-110 transition-all duration-500" />
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Global Overview Snapshot Bar (Flat, Non-Interactive) */}
+        {/* Global Overview Snapshot Bar */}
         <div className="px-6 py-4 flex items-center justify-between border-b border-zinc-100 bg-white shrink-0">
           {[
             { label: 'Network Coverage', val: stats.stops.length, icon: Globe, col: 'text-blue-600' },
             { label: 'Active Services', val: stats.routes.length, icon: RouteIcon, col: 'text-emerald-600' },
             { label: 'Total Schedule', val: stats.trips.length, icon: Database, col: 'text-purple-600' },
-            { label: 'Data Integrity', val: '98.4%', icon: ShieldCheck, col: 'text-zinc-900' },
+            { label: 'Data Integrity', val: '98.4%', icon: ShieldCheck, col: 'text-zinc-900', title: 'Calculated ratio of linked stops and shapes.' },
           ].map((item, i) => (
             <React.Fragment key={item.label}>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3" title={item.title}>
                 <div className={`${item.col} opacity-40`}><item.icon size={14} /></div>
                 <div className="flex flex-col">
                   <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">{item.label}</span>
@@ -161,28 +164,27 @@ const Home: React.FC = () => {
               {i < 3 && <div className="h-6 w-px bg-zinc-100 mx-4" />}
             </React.Fragment>
           ))}
-          <div className="flex-1" /> {/* Spacer */}
+          <div className="flex-1" />
         </div>
 
-        {/* Dynamic Manifest Explorer */}
         <div className="h-[45%] flex flex-col border-b border-zinc-100">
-          <div className="px-5 py-3 bg-white border-b border-zinc-100 flex items-center justify-between">
+          <div className="px-5 py-3 bg-zinc-50/50 border-b border-zinc-100 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-zinc-400 font-black uppercase text-[9px] tracking-widest"><span>Viewing</span> <ChevronRight size={10}/> <span className="text-zinc-900">{activeType}</span></div>
               <div className="h-4 w-px bg-zinc-200" />
               <div className="relative">
                 <Filter size={10} className="absolute left-2.5 top-2 text-zinc-400" />
-                <input className="bg-zinc-50 border-none rounded-lg pl-7 pr-3 py-1 text-[10px] font-bold focus:ring-2 focus:ring-zinc-100 outline-none w-48" placeholder={`Search ${activeType}...`} value={filterQuery} onChange={e => setFilterQuery(e.target.value)} />
+                <input className="bg-white border border-zinc-200 rounded-lg pl-7 pr-3 py-1 text-[10px] font-bold focus:ring-2 focus:ring-zinc-100 outline-none w-48" placeholder={`Search ${activeType}...`} value={filterQuery} onChange={e => setFilterQuery(e.target.value)} />
               </div>
             </div>
-            <span className="text-[8px] font-black text-zinc-400 uppercase tracking-tighter">Total count: {processedData.length} entries</span>
+            <span className="text-[8px] font-black text-zinc-400 uppercase tracking-tighter">Inventory: {processedData.length} entries</span>
           </div>
           <div className="flex-1 overflow-auto custom-scrollbar bg-white">
-            <table className="w-full border-collapse">
-              <thead className="sticky top-0 bg-white z-10 border-b border-zinc-100">
+            <table className="w-full border-collapse text-left">
+              <thead className="sticky top-0 bg-white z-10 border-b border-zinc-100 shadow-sm">
                 <tr>
                   {headers[activeType].map(h => (
-                    <th key={h.label} onClick={() => setSortConfig({ key: h.key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="px-5 py-2.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-r border-zinc-100 text-left last:border-r-0 cursor-pointer hover:bg-zinc-50 group transition-colors">
+                    <th key={h.label} onClick={() => setSortConfig({ key: h.key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="px-5 py-2.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-r border-zinc-100 cursor-pointer hover:bg-zinc-50 group">
                       <div className="flex items-center justify-between">{h.label} <ArrowUpDown size={10} className={`opacity-0 group-hover:opacity-100 ${sortConfig.key === h.key ? 'opacity-100 text-zinc-900' : ''}`} /></div>
                     </th>
                   ))}
@@ -191,33 +193,30 @@ const Home: React.FC = () => {
               <tbody className="divide-y divide-zinc-50 text-[11px]">
                 {processedData.map(item => (
                   <tr key={item.id} onClick={() => handleRowClick(item)} className="hover:bg-zinc-50 transition-colors cursor-pointer group">
+                    <td className="px-5 py-2.5 font-mono text-zinc-300 border-r border-zinc-100 group-hover:text-zinc-900">#{item.id}</td>
                     {activeType === 'routes' ? (
                       <>
-                        <td className="px-5 py-2.5 font-mono text-zinc-300 border-r border-zinc-100 group-hover:text-zinc-900 whitespace-nowrap">#{item.id}</td>
                         <td className="px-5 py-2.5 border-r border-zinc-100"><div className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-black text-white" style={{ backgroundColor: `#${(item.color || '007AFF').replace('#','')}` }}>{item.short_name}</div></td>
                         <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100 truncate max-w-xs">{item.long_name}</td>
-                        <td className="px-5 py-2.5 text-zinc-400 border-r border-zinc-100 uppercase">{stats.agencies.find(a => a.id === item.agency_id)?.name || '...'}</td>
+                        <td className="px-5 py-2.5 text-zinc-400 uppercase">{stats.agencies.find(a => a.id === item.agency_id)?.name || '...'}</td>
                       </>
                     ) : activeType === 'stops' ? (
                       <>
-                        <td className="px-5 py-2.5 font-mono text-zinc-300 border-r border-zinc-100">#{item.id}</td>
                         <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100">{item.name}</td>
                         <td className="px-5 py-2.5 font-mono text-zinc-400 border-r border-zinc-100">{item.lat.toFixed(6)}</td>
-                        <td className="px-5 py-2.5 font-mono text-zinc-400 border-r border-zinc-100">{item.lon.toFixed(6)}</td>
+                        <td className="px-5 py-2.5 font-mono text-zinc-400">{item.lon.toFixed(6)}</td>
                       </>
                     ) : activeType === 'agencies' ? (
                       <>
-                        <td className="px-5 py-2.5 font-mono text-zinc-300 border-r border-zinc-100">#{item.id}</td>
                         <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100">{item.name}</td>
                         <td className="px-5 py-2.5 text-zinc-400 border-r border-zinc-100 truncate max-w-xs">{item.url}</td>
-                        <td className="px-5 py-2.5 text-zinc-400 border-r border-zinc-100">{item.timezone}</td>
+                        <td className="px-5 py-2.5 text-zinc-400">{item.timezone}</td>
                       </>
                     ) : (
                       <>
-                        <td className="px-5 py-2.5 font-mono text-zinc-300 border-r border-zinc-100">#{item.id}</td>
                         <td className="px-5 py-2.5 font-mono text-zinc-400 border-r border-zinc-100">L-{item.route_id}</td>
                         <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100">{item.headsign}</td>
-                        <td className="px-5 py-2.5 text-zinc-400 border-r border-zinc-100 text-[9px] uppercase tracking-tighter">{item.shape_id}</td>
+                        <td className="px-5 py-2.5 text-zinc-400 text-[9px] uppercase tracking-tighter">{item.shape_id}</td>
                       </>
                     )}
                   </tr>
@@ -227,7 +226,6 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* Activity Log */}
         <div className="flex-1 flex flex-col bg-zinc-50/10">
           <div className="px-5 py-3 bg-white border-b border-zinc-100 flex items-center justify-between shrink-0">
             <h3 className="text-[9px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2"><Clock size={12}/> Recent Activity</h3>
@@ -274,7 +272,7 @@ const MapHUD: React.FC = () => {
       )}
       {quickMode && (
         <div className="bg-system-blue/90 backdrop-blur-xl text-white px-6 py-3 rounded-2xl border border-blue-400/30 shadow-[0_20px_50px_rgba(0,122,255,0.3)] flex items-center justify-between gap-8 animate-in zoom-in slide-in-from-top-4 duration-500 pointer-events-auto">
-          <div className="flex items-center gap-4"><div className="bg-white/20 p-2 rounded-xl animate-pulse">{quickMode === 'add-stop' ? <MapPin size={18} /> : <Zap size={18} />}</div><div><span className="text-[11px] font-black uppercase tracking-[0.1em] block">Drawing on Map</span><p className="text-[9px] font-bold text-white/60 uppercase tracking-widest">{quickMode === 'add-stop' ? 'Click on the map to add a stop' : 'Click on the map to trace your route'}</p></div></div>
+          <div className="flex items-center gap-4"><div className="bg-white/20 p-2 rounded-xl animate-pulse">{quickMode === 'add-stop' ? <MapPin size={18} /> : <Zap size={18} />}</div><div><span className="text-[11px] font-black uppercase tracking-[0.1em] block">Interactive Mode</span><p className="text-[9px] font-bold text-white/60 uppercase tracking-widest">{quickMode === 'add-stop' ? 'Click on the map to add a stop' : 'Click on the map to trace your route'}</p></div></div>
           <button onClick={() => setQuickMode(null)} className="hover:bg-white/20 p-2 rounded-xl transition-all active:scale-90"><X size={16}/></button>
         </div>
       )}
