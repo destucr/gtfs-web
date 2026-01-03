@@ -329,7 +329,7 @@ const RouteStudio: React.FC = () => {
                 <SidebarHeader 
                     title="Studio" 
                     Icon={Bus} 
-                    actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all"><Plus size={18} /></button>}
+                    actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all" title="Initialize New Route Record"><Plus size={18} /></button>}
                 />
                 <div className="p-4 px-6 border-b border-black/5 bg-white shrink-0">
                     <div className="relative"><Search size={14} className="absolute left-3 top-3 text-system-gray" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search service lines..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>

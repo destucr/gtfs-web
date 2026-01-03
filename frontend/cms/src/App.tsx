@@ -213,7 +213,7 @@ const QuickActionMenu: React.FC = () => {
           title="New Stop Node"
         >
           <MapPin size={18} />
-          <div className={`flex flex-col items-start transition-all overflow-hidden ${quickMode === 'add-stop' ? 'w-28 opacity-100' : 'w-0 opacity-0 group-hover:w-28 group-hover:opacity-100'}`}>
+          <div className={`flex flex-col items-start transition-all overflow-hidden ${sidebarOpen || quickMode === 'add-stop' ? 'w-28 opacity-100' : 'w-0 opacity-0 group-hover:w-28 group-hover:opacity-100'}`}>
             <span className="text-[9px] font-black uppercase tracking-tight leading-none">Node Capture</span>
             <span className="text-[7px] font-bold opacity-60 uppercase whitespace-nowrap">Add station to map</span>
           </div>
@@ -224,7 +224,7 @@ const QuickActionMenu: React.FC = () => {
           title="Trace Geometry"
         >
           <RouteIcon size={18} />
-          <div className={`flex flex-col items-start transition-all overflow-hidden ${quickMode === 'add-route' ? 'w-28 opacity-100' : 'w-0 opacity-0 group-hover:w-28 group-hover:opacity-100'}`}>
+          <div className={`flex flex-col items-start transition-all overflow-hidden ${sidebarOpen || quickMode === 'add-route' ? 'w-28 opacity-100' : 'w-0 opacity-0 group-hover:w-28 group-hover:opacity-100'}`}>
             <span className="text-[9px] font-black uppercase tracking-tight leading-none">Path Trace</span>
             <span className="text-[7px] font-bold opacity-60 uppercase whitespace-nowrap">Draw route on road</span>
           </div>
