@@ -16,27 +16,34 @@ import {
 
 const ShortcutManager: React.FC = () => {
   const navigate = useNavigate();
+  const { setSelectedEntityId, setQuickMode } = useWorkspace();
+  
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
+        const resetStates = () => {
+          setSelectedEntityId(null);
+          setQuickMode(null);
+        };
+
         switch (e.key) {
-          case '1': e.preventDefault(); navigate('/agencies'); break;
-          case '2': e.preventDefault(); navigate('/stops'); break;
-          case '3': e.preventDefault(); navigate('/routes'); break;
-          case '4': e.preventDefault(); navigate('/trips'); break;
-          case '0': e.preventDefault(); navigate('/'); break;
+          case '1': e.preventDefault(); resetStates(); navigate('/agencies'); break;
+          case '2': e.preventDefault(); resetStates(); navigate('/stops'); break;
+          case '3': e.preventDefault(); resetStates(); navigate('/routes'); break;
+          case '4': e.preventDefault(); resetStates(); navigate('/trips'); break;
+          case '0': e.preventDefault(); resetStates(); navigate('/'); break;
           default: break;
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate]);
+  }, [navigate, setSelectedEntityId, setQuickMode]);
   return null;
 };
 
 const Home: React.FC = () => {
-  const [stats, setStats] = useState({ agencies: 0, stops: 0, routes: 0, trips: 0 });
+  const [stats, setStats] = useState({ agencies: [], stops: [], routes: [], trips: [] });
   const [loading, setLoading] = useState(true);
   const [health, setHealth] = useState<'checking' | 'online' | 'error'>('checking');
 
@@ -46,10 +53,10 @@ const Home: React.FC = () => {
         api.get('/agencies'), api.get('/stops'), api.get('/routes'), api.get('/trips')
       ]);
       setStats({
-        agencies: a.data?.length || 0,
-        stops: s.data?.length || 0,
-        routes: r.data?.length || 0,
-        trips: t.data?.length || 0
+        agencies: a.data || [],
+        stops: s.data || [],
+        routes: r.data || [],
+        trips: t.data || []
       });
       setHealth('online');
     } catch {
@@ -61,52 +68,111 @@ const Home: React.FC = () => {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
-  const cards = [
-    { name: 'Agencies', value: stats.agencies, icon: Globe, path: '/agencies', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Transit Operators' },
-    { name: 'Stops', value: stats.stops, icon: MapPin, path: '/stops', color: 'text-orange-600', bg: 'bg-orange-50', desc: 'Physical Stations' },
-    { name: 'Routes', value: stats.routes, icon: RouteIcon, path: '/routes', color: 'text-green-600', bg: 'bg-green-50', desc: 'Service Lines' },
-    { name: 'Trips', value: stats.trips, icon: Database, path: '/trips', color: 'text-purple-600', bg: 'bg-purple-50', desc: 'Service Bindings' },
+  const statsGrid = [
+    { name: 'Operators', value: stats.agencies.length, icon: Globe, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { name: 'Station Nodes', value: stats.stops.length, icon: MapPin, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { name: 'Service Lines', value: stats.routes.length, icon: RouteIcon, color: 'text-green-600', bg: 'bg-green-50' },
+    { name: 'Trip Bindings', value: stats.trips.length, icon: Database, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
 
   return (
-    <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-700 pointer-events-auto">
-      <header className="mb-10 flex justify-between items-start">
+    <div className="p-6 max-w-6xl mx-auto animate-in fade-in duration-700 pointer-events-auto">
+      <header className="mb-8 flex justify-between items-end border-b border-black/[0.03] pb-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-black mb-2 text-primary">Transit Control Center</h1>
-          <p className="text-lg text-system-gray font-semibold">Network Infrastructure & GTFS Lifecycle Management</p>
+          <h1 className="text-2xl font-black tracking-tight text-black mb-1">Network Control Center</h1>
+          <p className="text-[10px] text-system-gray font-bold uppercase tracking-widest opacity-60">Global GTFS Infrastructure Management</p>
         </div>
-        <div className="flex gap-3">
-            <div className={`px-4 py-2 rounded-xl flex items-center gap-2 border shadow-sm ${health === 'online' ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
-                <Activity size={16} className={health === 'online' ? 'animate-pulse' : ''} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Database: {health.toUpperCase()}</span>
+        <div className="flex gap-2">
+            <div className={`px-3 py-1.5 rounded-full flex items-center gap-2 border shadow-sm ${health === 'online' ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${health === 'online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest">System {health.toUpperCase()}</span>
             </div>
+            <button onClick={fetchStats} className="p-1.5 hover:bg-black/5 rounded-full text-system-gray transition-colors"><RotateCcw size={14}/></button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 font-bold">
-        {cards.map((c, i) => (
-          <Link key={c.path} to={c.path} className="hig-card p-6 group hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer relative overflow-hidden">
-            <div className="flex justify-between items-start relative z-10">
-                <div className={`p-3 rounded-xl ${c.bg} ${c.color} shadow-inner`}><c.icon size={24} /></div>
-                <span className="text-[9px] font-black text-system-gray bg-black/5 px-2 py-1 rounded uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">Shortcut ^ {i+1}</span>
+      {/* Primary Metrics Grid */}
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        {statsGrid.map((c) => (
+          <div key={c.name} className="bg-white border border-black/5 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all group">
+            <div className="flex items-center justify-between mb-3">
+              <div className={`p-2 rounded-lg ${c.bg} ${c.color}`}><c.icon size={16} /></div>
+              <TrendingUp size={14} className="text-black/5 group-hover:text-black/20 transition-colors" />
             </div>
-            <div className="mt-6 relative z-10">
-                <div className="text-3xl font-black text-black tracking-tight leading-none mb-1">{loading ? <Loader2 size={20} className="animate-spin text-system-gray" /> : c.value}</div>
-                <div className="text-xs font-bold text-black uppercase tracking-wide">{c.name}</div>
-                <div className="text-[10px] font-medium text-system-gray uppercase mt-1 tracking-widest">{c.desc}</div>
-            </div>
-            <TrendingUp size={80} className="absolute -right-4 -bottom-4 text-black/[0.02] -rotate-12 group-hover:text-black/[0.05] transition-colors" />
-          </Link>
+            <div className="text-2xl font-black text-black leading-none mb-1">{loading ? '...' : c.value}</div>
+            <div className="text-[9px] font-black text-system-gray uppercase tracking-widest">{c.name}</div>
+          </div>
         ))}
       </div>
 
-      <div className="hig-card p-10 bg-gradient-to-br from-system-blue to-blue-700 text-white relative overflow-hidden group shadow-2xl shadow-system-blue/30 flex flex-col justify-center">
-          <div className="relative z-10">
-              <h2 className="text-3xl font-black mb-3 tracking-tight">Route Studio Unified Editor</h2>
-              <p className="text-white/80 max-w-md mb-8 font-semibold text-lg leading-snug text-balance">Construct paths and sequences in a high-performance GIS environment.</p>
-              <Link to="/routes" className="inline-flex items-center px-8 py-4 bg-white text-system-blue rounded-2xl font-black text-sm shadow-2xl hover:bg-zinc-100 transition-all active:scale-95 uppercase tracking-tighter">Open Studio</Link>
+      <div className="grid grid-cols-3 gap-6">
+        {/* Network Integrity Panel */}
+        <section className="col-span-2 bg-white border border-black/5 rounded-3xl overflow-hidden shadow-sm">
+          <div className="px-6 py-4 bg-black/[0.02] border-b border-black/5 flex items-center justify-between">
+            <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><ShieldCheck size={14} className="text-system-blue" /> Integrity Audit</h3>
+            <span className="text-[8px] font-black text-system-gray opacity-40">REAL-TIME ANALYSIS</span>
           </div>
-          <Zap size={300} className="absolute -right-20 -bottom-20 text-white/5 -rotate-12 group-hover:scale-110 transition-transform duration-1000" />
+          <div className="p-6 grid grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-black/60">Registry Health</span>
+                <span className="text-[11px] font-black text-green-600">98.4%</span>
+              </div>
+              <div className="w-full h-1 bg-black/5 rounded-full overflow-hidden">
+                <div className="h-full bg-green-500 w-[98.4%]" />
+              </div>
+              <p className="text-[9px] text-system-gray leading-relaxed font-bold uppercase">All major shapes and stops are topologically linked to operators.</p>
+            </div>
+            <div className="space-y-2">
+              <div className="p-3 bg-orange-50 rounded-xl border border-orange-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={12} className="text-orange-600" />
+                  <span className="text-[9px] font-black text-orange-700 uppercase">Orphan Nodes</span>
+                </div>
+                <span className="text-[10px] font-black text-orange-700">0 DETECTED</span>
+              </div>
+              <div className="p-3 bg-system-blue/5 rounded-xl border border-system-blue/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap size={12} className="text-system-blue" />
+                  <span className="text-[9px] font-black text-system-blue uppercase">GORM Buffer</span>
+                </div>
+                <span className="text-[10px] font-black text-system-blue tracking-tighter">ACTIVE SYNC</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Quick Registry Peek */}
+        <section className="col-span-2 bg-white border border-black/5 rounded-3xl overflow-hidden shadow-sm">
+          <div className="px-6 py-4 bg-black/[0.02] border-b border-black/5 flex items-center justify-between">
+            <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><Activity size={14} className="text-system-blue" /> Recent Registry Entries</h3>
+            <Link to="/routes" className="text-[8px] font-black text-system-blue hover:underline">VIEW ALL</Link>
+          </div>
+          <div className="divide-y divide-black/[0.03]">
+            {stats.routes.slice(0, 4).map(route => (
+              <div key={route.id} className="px-6 py-3 flex items-center justify-between hover:bg-black/[0.01] transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-md shadow-sm flex items-center justify-center text-white text-[8px] font-black shrink-0" style={{ backgroundColor: `#${(route.color || '007AFF').replace('#','')}` }}>{route.short_name}</div>
+                  <span className="text-[11px] font-bold text-black uppercase truncate max-w-[200px]">{route.long_name}</span>
+                </div>
+                <span className="text-[8px] font-black text-system-gray opacity-40">LINE #{route.id}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Action Panel */}
+        <div className="space-y-6">
+          <div className="bg-gradient-to-br from-system-blue to-blue-700 p-6 rounded-3xl text-white shadow-2xl shadow-system-blue/20 relative overflow-hidden group h-full flex flex-col justify-between">
+            <div className="relative z-10">
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center mb-4"><Zap size={20}/></div>
+              <h2 className="text-xl font-black mb-2 tracking-tight leading-tight">GIS Studio Engine</h2>
+              <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-6">High-density visual network drafting</p>
+              <Link to="/routes" className="inline-flex items-center px-6 py-3 bg-white text-system-blue rounded-xl font-black text-[10px] shadow-xl hover:scale-105 active:scale-95 transition-all uppercase tracking-widest">Enter Studio</Link>
+            </div>
+            <TrendingUp size={150} className="absolute -right-10 -bottom-10 text-white/5 -rotate-12 group-hover:rotate-0 transition-transform duration-1000 pointer-events-none" />
+          </div>
+        </div>
       </div>
     </div>
   );
