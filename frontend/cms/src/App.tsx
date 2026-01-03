@@ -50,6 +50,7 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const { setSelectedEntityId } = useWorkspace();
 
+  const [activeType, setActiveType] = useState<'routes' | 'stops' | 'agencies' | 'trips'>('routes');
   const [filterQuery, setFilterQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'id', direction: 'asc' });
 
@@ -66,13 +67,16 @@ const Home: React.FC = () => {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
-  const processedRoutes = useMemo(() => {
-    let items = [...stats.routes];
+  const processedData = useMemo(() => {
+    let items = [...(stats[activeType] || [])];
     if (filterQuery) {
-      items = items.filter(r => 
-        r.short_name.toLowerCase().includes(filterQuery.toLowerCase()) ||
-        r.long_name.toLowerCase().includes(filterQuery.toLowerCase()) ||
-        String(r.id).includes(filterQuery)
+      const q = filterQuery.toLowerCase();
+      items = items.filter(i => 
+        (i.name && i.name.toLowerCase().includes(q)) ||
+        (i.short_name && i.short_name.toLowerCase().includes(q)) ||
+        (i.long_name && i.long_name.toLowerCase().includes(q)) ||
+        (i.headsign && i.headsign.toLowerCase().includes(q)) ||
+        String(i.id).includes(q)
       );
     }
     items.sort((a, b) => {
@@ -83,92 +87,106 @@ const Home: React.FC = () => {
       return 0;
     });
     return items;
-  }, [stats.routes, filterQuery, sortConfig]);
+  }, [stats, activeType, filterQuery, sortConfig]);
 
-  const toggleSort = (key: string) => {
-    setSortConfig(prev => ({
-      key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-    }));
+  const headers = {
+    routes: [{label:'ID',key:'id'},{label:'Sign',key:'short_name'},{label:'Name',key:'long_name'},{label:'Operator',key:'agency_id'}],
+    stops: [{label:'ID',key:'id'},{label:'Label',key:'name'},{label:'Lat',key:'lat'},{label:'Lon',key:'lon'}],
+    agencies: [{label:'ID',key:'id'},{label:'Operator',key:'name'},{label:'URL',key:'url'},{label:'Timezone',key:'timezone'}],
+    trips: [{label:'ID',key:'id'},{label:'Route',key:'route_id'},{label:'Headsign',key:'headsign'},{label:'Shape',key:'shape_id'}]
   };
 
-  const handleRowClick = (routeId: number) => {
-    setSelectedEntityId(routeId);
-    navigate('/routes');
+  const handleRowClick = (item: any) => {
+    setSelectedEntityId(item.id);
+    const pathMap = { routes: '/routes', stops: '/stops', agencies: '/agencies', trips: '/trips' };
+    navigate(pathMap[activeType]);
   };
 
   return (
     <div className="flex h-full bg-white text-zinc-900 overflow-hidden font-bold select-none animate-in fade-in duration-500 pointer-events-auto">
-      {/* Registry Tree */}
       <div className="w-64 border-r border-zinc-100 flex flex-col bg-zinc-50/30">
-        <div className="p-4 border-b border-zinc-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Database size={14} className="text-zinc-400" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Infrastructure</span>
-          </div>
-          <button onClick={fetchStats} className={`text-zinc-400 hover:text-zinc-900 transition-all ${loading ? 'animate-spin' : 'active:rotate-180'}`}><RotateCcw size={12}/></button>
+        <div className="p-4 border-b border-zinc-100 flex items-center justify-between text-zinc-500">
+          <div className="flex items-center gap-2"><Database size={14} /><span className="text-[10px] font-black uppercase tracking-widest">Explorer</span></div>
+          <button onClick={fetchStats} className={`hover:text-zinc-900 ${loading ? 'animate-spin' : ''}`}><RotateCcw size={12}/></button>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {[
-            { label: 'Operators', count: stats.agencies.length, icon: Globe, path: '/agencies' },
-            { label: 'Stops', count: stats.stops.length, icon: MapPin, path: '/stops' },
-            { label: 'Routes', count: stats.routes.length, icon: RouteIcon, path: '/routes' },
-            { label: 'Bindings', count: stats.trips.length, icon: Hash, path: '/trips' },
+            { label: 'Operators', type: 'agencies', count: stats.agencies.length, icon: Globe },
+            { label: 'Stops', type: 'stops', count: stats.stops.length, icon: MapPin },
+            { label: 'Routes', type: 'routes', count: stats.routes.length, icon: RouteIcon },
+            { label: 'Bindings', type: 'trips', count: stats.trips.length, icon: Hash },
           ].map(item => (
-            <div key={item.label} onClick={() => navigate(item.path)} className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-zinc-100 cursor-pointer group transition-all active:scale-[0.98]">
-              <div className="flex items-center gap-3 text-zinc-500 group-hover:text-zinc-900">
-                <item.icon size={14} />
-                <span className="text-[11px] font-black uppercase tracking-tight">{item.label}</span>
-              </div>
-              <span className="text-[10px] font-mono font-black text-zinc-400 bg-white border border-zinc-100 px-2 py-0.5 rounded-lg">{loading ? '...' : item.count}</span>
+            <div key={item.label} onClick={() => setActiveType(item.type as any)} className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all cursor-pointer ${activeType === item.type ? 'bg-white shadow-md border border-zinc-100' : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900'}`}>
+              <div className="flex items-center gap-3"><item.icon size={14} className={activeType === item.type ? 'text-system-blue' : ''} /><span className="text-[11px] font-black uppercase tracking-tight">{item.label}</span></div>
+              <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-lg border ${activeType === item.type ? 'text-system-blue border-system-blue/20 bg-system-blue/5' : 'text-zinc-400 border-zinc-100 bg-white'}`}>{loading ? '...' : item.count}</span>
             </div>
           ))}
-          <div className="pt-6 px-3 pb-2 text-[9px] font-black text-zinc-300 uppercase tracking-widest border-t border-zinc-100 mt-4">System Signal</div>
-          <div className="px-3 py-2.5 flex items-center gap-3 bg-white mx-2 rounded-xl border border-zinc-100 shadow-sm">
-            <div className={`w-1.5 h-1.5 rounded-full ${health === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-            <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">{health === 'online' ? 'Engine Ready' : 'Sync Error'}</span>
-          </div>
         </div>
         <div className="p-4 bg-zinc-900 text-white group cursor-pointer overflow-hidden relative" onClick={() => navigate('/routes')}>
           <div className="relative z-10 flex items-center justify-between w-full">
-            <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest">Studio Engine</span><span className="text-[7px] text-white/40 uppercase font-black">GIS DESIGNER v2</span></div>
+            <div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-widest">Studio Engine</span><span className="text-[7px] text-white/40 uppercase font-black">GIS DESIGNER</span></div>
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </div>
           <Zap size={60} className="absolute -right-4 -bottom-4 text-white/5 -rotate-12 group-hover:scale-110 transition-all duration-500" />
         </div>
       </div>
 
-      {/* Main Table Explorer */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="h-[60%] flex flex-col border-b border-zinc-100">
           <div className="px-5 py-3 bg-zinc-50/50 border-b border-zinc-100 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h3 className="text-[9px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2"><RouteIcon size={12}/> Route Manifest Explorer</h3>
+              <div className="flex items-center gap-2 text-zinc-400 font-black uppercase text-[9px] tracking-widest"><span>Registry</span> <ChevronRight size={10}/> <span className="text-zinc-900">{activeType}</span></div>
+              <div className="h-4 w-px bg-zinc-200" />
               <div className="relative">
                 <Filter size={10} className="absolute left-2.5 top-2 text-zinc-400" />
-                <input className="bg-white border border-zinc-200 rounded-lg pl-7 pr-3 py-1 text-[10px] font-bold focus:ring-2 focus:ring-zinc-100 outline-none w-48" placeholder="Filter records..." value={filterQuery} onChange={e => setFilterQuery(e.target.value)} />
+                <input className="bg-white border border-zinc-200 rounded-lg pl-7 pr-3 py-1 text-[10px] font-bold focus:ring-2 focus:ring-zinc-100 outline-none w-48" placeholder={`Filter ${activeType}...`} value={filterQuery} onChange={e => setFilterQuery(e.target.value)} />
               </div>
             </div>
-            <span className="text-[8px] font-black text-zinc-400 bg-white border border-zinc-100 px-2 py-0.5 rounded-full uppercase">Display: {processedRoutes.length}</span>
+            <span className="text-[8px] font-black text-zinc-400 bg-white border border-zinc-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">Results: {processedData.length}</span>
           </div>
           <div className="flex-1 overflow-auto custom-scrollbar">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 bg-white z-10 border-b border-zinc-100">
                 <tr>
-                  {[{label:'ID',key:'id'},{label:'Sign',key:'short_name'},{label:'Name',key:'long_name'},{label:'Operator',key:'agency_id'},{label:'State',key:'id'}].map(h => (
-                    <th key={h.label} onClick={() => toggleSort(h.key)} className="px-5 py-2.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-r border-zinc-100 text-left last:border-r-0 cursor-pointer hover:bg-zinc-50 group">
+                  {headers[activeType].map(h => (
+                    <th key={h.label} onClick={() => setSortConfig({ key: h.key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="px-5 py-2.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-r border-zinc-100 text-left last:border-r-0 cursor-pointer hover:bg-zinc-50 group">
                       <div className="flex items-center justify-between">{h.label} <ArrowUpDown size={10} className={`opacity-0 group-hover:opacity-100 ${sortConfig.key === h.key ? 'opacity-100 text-zinc-900' : ''}`} /></div>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-50 text-[11px]">
-                {processedRoutes.map(r => (
-                  <tr key={r.id} onClick={() => handleRowClick(r.id)} className="hover:bg-zinc-50 transition-colors cursor-pointer group">
-                    <td className="px-5 py-2.5 font-mono text-zinc-300 border-r border-zinc-100 group-hover:text-zinc-900">#{r.id}</td>
-                    <td className="px-5 py-2.5 border-r border-zinc-100"><div className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-black text-white shadow-sm" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#','')}` }}>{r.short_name}</div></td>
-                    <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100 truncate max-w-xs">{r.long_name}</td>
-                    <td className="px-5 py-2.5 text-[10px] font-black text-zinc-400 uppercase border-r border-zinc-100">{stats.agencies.find(a => a.id === r.agency_id)?.name || '...'}</td>
-                    <td className="px-5 py-2.5 text-right"><span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase">Verified</span></td>
+                {processedData.map(item => (
+                  <tr key={item.id} onClick={() => handleRowClick(item)} className="hover:bg-zinc-50 transition-colors cursor-pointer group">
+                    {activeType === 'routes' ? (
+                      <>
+                        <td className="px-5 py-2.5 font-mono text-zinc-300 border-r border-zinc-100 group-hover:text-zinc-900">#{item.id}</td>
+                        <td className="px-5 py-2.5 border-r border-zinc-100"><div className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-black text-white" style={{ backgroundColor: `#${(item.color || '007AFF').replace('#','')}` }}>{item.short_name}</div></td>
+                        <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100 truncate max-w-xs">{item.long_name}</td>
+                        <td className="px-5 py-2.5 text-zinc-400 border-r border-zinc-100 uppercase">{stats.agencies.find(a => a.id === item.agency_id)?.name || '...'}</td>
+                      </>
+                    ) : activeType === 'stops' ? (
+                      <>
+                        <td className="px-5 py-2.5 font-mono text-zinc-300 border-r border-zinc-100">#{item.id}</td>
+                        <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100">{item.name}</td>
+                        <td className="px-5 py-2.5 font-mono text-zinc-400 border-r border-zinc-100">{item.lat.toFixed(6)}</td>
+                        <td className="px-5 py-2.5 font-mono text-zinc-400 border-r border-zinc-100">{item.lon.toFixed(6)}</td>
+                      </>
+                    ) : activeType === 'agencies' ? (
+                      <>
+                        <td className="px-5 py-2.5 font-mono text-zinc-300 border-r border-zinc-100">#{item.id}</td>
+                        <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100">{item.name}</td>
+                        <td className="px-5 py-2.5 text-zinc-400 border-r border-zinc-100 truncate max-w-xs">{item.url}</td>
+                        <td className="px-5 py-2.5 text-zinc-400 border-r border-zinc-100">{item.timezone}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-5 py-2.5 font-mono text-zinc-300 border-r border-zinc-100">#{item.id}</td>
+                        <td className="px-5 py-2.5 font-mono text-zinc-400 border-r border-zinc-100">L-{item.route_id}</td>
+                        <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100">{item.headsign}</td>
+                        <td className="px-5 py-2.5 text-zinc-400 border-r border-zinc-100 text-[9px] uppercase tracking-tighter">{item.shape_id}</td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -176,16 +194,15 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* Audit Logs */}
         <div className="h-[40%] flex flex-col bg-zinc-50/10">
-          <div className="px-5 py-3 bg-white border-b border-zinc-100 flex items-center justify-between shrink-0">
-            <h3 className="text-[9px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2"><Clock size={12}/> Event Log Cluster</h3>
-            <div className="flex gap-4 text-[8px] font-black text-zinc-400 uppercase tracking-widest"><div className="flex items-center gap-2"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Stream: Online</div></div>
+          <div className="px-5 py-3 bg-white border-b border-zinc-100 flex items-center justify-between">
+            <h3 className="text-[9px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2"><Clock size={12}/> Event Cluster Log</h3>
+            <div className="flex items-center gap-2 text-[8px] font-black text-emerald-500 uppercase tracking-widest"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Stream: Online</div>
           </div>
           <div className="flex-1 overflow-y-auto p-5 font-mono text-[10px] space-y-2 custom-scrollbar text-zinc-500 bg-zinc-50/20">
-            <div className="flex gap-6"><span className="text-zinc-300">14:22:01</span><span className="font-black text-zinc-400 uppercase">DB_SYNC</span><span>Committed local edits to cloud registry. Manifest synchronized.</span></div>
-            <div className="flex gap-6"><span className="text-zinc-300">14:21:45</span><span className="font-black text-zinc-400 uppercase">GEO_CALC</span><span>Successfully traced path geometry via OSRM high-density engine.</span></div>
-            <div className="flex gap-6"><span className="text-zinc-300">14:15:00</span><span className="font-black text-zinc-400 uppercase">SYS_BOOT</span><span>GTFS-Web Control Suite initialized. Modules: GREEN.</span></div>
+            <div className="flex gap-6 opacity-60"><span className="text-zinc-300">14:22:01</span><span className="font-black text-zinc-400">DB_SYNC</span><span>Committed manifest updates. Registry buffer cleared.</span></div>
+            <div className="flex gap-6 opacity-60"><span className="text-zinc-300">14:21:45</span><span className="font-black text-zinc-400">GEO_CALC</span><span>OSRM trace successful for SHP_REDLINE sequence.</span></div>
+            <div className="flex gap-6 opacity-60"><span className="text-zinc-300">14:15:00</span><span className="font-black text-zinc-400">SYS_READY</span><span>GTFS-Web Explorer operational. Modules: ALL GREEN.</span></div>
           </div>
         </div>
       </div>
