@@ -41,6 +41,12 @@ A professional, full-stack transit management ecosystem designed for designing, 
 ### Spatial Micro-Interactions (Hover Discovery & Pulsing Feedback)
 ![Micro Interactions](./assets/screenshots/micro-interactions.jpg)
 
+### Public Web Viewer - Network Overview (Swiss/Transport Style)
+![Web Viewer](./assets/screenshots/web-viewer.jpg)
+
+### Public Web Viewer - Route Focus Mode
+![Web Viewer Route](./assets/screenshots/web-viewer-route.jpg)
+
 ## 🏗 Architecture & Tech Stack
 
 ### Backend
