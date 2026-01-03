@@ -14,6 +14,7 @@ import {
   ArrowRight, ShieldCheck, Zap, AlertCircle, Loader2, 
   ChevronRight, ChevronLeft, X, RotateCcw, Hash, Clock, ArrowUpDown, Filter
 } from 'lucide-react';
+
 const ShortcutManager: React.FC = () => {
   const navigate = useNavigate();
   const { setSelectedEntityId, setQuickMode } = useWorkspace();
@@ -100,6 +101,13 @@ const Home: React.FC = () => {
     trips: [{label:'ID',key:'id'},{label:'Route',key:'route_id'},{label:'Heading',key:'headsign'},{label:'Path ID',key:'shape_id'}]
   };
 
+  const integrityScore = useMemo(() => {
+    if (loading || stats.routes.length === 0) return '0%';
+    const routesWithShapes = new Set(stats.trips.filter(t => t.shape_id).map(t => t.route_id)).size;
+    const score = (routesWithShapes / stats.routes.length) * 100;
+    return `${score.toFixed(1)}%`;
+  }, [stats, loading]);
+
   const handleRowClick = (item: any) => {
     setSelectedEntityId(item.id);
     const pathMap = { routes: '/routes', stops: '/stops', agencies: '/agencies', trips: '/trips' };
@@ -155,7 +163,7 @@ const Home: React.FC = () => {
             { label: 'Network Coverage', val: stats.stops.length, icon: Globe, col: 'text-blue-600' },
             { label: 'Active Services', val: stats.routes.length, icon: RouteIcon, col: 'text-emerald-600' },
             { label: 'Total Schedule', val: stats.trips.length, icon: Database, col: 'text-purple-600' },
-            { label: 'Data Integrity', val: '98.4%', icon: ShieldCheck, col: 'text-zinc-900', title: 'Calculated ratio of linked stops and shapes.' },
+            { label: 'Data Integrity', val: integrityScore, icon: ShieldCheck, col: 'text-zinc-900', title: 'Calculated ratio of routes with assigned paths.' },
           ].map((item, i) => (
             <React.Fragment key={item.label}>
               <div className="flex items-center gap-3" title={item.title}>

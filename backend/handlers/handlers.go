@@ -329,6 +329,24 @@ func UpdateShape(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Shape updated", "shape_id": shapeID})
 }
 
+// GetBulkShapes returns points for multiple shape_ids
+func GetBulkShapes(c *gin.Context) {
+	var shapeIDs []string
+	if err := c.ShouldBindJSON(&shapeIDs); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	var points []models.ShapePoint
+	database.DB.Where("shape_id IN ?", shapeIDs).Order("sequence asc").Find(&points)
+	
+	// Group points by shape_id
+	result := make(map[string][]models.ShapePoint)
+	for _, p := range points {
+		result[p.ShapeID] = append(result[p.ShapeID], p)
+	}
+	c.JSON(http.StatusOK, result)
+}
+
 // DeleteShape removes all points for a specific shape_id
 func DeleteShape(c *gin.Context) {
 	shapeID := c.Param("shape_id")

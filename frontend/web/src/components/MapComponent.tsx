@@ -40,7 +40,7 @@ const MapController: React.FC<{ focusedPoints: [number, number][] | null }> = ({
     useEffect(() => {
         if (focusedPoints && focusedPoints.length > 0) {
             const bounds = L.latLngBounds(focusedPoints);
-            map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
+            map.flyToBounds(bounds, { padding: [50, 50], duration: 0.5 });
         }
     }, [focusedPoints, map]);
     return null;

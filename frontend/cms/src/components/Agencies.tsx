@@ -52,7 +52,14 @@ const Agencies: React.FC = () => {
             });
             setAgencyStats(stats);
             setStatus(null);
-        } catch (e) { setStatus({ message: 'Sync failed', type: 'error' }); }
+        } catch (e: any) { 
+            console.error('System: Failed to fetch initial agency data.', {
+                message: e.message,
+                stack: e.stack,
+                response: e.response?.data
+            });
+            setStatus({ message: 'Sync failed', type: 'error' }); 
+        }
     }, [setStatus]);
 
     useEffect(() => { fetchInitialData(); }, [fetchInitialData]);
@@ -70,33 +77,62 @@ const Agencies: React.FC = () => {
             setMapLayers({ routes: [], stops: [], focusedPoints: [], activeShape: [], activeStop: null });
             return;
         }
+
+        const controller = new AbortController();
+
         const updateGeometry = async () => {
-            const agencyRoutes = allRoutes.filter(r => r.agency_id === selectedAgency.id);
-            const routeIds = agencyRoutes.map(r => r.id);
-            const stopIds = [...new Set(stopRouteMap.filter(sr => routeIds.includes(sr.route_id)).map(sr => sr.stop_id))];
-            const agencyStops = allStops.filter(s => stopIds.includes(s.id));
-            const agencyTrips = allTrips.filter(t => routeIds.includes(t.route_id));
-            const shapeGeometries: { id: number, color: string, positions: [number, number][] }[] = [];
-            await Promise.all(agencyTrips.map(async (trip) => {
-                if (trip.shape_id) {
+            try {
+                const agencyRoutes = allRoutes.filter(r => r.agency_id === selectedAgency.id);
+                const routeIds = agencyRoutes.map(r => r.id);
+                const stopIds = [...new Set(stopRouteMap.filter(sr => routeIds.includes(sr.route_id)).map(sr => sr.stop_id))];
+                const agencyStops = allStops.filter(s => stopIds.includes(s.id));
+                const agencyTrips = allTrips.filter(t => routeIds.includes(t.route_id));
+                
+                // Optimization: Bulk fetch shapes
+                const shapeIds = [...new Set(agencyTrips.map(t => t.shape_id).filter(Boolean))];
+                let shapeMap: Record<string, [number, number][]> = {};
+                
+                if (shapeIds.length > 0) {
                     try {
-                        const res = await api.get(`/shapes/${trip.shape_id}`);
-                        const points: ShapePoint[] = res.data;
-                        const poly = points.sort((a,b) => a.sequence - b.sequence).map(p => [p.lat, p.lon] as [number, number]);
-                        const route = agencyRoutes.find(r => r.id === trip.route_id);
-                        if (route) shapeGeometries.push({ id: trip.id, color: route.color, positions: poly });
-                    } catch (e) {}
+                        const res = await api.post('/shapes/bulk', shapeIds, { signal: controller.signal });
+                        const bulkData: Record<string, ShapePoint[]> = res.data;
+                        Object.keys(bulkData).forEach(sid => {
+                            shapeMap[sid] = bulkData[sid].sort((a,b) => a.sequence - b.sequence).map(p => [p.lat, p.lon] as [number, number]);
+                        });
+                    } catch (e: any) {
+                        if (e.name === 'CanceledError' || e.name === 'AbortError') return;
+                        console.error('System: Bulk shape fetch failed. Falling back to individual requests.', e);
+                    }
                 }
-            }));
-            setMapLayers({
-                routes: shapeGeometries.map(g => ({ ...g, isFocused: true })),
-                stops: agencyStops.map(s => ({ ...s, isSmall: false, hidePopup: false })),
-                focusedPoints: shapeGeometries.flatMap(g => g.positions),
-                activeShape: [],
-                activeStop: null
-            });
+
+                if (controller.signal.aborted) return;
+
+                const shapeGeometries: { id: number, color: string, positions: [number, number][] }[] = [];
+                agencyTrips.forEach((trip) => {
+                    if (trip.shape_id && shapeMap[trip.shape_id]) {
+                        const route = agencyRoutes.find(r => r.id === trip.route_id);
+                        if (route) shapeGeometries.push({ id: trip.id, color: route.color, positions: shapeMap[trip.shape_id] });
+                    }
+                });
+
+                setMapLayers({
+                    routes: shapeGeometries.map(g => ({ ...g, isFocused: true })),
+                    stops: agencyStops.map(s => ({ ...s, isSmall: false, hidePopup: false })),
+                    focusedPoints: shapeGeometries.flatMap(g => g.positions),
+                    activeShape: [],
+                    activeStop: null
+                });
+            } catch (e: any) {
+                if (e.name === 'CanceledError' || e.name === 'AbortError') return;
+                console.error('System: Geometry update failed.', e);
+            }
         };
+
         updateGeometry();
+
+        return () => {
+            controller.abort();
+        };
     }, [selectedAgency, allRoutes, allStops, stopRouteMap, allTrips, setMapLayers]);
 
     const handleSave = async (e?: React.FormEvent) => {
@@ -110,7 +146,10 @@ const Agencies: React.FC = () => {
             setStatus({ message: 'Operator Saved', type: 'success' });
             setTimeout(() => setStatus(null), 2000);
             fetchInitialData();
-        } catch (error) { setStatus({ message: 'Save failed', type: 'error' }); }
+        } catch (error: any) { 
+            console.error('System: Save failed.', error);
+            setStatus({ message: 'Save failed', type: 'error' }); 
+        }
     };
 
     const handleSelectAgency = (agency: Agency) => {
@@ -126,6 +165,14 @@ const Agencies: React.FC = () => {
         setFormData(newAgency);
         initialFormData.current = JSON.stringify(newAgency);
     };
+
+    const timezones = [
+        "Africa/Abidjan", "Africa/Accra", "Africa/Addis_Ababa", "Africa/Algiers", "Africa/Asmara", "Africa/Bamako",
+        "America/Anchorage", "America/Argentina/Buenos_Aires", "America/Chicago", "America/Denver", "America/Los_Angeles", "America/New_York",
+        "Asia/Bangkok", "Asia/Dubai", "Asia/Hong_Kong", "Asia/Jakarta", "Asia/Jerusalem", "Asia/Kolkata", "Asia/Seoul", "Asia/Singapore", "Asia/Tokyo",
+        "Australia/Sydney", "Europe/Berlin", "Europe/London", "Europe/Madrid", "Europe/Paris", "Europe/Rome", "Europe/Zurich",
+        "Pacific/Auckland", "Pacific/Fiji", "Pacific/Honolulu", "UTC"
+    ];
 
     const filteredAgencies = agencies.filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -165,7 +212,7 @@ const Agencies: React.FC = () => {
                         <div className="flex items-center gap-3 flex-1 min-w-0"><div className="w-8 h-8 rounded-lg flex items-center justify-center bg-system-blue text-white shadow-lg shrink-0"><Landmark size={16} /></div><div className="min-w-0"><h2 className="text-sm font-black tracking-tight truncate leading-none mb-0.5">{formData.name || 'New'}</h2><p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest truncate">Operator Details</p></div></div>
                         <div className="flex items-center gap-0.5"><button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400">{isCollapsed ? <Maximize2 size={14}/> : <Minimize2 size={14}/>}</button><button onClick={() => setSelectedAgency(null)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400 transition-all hover:rotate-90"><X size={16}/></button></div>
                     </div>
-                    {!isCollapsed && (<><div className="flex-1 overflow-y-auto p-4 pt-2 custom-scrollbar"><form onSubmit={handleSave} className="space-y-4"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Operator Name</label><input className="hig-input text-[11px] font-bold py-1.5" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Website</label><div className="relative"><input className="hig-input text-[11px] font-bold py-1.5 pr-8" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} required /><ExternalLink size={12} className="absolute right-2.5 top-2.5 text-zinc-400" /></div></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Timezone</label><select className="hig-input text-[11px] font-bold py-1.5" value={formData.timezone} onChange={e => setFormData({...formData, timezone: e.target.value})} required><option value="">Select...</option><option value="Asia/Jakarta">Jakarta</option></select></div><div className="grid grid-cols-2 gap-2 pt-2"><div className="bg-zinc-50 p-2 rounded-xl text-center"><div className="text-lg font-black text-zinc-900 leading-none mb-0.5">{selectedAgency.id ? agencyStats[selectedAgency.id]?.routes || 0 : 0}</div><div className="text-[7px] font-black text-zinc-400 uppercase">Lines</div></div><div className="bg-zinc-50 p-2 rounded-xl text-center"><div className="text-lg font-black text-zinc-900 leading-none mb-0.5">{selectedAgency.id ? agencyStats[selectedAgency.id]?.stops || 0 : 0}</div><div className="text-[7px] font-black text-zinc-400 uppercase">Nodes</div></div></div>{selectedAgency.id && (<div className="pt-4 mt-4 border-t border-black/[0.03]"><button type="button" onClick={() => { if(window.confirm('Delete this operator record permanently?')) api.delete(`/agencies/${selectedAgency.id}`).then(fetchInitialData).then(() => setSelectedAgency(null)); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}</form></div><div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0 flex justify-center"><button onClick={() => handleSave()} disabled={!isDirty} className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"><Save size={14}/> Commit Changes</button></div></>)}
+                    {!isCollapsed && (<><div className="flex-1 overflow-y-auto p-4 pt-2 custom-scrollbar"><form onSubmit={handleSave} className="space-y-4"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Operator Name</label><input className="hig-input text-[11px] font-bold py-1.5" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Website</label><div className="relative"><input className="hig-input text-[11px] font-bold py-1.5 pr-8" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} required /><ExternalLink size={12} className="absolute right-2.5 top-2.5 text-zinc-400" /></div></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Timezone</label><select className="hig-input text-[11px] font-bold py-1.5" value={formData.timezone} onChange={e => setFormData({...formData, timezone: e.target.value})} required><option value="">Select...</option>{timezones.map(tz => <option key={tz} value={tz}>{tz}</option>)}</select></div><div className="grid grid-cols-2 gap-2 pt-2"><div className="bg-zinc-50 p-2 rounded-xl text-center"><div className="text-lg font-black text-zinc-900 leading-none mb-0.5">{selectedAgency.id ? agencyStats[selectedAgency.id]?.routes || 0 : 0}</div><div className="text-[7px] font-black text-zinc-400 uppercase">Lines</div></div><div className="bg-zinc-50 p-2 rounded-xl text-center"><div className="text-lg font-black text-zinc-900 leading-none mb-0.5">{selectedAgency.id ? agencyStats[selectedAgency.id]?.stops || 0 : 0}</div><div className="text-[7px] font-black text-zinc-400 uppercase">Nodes</div></div></div>{selectedAgency.id && (<div className="pt-4 mt-4 border-t border-black/[0.03]"><button type="button" onClick={() => { if(window.confirm('Delete this operator record permanently?')) api.delete(`/agencies/${selectedAgency.id}`).then(fetchInitialData).then(() => setSelectedAgency(null)); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}</form></div><div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] sticky bottom-0 flex justify-center"><button onClick={() => handleSave()} disabled={!isDirty} className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"><Save size={14}/> Commit Changes</button></div></>)}
                 </motion.div>
             )}
         </div>

@@ -61,7 +61,14 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-### 2. CMS Frontend
+### 2. Seed Example Data (Optional)
+To quickly try out the platform with a pre-populated transit network:
+```bash
+npm run seed
+```
+*Note: Ensure the database is running via Docker before seeding.*
+
+### 3. CMS Frontend
 ```bash
 cd frontend/cms
 npm install
