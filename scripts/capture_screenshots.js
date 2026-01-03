@@ -8,7 +8,7 @@ const PAGES = [
   { name: 'route-studio-path', url: 'http://localhost:5173/routes' },
   { name: 'route-studio-info', url: 'http://localhost:5173/routes' },
   { name: 'trip-mapping', url: 'http://localhost:5173/trips' },
-  { name: 'micro-interactions', url: 'http://localhost:5173/stops' }, // New interaction showcase
+  { name: 'micro-interactions', url: 'http://localhost:5173/stops' },
 ];
 
 const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
@@ -31,30 +31,36 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
         
         // --- Interaction Logic ---
         
-        // Common selection logic for lists
         const selectFirstItem = async () => {
-            await page.waitForSelector('div[class*="cursor-pointer"]', { timeout: 10000 });
+            await page.waitForSelector('div[class*="cursor-pointer"]', { timeout: 15000 });
             const items = await page.$$('div[class*="cursor-pointer"]');
-            if (items.length > 0) await items[0].click();
+            if (items.length > 0) {
+                await items[0].click();
+                await page.waitForTimeout(1000);
+            }
         };
 
         if (item.name === 'route-studio-path') {
             await selectFirstItem();
-            await page.waitForTimeout(1000);
             await page.click('button:has-text("Path")').catch(() => {});
             await page.waitForTimeout(2000);
         }
         
         if (item.name === 'route-studio-info') {
             await selectFirstItem();
-            await page.waitForTimeout(1000);
             await page.click('button:has-text("Details")').catch(() => {});
             await page.waitForTimeout(2000);
         }
 
         if (item.name === 'agencies') {
             await selectFirstItem();
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(3000); // Wait for geometry to load
+        }
+
+        if (item.name === 'stop-and-routes') {
+            await selectFirstItem();
+            await page.click('button:has-text("Links")').catch(() => {}); // Show route assignments
+            await page.waitForTimeout(2000);
         }
 
         if (item.name === 'trip-mapping') {
@@ -63,11 +69,10 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
         }
 
         if (item.name === 'micro-interactions') {
-            // Trigger a hover effect on a stop to show the Orange Pulse and associated Routes
             await page.waitForSelector('div[class*="cursor-pointer"]', { timeout: 10000 });
             const stops = await page.$$('div[class*="cursor-pointer"]');
             if (stops.length > 1) {
-                await stops[1].hover(); // Hover the second stop for visual depth
+                await stops[1].hover();
                 await page.waitForTimeout(1500);
             }
         }
