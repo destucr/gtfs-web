@@ -4,25 +4,42 @@ import L from 'leaflet';
 import { useWorkspace } from '../context/useWorkspace';
 import 'leaflet/dist/leaflet.css';
 
+// Industrial Palette Standards
+const COLORS = {
+  blue: '#007AFF',
+  orange: '#F97316',
+  white: '#FFFFFF',
+  zinc400: '#A1A1AA',
+  zinc100: '#F4F4F5'
+};
+
 const BusStopIcon = L.divIcon({
   className: 'custom-stop-icon',
-  html: `<div class="w-4 h-4 bg-orange-500 border-2 border-white rounded-full shadow-lg flex items-center justify-center">
-            <div class="w-1 h-1 bg-white rounded-full"></div>
+  html: `<div style="width: 16px; height: 16px; background-color: ${COLORS.orange}; border: 2px solid white; border-radius: 9999px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); display: flex; align-items: center; justify-content: center;">
+            <div style="width: 4px; height: 4px; background-color: white; border-radius: 9999px;"></div>
           </div>`,
   iconSize: [16, 16],
   iconAnchor: [8, 8]
 });
 
 const MapController: React.FC = () => {
-  const { mapLayers } = useWorkspace();
+  const { mapLayers, sidebarOpen } = useWorkspace();
   const map = useMap();
 
   useEffect(() => {
     if (mapLayers.focusedPoints && mapLayers.focusedPoints.length > 0) {
       const bounds = L.latLngBounds(mapLayers.focusedPoints);
-      map.flyToBounds(bounds, { padding: [50, 50], duration: 0.5 });
+      
+      // Calculate responsive padding based on sidebar and hub visibility
+      // Sidebar: 400px, Hub: 320px. We add extra buffer for aesthetic breathing room.
+      map.flyToBounds(bounds, { 
+        paddingTopLeft: [sidebarOpen ? 440 : 40, 40],
+        paddingBottomRight: [360, 40],
+        duration: 0.5,
+        maxZoom: 16 // Prevent zooming in too close for single-point entities
+      });
     }
-  }, [mapLayers.focusedPoints, map]);
+  }, [mapLayers.focusedPoints, map, sidebarOpen]);
 
   return null;
 };
@@ -104,7 +121,12 @@ const UnifiedMap: React.FC = () => {
             <Marker
               key={stop.id}
               position={[stop.lat, stop.lon]}
-              icon={stop.isCustom ? stop.icon : (stop.isSmall ? L.divIcon({ className: 'bg-white border-2 border-black/20 w-2 h-2 rounded-full', iconSize: [8, 8] }) : BusStopIcon)}
+              icon={stop.isCustom ? stop.icon : (stop.isSmall ? L.divIcon({ 
+                className: '', 
+                html: `<div style="background-color: white; border: 2px solid rgba(0,0,0,0.2); width: 8px; height: 8px; border-radius: 9999px;"></div>`,
+                iconSize: [8, 8],
+                iconAnchor: [4, 4]
+              }) : BusStopIcon)}
             />
           ))}
 
@@ -123,8 +145,10 @@ const UnifiedMap: React.FC = () => {
               }
             }}
             icon={L.divIcon({
-              className: 'bg-system-blue border-2 border-white w-3 h-3 rounded-full shadow-lg',
-              iconSize: [12, 12]
+              className: '',
+              html: `<div style="background-color: ${COLORS.blue}; border: 2px solid white; width: 12px; height: 12px; border-radius: 9999px; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);"></div>`,
+              iconSize: [12, 12],
+              iconAnchor: [6, 6]
             })}
           />
         ))}
@@ -139,12 +163,22 @@ const UnifiedMap: React.FC = () => {
               key={`mid-${i}`}
               position={[midLat, midLon]}
               icon={L.divIcon({
-                className: 'bg-white border-2 border-system-blue/40 w-2 h-2 rounded-full opacity-0 hover:opacity-100 transition-opacity cursor-pointer',
-                iconSize: [8, 8]
+                className: 'custom-mid-icon',
+                html: `<div style="background-color: white; border: 2px solid rgba(0,122,255,0.4); width: 8px; height: 8px; border-radius: 9999px; opacity: 0; transition: opacity 0.2s;"></div>`,
+                iconSize: [8, 8],
+                iconAnchor: [4, 4]
               })}
               eventHandlers={{
                 click: (e) => {
                   if (onShapePointInsert) onShapePointInsert(i + 1, e.latlng);
+                },
+                mouseover: (e) => {
+                  const el = e.target.getElement();
+                  if (el && el.firstChild) (el.firstChild as HTMLElement).style.opacity = '1';
+                },
+                mouseout: (e) => {
+                  const el = e.target.getElement();
+                  if (el && el.firstChild) (el.firstChild as HTMLElement).style.opacity = '0';
                 }
               }}
             />
@@ -163,10 +197,15 @@ const UnifiedMap: React.FC = () => {
             }}
             icon={L.divIcon({
               className: 'relative',
-              html: `<div class="flex items-center justify-center">
-                                    <div class="absolute w-6 h-6 bg-system-blue/30 rounded-full animate-ping"></div>
-                                    <div class="w-3 h-3 bg-system-blue border-2 border-white rounded-full shadow-lg relative z-10"></div>
-                                   </div>`,
+              html: `<div style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;">
+                        <div style="position: absolute; width: 24px; height: 24px; background-color: rgba(0,122,255,0.3); border-radius: 9999px; animation: leaflet-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+                        <div style="width: 12px; height: 12px; background-color: ${COLORS.blue}; border: 2px solid white; border-radius: 9999px; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); position: relative; z-index: 10;"></div>
+                     </div>
+                     <style>
+                      @keyframes leaflet-ping {
+                        75%, 100% { transform: scale(2); opacity: 0; }
+                      }
+                     </style>`,
               iconSize: [24, 24],
               iconAnchor: [12, 12]
             })}

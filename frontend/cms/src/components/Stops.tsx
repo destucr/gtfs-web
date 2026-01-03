@@ -190,10 +190,15 @@ const Stops: React.FC = () => {
                 isCustom: s.id === hoveredEntityId,
                 icon: s.id === hoveredEntityId ? L.divIcon({ 
                     className: '',
-                    html: `<div class="flex items-center justify-center">
-                            <div class="absolute w-6 h-6 bg-orange-500/30 rounded-full animate-ping"></div>
-                            <div class="w-2.5 h-2.5 bg-orange-600 border border-white rounded-full shadow-lg relative z-10"></div>
-                        </div>`,
+                    html: `<div style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;">
+                            <div style="position: absolute; width: 24px; height: 24px; background-color: rgba(249,115,22,0.3); border-radius: 9999px; animation: leaflet-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+                            <div style="width: 10px; height: 10px; background-color: #F97316; border: 1px solid white; border-radius: 9999px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); position: relative; z-index: 10;"></div>
+                        </div>
+                        <style>
+                          @keyframes leaflet-ping {
+                            75%, 100% { transform: scale(2); opacity: 0; }
+                          }
+                        </style>`,
                     iconSize: [24, 24], iconAnchor: [12, 12]
                 }) : undefined
             })),

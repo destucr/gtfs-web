@@ -76,9 +76,10 @@ const MapComponent: React.FC = () => {
                 }
             }));
             setShapes(shapeData);
-            setLoading(false);
         } catch (e) {
             console.error('Fetch failed', e);
+        } finally {
+            setLoading(false);
         }
     };
 

@@ -333,11 +333,25 @@ func UpdateShape(c *gin.Context) {
 func GetBulkShapes(c *gin.Context) {
 	var shapeIDs []string
 	if err := c.ShouldBindJSON(&shapeIDs); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid shape ID payload: " + err.Error()})
 		return
 	}
+
+	if len(shapeIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Empty shape ID array provided."})
+		return
+	}
+
+	if len(shapeIDs) > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Bulk request exceeds limit of 100 IDs."})
+		return
+	}
+
 	var points []models.ShapePoint
-	database.DB.Where("shape_id IN ?", shapeIDs).Order("sequence asc").Find(&points)
+	if err := database.DB.Where("shape_id IN ?", shapeIDs).Order("sequence asc").Find(&points).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database retrieval failure: " + err.Error()})
+		return
+	}
 	
 	// Group points by shape_id
 	result := make(map[string][]models.ShapePoint)

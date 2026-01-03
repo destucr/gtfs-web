@@ -84,12 +84,15 @@ const Agencies: React.FC = () => {
             try {
                 const agencyRoutes = allRoutes.filter(r => r.agency_id === selectedAgency.id);
                 const routeIds = agencyRoutes.map(r => r.id);
+                
+                // Identify stops belonging to this agency
                 const stopIds = [...new Set(stopRouteMap.filter(sr => routeIds.includes(sr.route_id)).map(sr => sr.stop_id))];
                 const agencyStops = allStops.filter(s => stopIds.includes(s.id));
-                const agencyTrips = allTrips.filter(t => routeIds.includes(t.route_id));
                 
-                // Optimization: Bulk fetch shapes
+                // Identify trips and their shapes
+                const agencyTrips = allTrips.filter(t => routeIds.includes(t.route_id));
                 const shapeIds = [...new Set(agencyTrips.map(t => t.shape_id).filter(Boolean))];
+                
                 let shapeMap: Record<string, [number, number][]> = {};
                 
                 if (shapeIds.length > 0) {
@@ -101,30 +104,54 @@ const Agencies: React.FC = () => {
                         });
                     } catch (e: any) {
                         if (e.name === 'CanceledError' || e.name === 'AbortError') return;
-                        console.error('System: Bulk shape fetch failed. Falling back to individual requests.', e);
+                        console.error('System: Bulk fetch failed. Attempting individual fallback.', e);
+                        // Individual fallback
+                        for (const sid of shapeIds) {
+                            if (controller.signal.aborted) break;
+                            try {
+                                const res = await api.get(`/shapes/${sid}`, { signal: controller.signal });
+                                const points: ShapePoint[] = res.data || [];
+                                shapeMap[sid] = points.sort((a,b) => a.sequence - b.sequence).map(p => [p.lat, p.lon] as [number, number]);
+                            } catch (err) {}
+                        }
                     }
                 }
 
                 if (controller.signal.aborted) return;
 
+                // Construct layer objects
                 const shapeGeometries: { id: number, color: string, positions: [number, number][] }[] = [];
+                const processedShapes = new Set<string>();
+
                 agencyTrips.forEach((trip) => {
-                    if (trip.shape_id && shapeMap[trip.shape_id]) {
+                    if (trip.shape_id && shapeMap[trip.shape_id] && !processedShapes.has(trip.shape_id)) {
                         const route = agencyRoutes.find(r => r.id === trip.route_id);
-                        if (route) shapeGeometries.push({ id: trip.id, color: route.color, positions: shapeMap[trip.shape_id] });
+                        if (route) {
+                            shapeGeometries.push({ 
+                                id: trip.id, 
+                                color: route.color || '007AFF', 
+                                positions: shapeMap[trip.shape_id] 
+                            });
+                            processedShapes.add(trip.shape_id);
+                        }
                     }
                 });
+
+                // Calculate focus points (union of stops and shapes)
+                const stopPoints = agencyStops.map(s => [s.lat, s.lon] as [number, number]);
+                const shapePoints = shapeGeometries.flatMap(g => g.positions);
+                const allPoints = [...stopPoints, ...shapePoints];
 
                 setMapLayers({
                     routes: shapeGeometries.map(g => ({ ...g, isFocused: true })),
                     stops: agencyStops.map(s => ({ ...s, isSmall: false, hidePopup: false })),
-                    focusedPoints: shapeGeometries.flatMap(g => g.positions),
+                    focusedPoints: allPoints,
                     activeShape: [],
                     activeStop: null
                 });
             } catch (e: any) {
                 if (e.name === 'CanceledError' || e.name === 'AbortError') return;
-                console.error('System: Geometry update failed.', e);
+                console.error('System: Agency geometry visualization failed.', e);
             }
         };
 
