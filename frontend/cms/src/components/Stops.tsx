@@ -172,11 +172,13 @@ const Stops: React.FC = () => {
                 ...s, isSmall: true, hidePopup: false,
                 isCustom: s.id === hoveredEntityId,
                 icon: s.id === hoveredEntityId ? L.divIcon({ 
-                    className: 'relative flex items-center justify-center',
+                    className: '',
                     html: `
-                        <div class="absolute w-8 h-8 bg-orange-500/30 rounded-full animate-ping"></div>
-                        <div class="absolute w-6 h-6 bg-orange-500/50 rounded-full animate-pulse"></div>
-                        <div class="relative w-4 h-4 bg-orange-600 border-2 border-white rounded-full shadow-2xl scale-125"></div>
+                        <div class="relative w-full h-full flex items-center justify-center">
+                            <div class="absolute w-8 h-8 bg-orange-500/40 rounded-full animate-ping"></div>
+                            <div class="absolute w-5 h-5 bg-orange-500/60 rounded-full animate-pulse"></div>
+                            <div class="absolute w-3 h-3 bg-orange-600 border-2 border-white rounded-full shadow-2xl scale-125"></div>
+                        </div>
                     `,
                     iconSize: [32, 32],
                     iconAnchor: [16, 16]
