@@ -206,22 +206,28 @@ const QuickActionMenu: React.FC = () => {
       className="absolute bottom-10 z-[1000] flex flex-col gap-3 transition-all duration-500 pointer-events-none"
       style={{ left: sidebarOpen ? 424 : 24 }}
     >
-      <div className="bg-white/80 backdrop-blur-xl p-2 rounded-[2rem] shadow-2xl border border-black/5 flex flex-col gap-2 pointer-events-auto">
+      <div className="bg-white/80 backdrop-blur-xl p-1.5 rounded-[1.5rem] shadow-2xl border border-black/5 flex flex-col gap-1 pointer-events-auto">
         <button 
           onClick={() => handleAction('add-stop')}
-          className={`group flex items-center gap-4 p-4 rounded-[1.5rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-stop' ? 'bg-orange-500 shadow-xl shadow-orange-500/30 text-white' : 'hover:bg-black/5 text-orange-600'}`}
-          title="Drop Station Node"
+          className={`group flex items-center gap-3 p-3 rounded-[1rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-stop' ? 'bg-orange-500 shadow-xl shadow-orange-500/30 text-white' : 'hover:bg-black/5 text-orange-600'}`}
+          title="New Stop Node"
         >
-          <MapPin size={20} />
-          <span className={`text-[10px] font-black uppercase tracking-[0.1em] transition-all overflow-hidden whitespace-nowrap ${quickMode === 'add-stop' ? 'w-24 opacity-100' : 'w-0 opacity-0 group-hover:w-24 group-hover:opacity-100'}`}>Drop Node</span>
+          <MapPin size={18} />
+          <div className={`flex flex-col items-start transition-all overflow-hidden ${quickMode === 'add-stop' ? 'w-28 opacity-100' : 'w-0 opacity-0 group-hover:w-28 group-hover:opacity-100'}`}>
+            <span className="text-[9px] font-black uppercase tracking-tight leading-none">Node Capture</span>
+            <span className="text-[7px] font-bold opacity-60 uppercase whitespace-nowrap">Add station to map</span>
+          </div>
         </button>
         <button 
           onClick={() => handleAction('add-route')}
-          className={`group flex items-center gap-4 p-4 rounded-[1.5rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-route' ? 'bg-system-blue shadow-xl shadow-system-blue/20 text-white' : 'hover:bg-black/5 text-system-blue'}`}
-          title="Trace Route Geometry"
+          className={`group flex items-center gap-3 p-3 rounded-[1rem] transition-all hover:scale-[1.02] active:scale-95 ${quickMode === 'add-route' ? 'bg-system-blue shadow-xl shadow-system-blue/30 text-white' : 'hover:bg-black/5 text-system-blue'}`}
+          title="Trace Geometry"
         >
-          <RouteIcon size={20} />
-          <span className={`text-[10px] font-black uppercase tracking-[0.1em] transition-all overflow-hidden whitespace-nowrap ${quickMode === 'add-route' ? 'w-24 opacity-100' : 'w-0 opacity-0 group-hover:w-24 group-hover:opacity-100'}`}>Trace Path</span>
+          <RouteIcon size={18} />
+          <div className={`flex flex-col items-start transition-all overflow-hidden ${quickMode === 'add-route' ? 'w-28 opacity-100' : 'w-0 opacity-0 group-hover:w-28 group-hover:opacity-100'}`}>
+            <span className="text-[9px] font-black uppercase tracking-tight leading-none">Path Trace</span>
+            <span className="text-[7px] font-bold opacity-60 uppercase whitespace-nowrap">Draw route on road</span>
+          </div>
         </button>
       </div>
     </div>
@@ -263,13 +269,16 @@ const WorkspaceContainer: React.FC = () => {
         </Routes>
       </div>
 
-      {/* Sidebar Toggle Handle (Always Top) */}
+      {/* Sidebar Toggle Handle (Sleek Nub) */}
       {!isHome && (
         <div 
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className={`absolute top-1/2 -translate-y-1/2 z-[4000] w-7 h-28 bg-white/80 backdrop-blur-md shadow-2xl border border-black/5 rounded-[1.5rem] flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 group shadow-system-blue/10 ${sidebarOpen ? 'left-[386px]' : 'left-4'}`}
+          className={`absolute top-1/2 -translate-y-1/2 z-[4000] w-1.5 h-16 bg-black/20 hover:bg-system-blue rounded-full flex items-center justify-center cursor-pointer transition-all hover:w-2.5 active:scale-95 group ${sidebarOpen ? 'left-[392px]' : 'left-2'}`}
+          title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
         >
-          {sidebarOpen ? <ChevronLeft size={18} className="text-system-gray group-hover:text-system-blue transition-colors" /> : <ChevronRight size={18} className="text-system-blue animate-pulse" />}
+          <div className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+            {sidebarOpen ? <ChevronLeft size={10} className="text-white" /> : <ChevronRight size={10} className="text-white" />}
+          </div>
         </div>
       )}
     </div>
