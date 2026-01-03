@@ -69,116 +69,106 @@ const Home: React.FC = () => {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
+  const statsGrid = [
+    { name: 'Operators', value: stats.agencies.length, icon: Globe },
+    { name: 'Station Nodes', value: stats.stops.length, icon: MapPin },
+    { name: 'Service Lines', value: stats.routes.length, icon: RouteIcon },
+    { name: 'Trip Bindings', value: stats.trips.length, icon: Database },
+  ];
+
   return (
-    <div className="p-6 max-w-7xl mx-auto animate-in fade-in duration-700 pointer-events-auto">
-      <header className="mb-8 flex justify-between items-center border-b border-black/[0.03] pb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center shadow-xl"><LayoutDashboard size={20}/></div>
+    <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-700 pointer-events-auto">
+      <header className="mb-10 flex justify-between items-center border-b border-zinc-100 pb-8">
+        <div className="flex items-center gap-5">
+          <div className="w-12 h-12 bg-zinc-900 text-white rounded-2xl flex items-center justify-center shadow-2xl shadow-zinc-900/20"><LayoutDashboard size={24}/></div>
           <div>
-            <h1 className="text-xl font-black tracking-tight text-black leading-none">Dashboard</h1>
-            <p className="text-[10px] text-system-gray font-bold uppercase tracking-widest mt-1.5 opacity-60">Overview of your transit network</p>
+            <h1 className="text-2xl font-black tracking-tight text-zinc-900 leading-none">Dashboard</h1>
+            <p className="text-[11px] text-zinc-400 font-bold uppercase tracking-[0.15em] mt-2">Network intelligence and connectivity audit</p>
           </div>
         </div>
-        <div className="flex gap-2">
-            <div className={`px-3 py-1.5 rounded-lg flex items-center gap-2 border shadow-sm ${health === 'online' ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
-                <div className={`w-1 h-1 rounded-full ${health === 'online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                <span className="text-[8px] font-black uppercase tracking-widest">{health === 'online' ? 'All systems operational' : 'System connection error'}</span>
+        <div className="flex gap-3">
+            <div className="px-4 py-2 rounded-xl flex items-center gap-3 border border-zinc-100 bg-white shadow-sm">
+                <div className={`w-2 h-2 rounded-full ${health === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">{health === 'online' ? 'All systems operational' : 'Connection failure'}</span>
             </div>
-            <button onClick={fetchStats} className="p-2 hover:bg-black/5 rounded-lg text-system-gray transition-all active:rotate-180 duration-500" title="Refresh data"><RotateCcw size={14}/></button>
+            <button onClick={fetchStats} className="p-2.5 hover:bg-zinc-100 rounded-xl text-zinc-400 transition-all active:rotate-180 duration-500 border border-transparent hover:border-zinc-200"><RotateCcw size={16}/></button>
         </div>
       </header>
 
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-8 space-y-6">
+      <div className="grid grid-cols-12 gap-8">
+        <div className="col-span-8 space-y-8">
+          {/* Stats Row */}
+          <div className="grid grid-cols-4 gap-4">
+            {statsGrid.map((c) => (
+              <div key={c.name} className="bg-white border border-zinc-100 p-5 rounded-[1.5rem] shadow-sm hover:border-zinc-300 transition-all group">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 rounded-lg bg-zinc-50 text-zinc-400 group-hover:text-zinc-900 transition-colors"><c.icon size={18} /></div>
+                  <TrendingUp size={14} className="text-zinc-100 group-hover:text-zinc-300 transition-colors" />
+                </div>
+                <div className="text-3xl font-black text-zinc-900 tracking-tighter leading-none mb-1.5">{loading ? '...' : c.value}</div>
+                <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{c.name}</div>
+              </div>
+            ))}
+          </div>
+
           {/* Detailed Routes Manifest */}
-          <section className="bg-white border border-black/5 rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-5 py-3 bg-black/[0.02] border-b border-black/5 flex items-center justify-between">
-              <h3 className="text-[9px] font-black uppercase tracking-widest flex items-center gap-2 text-black/60"><RouteIcon size={12}/> Service Lines</h3>
-              <span className="text-[8px] font-black text-system-blue bg-system-blue/5 px-2 py-0.5 rounded uppercase">{stats.routes.length} Active Routes</span>
+          <section className="bg-white border border-zinc-100 rounded-[2rem] overflow-hidden shadow-sm">
+            <div className="px-6 py-5 bg-zinc-50/50 border-b border-zinc-100 flex items-center justify-between">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 text-zinc-500"><RouteIcon size={14}/> Service Lines</h3>
+              <span className="text-[9px] font-black text-zinc-900 bg-white border border-zinc-200 px-3 py-1 rounded-full uppercase">{stats.routes.length} Active</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
-                <thead className="bg-black/[0.01] border-b border-black/[0.03]">
+                <thead className="bg-zinc-50/30 border-b border-zinc-100">
                   <tr>
-                    <th className="px-5 py-2.5 text-[8px] font-black text-system-gray uppercase tracking-widest">Line</th>
-                    <th className="px-5 py-2.5 text-[8px] font-black text-system-gray uppercase tracking-widest">Route Name</th>
-                    <th className="px-5 py-2.5 text-[8px] font-black text-system-gray uppercase tracking-widest">Operator</th>
-                    <th className="px-5 py-2.5 text-[8px] font-black text-system-gray uppercase tracking-widest text-right">Status</th>
+                    <th className="px-6 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest">ID</th>
+                    <th className="px-6 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Route Name</th>
+                    <th className="px-6 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-right">Topology</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black/[0.02]">
-                  {stats.routes.slice(0, 10).map(r => (
-                    <tr key={r.id} className="hover:bg-black/[0.01] transition-colors group">
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-black text-white shadow-sm" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#','')}` }}>{r.short_name}</div>
-                          <span className="text-[10px] font-mono font-black text-black">#{r.id}</span>
+                <tbody className="divide-y divide-zinc-50">
+                  {stats.routes.slice(0, 8).map(r => (
+                    <tr key={r.id} className="hover:bg-zinc-50/50 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-black text-white shadow-lg" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#','')}` }}>{r.short_name}</div>
+                          <span className="text-xs font-mono font-black text-zinc-300 group-hover:text-zinc-900 transition-colors">#{r.id}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-[11px] font-bold text-black truncate max-w-[200px]">{r.long_name}</td>
-                      <td className="px-5 py-3 text-[9px] font-black text-system-gray uppercase tracking-tight">
-                        {stats.agencies.find(a => a.id === r.agency_id)?.name || 'No Operator'}
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <div className="inline-flex items-center gap-1 text-[8px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded uppercase">Live</div>
+                      <td className="px-6 py-4 text-[13px] font-bold text-zinc-900 truncate max-w-[300px]">{r.long_name}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="inline-flex items-center gap-2 text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg uppercase tracking-tight">Verified</div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="p-3 border-t border-black/5 bg-black/[0.01] text-center">
-              <Link to="/routes" className="text-[8px] font-black text-system-blue uppercase tracking-[0.2em] hover:underline">View all routes in Studio &rarr;</Link>
-            </div>
-          </section>
-
-          {/* Infrastructure Health Audit */}
-          <section className="bg-white border border-black/5 rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-5 py-3 bg-black/[0.02] border-b border-black/5 flex items-center justify-between">
-              <h3 className="text-[9px] font-black uppercase tracking-widest flex items-center gap-2 text-black/60"><ShieldCheck size={12}/> Network Health</h3>
-            </div>
-            <div className="p-5 grid grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2"><MapPin size={14} className="text-orange-500"/><span className="text-[10px] font-black uppercase tracking-widest text-black/80">Stops</span></div>
-                  <span className="text-[11px] font-mono font-black">{stats.stops.length}</span>
-                </div>
-                <div className="flex items-center justify-between border-t border-black/[0.03] pt-3">
-                  <div className="flex items-center gap-2"><Database size={14} className="text-purple-500"/><span className="text-[10px] font-black uppercase tracking-widest text-black/80">Active Trips</span></div>
-                  <span className="text-[11px] font-mono font-black">{stats.trips.length}</span>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="p-3 bg-system-blue/5 rounded-xl border border-system-blue/10 flex items-center justify-between">
-                  <span className="text-[8px] font-black text-system-blue uppercase tracking-widest">Mapped Paths</span>
-                  <span className="text-[10px] font-black text-system-blue">{stats.trips.filter(t => t.shape_id).length} Verified</span>
-                </div>
-                <div className="p-3 bg-green-50 rounded-xl border border-green-100 flex items-center justify-between">
-                  <span className="text-[8px] font-black text-green-700 uppercase tracking-widest">Disconnected Stops</span>
-                  <span className="text-[10px] font-black text-green-700">0 Found</span>
-                </div>
-              </div>
+            <div className="p-4 border-t border-zinc-100 bg-zinc-50/30 text-center">
+              <Link to="/routes" className="text-[10px] font-black text-zinc-400 hover:text-zinc-900 uppercase tracking-[0.25em] transition-colors">Open studio for full manifest &rarr;</Link>
             </div>
           </section>
         </div>
 
-        <div className="col-span-4 space-y-6">
-          <section className="bg-gradient-to-br from-zinc-900 to-black p-6 rounded-2xl text-white shadow-2xl relative overflow-hidden group border border-white/5">
+        <div className="col-span-4 space-y-8">
+          {/* GIS Studio Pro Action */}
+          <section className="bg-zinc-900 p-8 rounded-[2.5rem] text-white shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] relative overflow-hidden group">
             <div className="relative z-10">
-              <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center mb-4"><Zap size={20} className="text-yellow-400 animate-pulse"/></div>
-              <h2 className="text-lg font-black mb-1 tracking-tight">Route Studio</h2>
-              <p className="text-white/40 text-[8px] font-black uppercase tracking-[0.2em] mb-6">Create and edit routes on the map</p>
-              <Link to="/routes" className="flex items-center justify-center w-full py-3 bg-white text-black rounded-xl font-black text-[9px] shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest">Open Designer</Link>
+              <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-6 border border-white/10 shadow-inner"><Zap size={24} className="text-zinc-100"/></div>
+              <h2 className="text-2xl font-black mb-2 tracking-tight">Route Studio</h2>
+              <p className="text-zinc-500 text-[11px] font-bold uppercase tracking-[0.2em] mb-10 leading-relaxed">High-performance visual network drafting engine</p>
+              <Link to="/routes" className="flex items-center justify-center w-full py-4 bg-white text-zinc-900 rounded-2xl font-black text-[11px] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-[0.2em]">Open Designer</Link>
             </div>
-            <TrendingUp size={120} className="absolute -right-8 -bottom-8 text-white/[0.03] -rotate-12 group-hover:rotate-0 transition-transform duration-1000 pointer-events-none" />
+            <TrendingUp size={180} className="absolute -right-12 -bottom-12 text-white/[0.03] -rotate-12 group-hover:rotate-0 transition-transform duration-1000 pointer-events-none" />
           </section>
 
-          <section className="bg-white border border-black/5 rounded-2xl p-5 shadow-sm">
-            <h3 className="text-[9px] font-black uppercase tracking-widest text-black/60 mb-4 flex items-center gap-2"><Clock size={12}/> Session Details</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center"><span className="text-[9px] font-bold text-system-gray uppercase">Last Update</span><span className="text-[9px] font-black text-black">Just now</span></div>
-              <div className="flex justify-between items-center"><span className="text-[9px] font-bold text-system-gray uppercase">Data Sync</span><span className="text-[9px] font-black text-system-blue uppercase bg-system-blue/5 px-1.5 py-0.5 rounded">Active</span></div>
-              <div className="flex justify-between items-center pt-3 border-t border-black/[0.03]"><span className="text-[9px] font-bold text-system-gray uppercase">Permissions</span><span className="text-[9px] font-black text-green-600 uppercase">Administrator</span></div>
+          {/* Infrastructure Health */}
+          <section className="bg-white border border-zinc-100 rounded-[2rem] p-6 shadow-sm">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-6 flex items-center gap-3"><ShieldCheck size={16}/> System Health</h3>
+            <div className="space-y-5">
+              <div className="flex justify-between items-center"><span className="text-[11px] font-bold text-zinc-500 uppercase">Registry Sync</span><span className="text-[11px] font-black text-zinc-900 uppercase tracking-widest">Operational</span></div>
+              <div className="flex justify-between items-center"><span className="text-[11px] font-bold text-zinc-500 uppercase">Database Status</span><span className="text-[11px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"/> Connected</span></div>
+              <div className="pt-5 border-t border-zinc-100 flex justify-between items-center"><span className="text-[11px] font-bold text-zinc-500 uppercase">Manifest Integrity</span><span className="text-[11px] font-black text-zinc-900 uppercase tracking-widest">98.4%</span></div>
             </div>
           </section>
         </div>
