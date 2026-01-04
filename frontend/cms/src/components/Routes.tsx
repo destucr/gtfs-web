@@ -276,7 +276,7 @@ const RouteStudio: React.FC = () => {
                     setOriginalAssignedStops(assignedStops);
                 }
             }
-            if (!isAuto) { setStatus({ message: 'Saved successfully', type: 'success' }); setTimeout(() => setStatus(null), 2000); }
+            if (!isAuto) { setStatus({ message: 'Route saved. Default "Daily" trip created.', type: 'success' }); setTimeout(() => setStatus(null), 2000); }
             await refreshAllData();
         } catch (e) { setStatus({ message: 'Save failed', type: 'error' }); }
     }, [selectedRoute, shapePoints, assignedStops, refreshAllData, setStatus]);
