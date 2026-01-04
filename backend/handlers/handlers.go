@@ -910,6 +910,16 @@ func DeleteShape(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Shape deleted"})
 }
 
+// GetUniqueShapes returns a list of all unique shape_ids
+func GetUniqueShapes(c *gin.Context) {
+	var shapes []string
+	if err := database.DB.Model(&models.ShapePoint{}).Distinct().Pluck("shape_id", &shapes).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch unique shapes"})
+		return
+	}
+	c.JSON(http.StatusOK, shapes)
+}
+
 // --- Activity Logs ---
 
 func LogActivity(action string, details string) {

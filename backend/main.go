@@ -53,8 +53,13 @@ func main() {
 		api.PUT("/trips/:id", handlers.UpdateTrip)
 		api.DELETE("/trips/:id", handlers.DeleteTrip)
 
-		api.GET("/shapes/:shape_id", handlers.GetShape)
-		api.POST("/shapes/bulk", handlers.GetBulkShapes)
+		             api.GET("/shapes/:shape_id", handlers.GetShape)
+
+		             api.GET("/shapes", handlers.GetUniqueShapes)
+
+		             api.POST("/shapes/bulk", handlers.GetBulkShapes)
+
+		
 		api.POST("/shapes", handlers.CreateShape)
 		api.PUT("/shapes/:shape_id", handlers.UpdateShape)
 		api.DELETE("/shapes/:shape_id", handlers.DeleteShape)
