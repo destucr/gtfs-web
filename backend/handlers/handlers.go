@@ -209,8 +209,63 @@ func UpdateAgency(c *gin.Context) {
 
 func DeleteAgency(c *gin.Context) {
 	id := c.Param("id")
-	database.DB.Delete(&models.Agency{}, id)
-	c.JSON(http.StatusOK, gin.H{"message": "Agency deleted"})
+	tx := database.DB.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
+		return
+	}
+
+	// 1. Find all routes
+	var routes []models.Route
+	if err := tx.Where("agency_id = ?", id).Find(&routes).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find agency routes"})
+		return
+	}
+
+	// 2. For each route, delete dependencies
+	for _, r := range routes {
+		// Delete TripStops
+		var trips []models.Trip
+		if err := tx.Where("route_id = ?", r.ID).Find(&trips).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find trips"})
+			return
+		}
+		for _, t := range trips {
+			if err := tx.Where("trip_id = ?", t.ID).Delete(&models.TripStop{}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip stops"})
+				return
+			}
+		}
+		// Delete Trips
+		if err := tx.Where("route_id = ?", r.ID).Delete(&models.Trip{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trips"})
+			return
+		}
+		// Delete Route
+		if err := tx.Delete(&models.Route{}, r.ID).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete route"})
+			return
+		}
+	}
+
+	// 3. Delete Agency
+	if err := tx.Delete(&models.Agency{}, id).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete agency"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+	LogActivity("DELETE_AGENCY", fmt.Sprintf("Deleted agency ID: %s", id))
+	c.JSON(http.StatusOK, gin.H{"message": "Agency and all related data deleted"})
 }
 
 // --- Stop ---
@@ -290,7 +345,29 @@ func UpdateStop(c *gin.Context) {
 
 func DeleteStop(c *gin.Context) {
 	id := c.Param("id")
-	database.DB.Delete(&models.Stop{}, id)
+	tx := database.DB.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
+		return
+	}
+
+	if err := tx.Where("stop_id = ?", id).Delete(&models.TripStop{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete associated trip stops"})
+		return
+	}
+
+	if err := tx.Delete(&models.Stop{}, id).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete stop"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction commit failed"})
+		return
+	}
+	LogActivity("DELETE_STOP", fmt.Sprintf("Deleted stop ID: %s", id))
 	c.JSON(http.StatusOK, gin.H{"message": "Stop deleted"})
 }
 
@@ -420,7 +497,29 @@ func UpdateTrip(c *gin.Context) {
 
 func DeleteTrip(c *gin.Context) {
 	id := c.Param("id")
-	database.DB.Delete(&models.Trip{}, id)
+	tx := database.DB.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
+		return
+	}
+
+	if err := tx.Where("trip_id = ?", id).Delete(&models.TripStop{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip stops"})
+		return
+	}
+
+	if err := tx.Delete(&models.Trip{}, id).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction commit failed"})
+		return
+	}
+	LogActivity("DELETE_TRIP", fmt.Sprintf("Deleted trip ID: %s", id))
 	c.JSON(http.StatusOK, gin.H{"message": "Trip deleted"})
 }
 
