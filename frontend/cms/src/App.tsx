@@ -12,7 +12,7 @@ import UnifiedMap from './components/UnifiedMap';
 import {
   Globe, MapPin, Route as RouteIcon, Database, 
   ArrowRight, ShieldCheck, Zap, AlertCircle, Loader2, 
-  ChevronRight, ChevronLeft, X, RotateCcw, Hash, Clock, ArrowUpDown, Filter
+  ChevronRight, X, RotateCcw, Hash, Clock, ArrowUpDown, Filter, PanelLeftOpen
 } from 'lucide-react';
 
 const ShortcutManager: React.FC = () => {
@@ -258,15 +258,15 @@ const Home: React.FC = () => {
             <h3 className="text-[9px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2"><Clock size={12}/> Recent Activity</h3>
             <div className="flex items-center gap-2 text-[8px] font-black text-emerald-500 uppercase tracking-widest"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Live updates active</div>
           </div>
-          <div className="flex-1 overflow-y-auto p-5 font-mono text-[10px] space-y-2 custom-scrollbar text-zinc-500 bg-zinc-50/20">
+          <div className="flex-1 overflow-y-auto p-5 font-mono text-[10px] space-y-3 custom-scrollbar text-zinc-500 bg-zinc-50/20 select-text">
             {logs.map((log, i) => (
-              <div key={i} className="flex gap-6 opacity-60">
-                <span className="text-zinc-300 w-16 shrink-0">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false })}</span>
+              <div key={i} className="flex gap-6 opacity-70 hover:opacity-100 transition-opacity">
+                <span className="text-zinc-300 w-16 shrink-0 font-bold">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false })}</span>
                 <span className="font-black text-zinc-400 w-24 shrink-0 truncate" title={log.action}>{log.action}</span>
-                <span className="truncate" title={log.details}>{log.details}</span>
+                <span className="text-zinc-600 leading-relaxed">{log.details}</span>
               </div>
             ))}
-            {logs.length === 0 && <div className="text-zinc-300 text-center py-4">No recent activity</div>}
+            {logs.length === 0 && <div className="text-zinc-300 text-center py-4">No recent activity found.</div>}
           </div>
         </div>
       </div>
@@ -346,10 +346,14 @@ const WorkspaceContainer: React.FC = () => {
           <Route path="/trips" element={<Trips />} />
         </Routes>
       </div>
-      {!isHome && (
-        <div onClick={() => setSidebarOpen(!sidebarOpen)} className={`absolute top-1/2 -translate-y-1/2 z-[4000] w-1.5 h-16 bg-black/20 hover:bg-system-blue rounded-full flex items-center justify-center cursor-pointer transition-all hover:w-2.5 active:scale-95 group ${sidebarOpen ? 'left-[392px]' : 'left-2'}`} title={sidebarOpen ? "Hide Sidebar" : "Show Sidebar"}>
-          <div className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">{sidebarOpen ? <ChevronLeft size={10} className="text-white" /> : <ChevronRight size={10} className="text-white" />}</div>
-        </div>
+      {!isHome && !sidebarOpen && (
+        <button 
+          onClick={() => setSidebarOpen(true)}
+          className="absolute top-6 left-6 z-[4000] p-3 bg-white shadow-2xl rounded-2xl border border-black/5 hover:scale-105 active:scale-95 transition-all text-system-blue pointer-events-auto"
+          title="Show Sidebar"
+        >
+          <PanelLeftOpen size={20} />
+        </button>
       )}
     </div>
   );

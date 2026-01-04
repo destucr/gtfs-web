@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { MapPin, Plus, Trash2, Search, Loader2, CheckCircle2, ChevronRight, X, Maximize2, Minimize2, Bus, Save, Eye, EyeOff } from 'lucide-react';
+import { MapPin, Plus, Trash2, Search, Loader2, CheckCircle2, ChevronRight, X, Maximize2, Minimize2, Bus, Save, Eye, EyeOff, ArrowDownAz, Clock, Share2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
@@ -10,7 +10,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { Route, Stop, TripStop, Trip, ShapePoint } from '../types';
 
 const Stops: React.FC = () => {
-    const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, hoveredEntityId } = useWorkspace();
+    const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen, setSidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, hoveredEntityId } = useWorkspace();
     const navigate = useNavigate();
 
     // Registry Data
@@ -18,6 +18,7 @@ const Stops: React.FC = () => {
     const [routes, setRoutes] = useState<Route[]>([]);
     const [stopRouteMap, setStopRouteMap] = useState<Record<number, Route[]>>({});
     const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState<'name' | 'newest' | 'routes'>('name');
 
     // Editor State
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
@@ -253,18 +254,62 @@ const Stops: React.FC = () => {
         }));
     }, [stops, routeShapes, formData, routes, hoveredRouteIds, selectedStopRouteIds, persistentRouteIds, hoveredEntityId, focusType, setMapLayers]);
 
-    const filteredStops = stops.filter(s => {
-        const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesRoute = focusedRouteId ? (stopRouteMap[s.id] || []).some(r => r.id === focusedRouteId) : true;
-        return matchesSearch && matchesRoute;
-    });
+    const filteredStops = useMemo(() => {
+        let result = stops.filter(s => {
+            const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesRoute = focusedRouteId ? (stopRouteMap[s.id] || []).some(r => r.id === focusedRouteId) : true;
+            return matchesSearch && matchesRoute;
+        });
+
+        // Apply Sorting
+        result.sort((a, b) => {
+            if (sortBy === 'name') return a.name.localeCompare(b.name);
+            if (sortBy === 'newest') return b.id - a.id;
+            if (sortBy === 'routes') {
+                const countA = (stopRouteMap[a.id] || []).length;
+                const countB = (stopRouteMap[b.id] || []).length;
+                return countB - countA;
+            }
+            return 0;
+        });
+
+        return result;
+    }, [stops, searchQuery, focusedRouteId, stopRouteMap, sortBy]);
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
-            <motion.div animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-zinc-100 pointer-events-auto shadow-2xl" style={{ width: 400 }}>
-                <SidebarHeader title="Stops" Icon={MapPin} actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all" title="Add a new stop"><Plus size={18} /></button>} />
+            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-zinc-100 pointer-events-auto shadow-2xl" style={{ width: 400 }}>
+                <SidebarHeader 
+                    title="Stops" 
+                    Icon={MapPin} 
+                    onToggleSidebar={() => setSidebarOpen(false)}
+                    actions={<button onClick={handleAddNew} className="p-1.5 bg-system-blue/10 text-system-blue rounded-lg hover:bg-system-blue/20 transition-colors" title="Add a new stop"><Plus size={18} /></button>} 
+                />
                 <div className="p-4 px-6 border-b border-zinc-100 bg-white shrink-0">
-                    <div className="relative mb-4"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search stops..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
+                    <div className="flex gap-2 mb-4">
+                        <div className="relative flex-1">
+                            <Search size={14} className="absolute left-3 top-3 text-zinc-400" />
+                            <input className="hig-input text-sm pl-9 py-2 font-bold w-full" placeholder="Search stops..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                        </div>
+                        <div className="flex bg-zinc-50 p-1 rounded-xl border border-zinc-100 gap-0.5">
+                            {(['name', 'newest', 'routes'] as const).map((mode) => (
+                                <button
+                                    key={mode}
+                                    onClick={() => setSortBy(mode)}
+                                    className={`p-1.5 rounded-lg transition-all ${sortBy === mode ? 'bg-white text-system-blue shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                    title={
+                                        mode === 'name' ? '[Sort: Alpha] Click to reorder A-Z' :
+                                        mode === 'newest' ? '[Sort: Recent] Click to show latest first' :
+                                        '[Sort: Connectivity] Click to show major hubs first'
+                                    }
+                                >
+                                    {mode === 'name' && <ArrowDownAz size={14} />}
+                                    {mode === 'newest' && <Clock size={14} />}
+                                    {mode === 'routes' && <Share2 size={14} />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <div className="space-y-2">
                         <div className="flex items-center justify-between px-1"><h3 className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Link to Route</h3>{focusedRouteId && <button onClick={() => setFocusedRouteId(null)} className="text-[8px] font-black text-red-500 hover:underline uppercase">Clear</button>}</div>
                         <div className="flex flex-wrap gap-1.5">

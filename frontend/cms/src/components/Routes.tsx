@@ -8,7 +8,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { Route, Agency, Trip, ShapePoint, TripStop } from '../types';
 
 const RouteStudio: React.FC = () => {
-    const { setMapLayers, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert } = useWorkspace();
+    const { setMapLayers, setStatus, quickMode, setQuickMode, sidebarOpen, setSidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert } = useWorkspace();
     const [routes, setRoutes] = useState<Route[]>([]);
     const [agencies, setAgencies] = useState<Agency[]>([]);
 
@@ -253,16 +253,24 @@ const RouteStudio: React.FC = () => {
 
             if (currentRoute.id) {
                 const rId = currentRoute.id;
-                const sId = currentRoute.short_name ? `SHP_${currentRoute.short_name.toUpperCase()}` : `SHP_${rId}`;
+                const sId = `SHP_${rId}`;
                 await api.put(`/shapes/${sId}`, shapePoints.map(p => ({ ...p, shape_id: sId })));
                 
                 const trips: { data: Trip[] } = await api.get('/trips');
-                if (!trips.data.find(t => t.route_id === rId)) {
+                const existingTrip = (trips.data || []).find(t => t.route_id === rId);
+                
+                if (!existingTrip) {
                     await api.post('/trips', { 
                         route_id: rId, 
                         headsign: currentRoute.long_name, 
                         shape_id: sId, 
                         service_id: 'DAILY' 
+                    });
+                } else if (existingTrip.shape_id !== sId) {
+                    // Update existing trip to use the new stable shape ID
+                    await api.put(`/trips/${existingTrip.id}`, {
+                        ...existingTrip,
+                        shape_id: sId
                     });
                 }
                 setOriginalShape(shapePoints);
@@ -313,7 +321,7 @@ const RouteStudio: React.FC = () => {
             return;
         }
 
-        const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
+        const sId = `SHP_${selectedRoute.id}`;
 
         const handleMapClick = async (latlng: { lat: number, lng: number }) => {
             if (activeSection !== 'path') setActiveSection('path');
@@ -422,7 +430,7 @@ const RouteStudio: React.FC = () => {
         if (shapePoints.length < 2 || !selectedRoute) return;
         setStatus({ message: 'Re-routing full path...', type: 'loading' });
         const coords = shapePoints.map(p => `${p.lon},${p.lat}`).join(';');
-        const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
+        const sId = `SHP_${selectedRoute.id}`;
         try {
             const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
             if (res.data.routes?.[0]) {
@@ -440,17 +448,22 @@ const RouteStudio: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
-            <motion.div animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black pointer-events-auto shadow-2xl border-r border-zinc-100" style={{ width: 400 }}>
-                <SidebarHeader title="Routes" Icon={Bus} actions={
-                    <button
-                        onClick={handleAddNew}
-                        disabled={agencies.length === 0}
-                        className={`p-2 rounded-lg shadow-lg transition-all ${agencies.length === 0 ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-system-blue text-white hover:scale-105'}`}
-                        title={agencies.length === 0 ? "Create an agency before adding routes" : "Add Route"}
-                    >
-                        {agencies.length === 0 ? <AlertCircle size={18} /> : <Plus size={18} />}
-                    </button>
-                } />
+            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black pointer-events-auto shadow-2xl border-r border-zinc-100" style={{ width: 400 }}>
+                <SidebarHeader 
+                    title="Routes" 
+                    Icon={Bus} 
+                    onToggleSidebar={() => setSidebarOpen(false)}
+                    actions={
+                        <button
+                            onClick={handleAddNew}
+                            disabled={agencies.length === 0}
+                            className={`p-1.5 rounded-lg transition-colors ${agencies.length === 0 ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-system-blue/10 text-system-blue hover:bg-system-blue/20'}`}
+                            title={agencies.length === 0 ? "Create an agency before adding routes" : "Add Route"}
+                        >
+                            {agencies.length === 0 ? <AlertCircle size={18} /> : <Plus size={18} />}
+                        </button>
+                    } 
+                />
                 <div className="p-4 px-6 border-b border-zinc-100 bg-white shrink-0">
                     <div className="relative"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search routes..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
                 </div>

@@ -171,7 +171,7 @@ func ExportGTFS(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=gtfs_export.zip")
 	c.Header("Content-Type", "application/zip")
 	c.Data(http.StatusOK, "application/zip", buf.Bytes())
-	LogActivity("EXPORT_GTFS", "Exported GTFS zip bundle")
+	LogActivity("EXPORT", "The complete GTFS data bundle has been exported as a ZIP archive.")
 }
 
 // --- Agency ---
@@ -209,6 +209,13 @@ func UpdateAgency(c *gin.Context) {
 
 func DeleteAgency(c *gin.Context) {
 	id := c.Param("id")
+
+	var agency models.Agency
+	agencyName := "Unknown"
+	if err := database.DB.First(&agency, id).Error; err == nil {
+		agencyName = agency.Name
+	}
+
 	tx := database.DB.Begin()
 	if tx.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
@@ -284,7 +291,7 @@ func DeleteAgency(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
 		return
 	}
-	LogActivity("DELETE_AGENCY", fmt.Sprintf("Deleted agency ID: %s", id))
+	LogActivity("DELETION", fmt.Sprintf("Agency [%s] (ID: #%s) and all its routes/trips have been removed.", agencyName, id))
 	c.JSON(http.StatusOK, gin.H{"message": "Agency and all related data deleted"})
 }
 
@@ -340,7 +347,7 @@ func CreateStop(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create stop: " + err.Error()})
 		return
 	}
-	LogActivity("CREATE_STOP", fmt.Sprintf("Created stop: %s", stop.Name))
+	LogActivity("REGISTRY", fmt.Sprintf("New stop [%s] has been successfully registered.", stop.Name))
 	c.JSON(http.StatusOK, stop)
 }
 
@@ -359,12 +366,19 @@ func UpdateStop(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update stop: " + err.Error()})
 		return
 	}
-	LogActivity("UPDATE_STOP", fmt.Sprintf("Updated stop: %s", stop.Name))
+	LogActivity("REGISTRY", fmt.Sprintf("Stop [%s] details have been updated.", stop.Name))
 	c.JSON(http.StatusOK, stop)
 }
 
 func DeleteStop(c *gin.Context) {
 	id := c.Param("id")
+
+	var stop models.Stop
+	stopName := "Unknown"
+	if err := database.DB.First(&stop, id).Error; err == nil {
+		stopName = stop.Name
+	}
+
 	tx := database.DB.Begin()
 	if tx.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
@@ -387,7 +401,7 @@ func DeleteStop(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction commit failed"})
 		return
 	}
-	LogActivity("DELETE_STOP", fmt.Sprintf("Deleted stop ID: %s", id))
+	LogActivity("DELETION", fmt.Sprintf("Stop [%s] (ID: #%s) has been removed from the registry.", stopName, id))
 	c.JSON(http.StatusOK, gin.H{"message": "Stop deleted"})
 }
 
@@ -409,7 +423,7 @@ func CreateRoute(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create route: " + err.Error()})
 		return
 	}
-	LogActivity("CREATE_ROUTE", fmt.Sprintf("Created route: %s", route.ShortName))
+	LogActivity("REGISTRY", fmt.Sprintf("New route [%s] %s has been registered.", route.ShortName, route.LongName))
 	c.JSON(http.StatusOK, route)
 }
 
@@ -428,12 +442,19 @@ func UpdateRoute(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update route: " + err.Error()})
 		return
 	}
-	LogActivity("UPDATE_ROUTE", fmt.Sprintf("Updated route: %s", route.ShortName))
+	LogActivity("REGISTRY", fmt.Sprintf("Route [%s] %s configuration has been updated.", route.ShortName, route.LongName))
 	c.JSON(http.StatusOK, route)
 }
 
 func DeleteRoute(c *gin.Context) {
 	id := c.Param("id")
+
+	// 0. Find Route name for logging
+	var route models.Route
+	routeName := "Unknown"
+	if err := database.DB.First(&route, id).Error; err == nil {
+		routeName = fmt.Sprintf("[%s] %s", route.ShortName, route.LongName)
+	}
 
 	// Cascade delete via Transaction
 	tx := database.DB.Begin()
@@ -495,7 +516,7 @@ func DeleteRoute(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction: " + err.Error()})
 		return
 	}
-	LogActivity("DELETE_ROUTE", fmt.Sprintf("Deleted route ID: %s", id))
+	LogActivity("DELETION", fmt.Sprintf("Route %s (ID: #%s) and all associated trips have been removed.", routeName, id))
 	c.JSON(http.StatusOK, gin.H{"message": "Route and associated trips/shapes deleted"})
 }
 
@@ -908,6 +929,27 @@ func DeleteShape(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Shape deleted"})
+}
+
+// GetUniqueShapes returns a list of all unique shape_ids
+func GetUniqueShapes(c *gin.Context) {
+	var shapes []string
+	if err := database.DB.Model(&models.ShapePoint{}).Distinct().Pluck("shape_id", &shapes).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch unique shapes"})
+		return
+	}
+	c.JSON(http.StatusOK, shapes)
+}
+
+// GetStopTimes returns all scheduled times for a specific stop
+func GetStopTimes(c *gin.Context) {
+	stopID := c.Param("id")
+	var tripStops []models.TripStop
+	if err := database.DB.Preload("Trip.Route").Where("stop_id = ?", stopID).Find(&tripStops).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stop times: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, tripStops)
 }
 
 // --- Activity Logs ---

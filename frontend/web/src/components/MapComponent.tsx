@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { Search, Sun, Moon, Target, Locate, X } from 'lucide-react';
+import { Search, Sun, Moon, Target, Locate, X, Loader2 } from 'lucide-react';
 import {
     Box,
     Paper,
@@ -16,7 +16,7 @@ import {
     Divider
 } from '@mantine/core';
 import api from '../api';
-import { Stop, Route, Trip, ShapePoint } from '../types';
+import { Stop, Route, Trip, ShapePoint, TripStop } from '../types';
 import 'leaflet/dist/leaflet.css';
 
 const busStopIcon = L.divIcon({
@@ -59,9 +59,37 @@ const MapComponent: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
+    const [selectedStopSchedule, setSelectedStopSchedule] = useState<TripStop[]>([]);
+    const [scheduleLoading, setScheduleLoading] = useState(false);
+    const [scheduleError, setScheduleError] = useState<string | null>(null);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [loading, setLoading] = useState(true);
     const [systemStatus, setSystemStatus] = useState<'online' | 'offline'>('online');
+
+    const fetchStopSchedule = async (stopId: number) => {
+        setScheduleLoading(true);
+        setScheduleError(null);
+        try {
+            const res = await api.get(`/stops/${stopId}/times`);
+            // Sort by arrival time
+            const sorted = (res.data || []).sort((a: TripStop, b: TripStop) => a.arrival_time.localeCompare(b.arrival_time));
+            setSelectedStopSchedule(sorted);
+        } catch (e) {
+            console.error('Failed to fetch stop schedule', e);
+            setScheduleError('Schedule unavailable');
+        } finally {
+            setScheduleLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedStop) {
+            fetchStopSchedule(selectedStop.id);
+        } else {
+            setSelectedStopSchedule([]);
+            setScheduleError(null);
+        }
+    }, [selectedStop]);
 
     const fetchData = async () => {
         try {
@@ -397,6 +425,45 @@ const MapComponent: React.FC = () => {
                                     <Text size="11px" c="dimmed" fw={600} style={{ fontStyle: 'italic' }}>No buses at this time</Text>
                                 )}
                             </Group>
+
+                            <Divider my={16} color={isDarkMode ? '#333' : '#eee'} />
+
+                            <Text size="11px" fw={700} c="dimmed" tt="uppercase" mb={10} style={{ letterSpacing: '0.5px' }}>
+                                Daily Schedule
+                            </Text>
+                            <Stack gap={4}>
+                                {scheduleLoading ? (
+                                    <Group gap={6}>
+                                        <Loader2 size={12} className="animate-spin text-zinc-400" />
+                                        <Text size="10px" fw={600} c="dimmed">Fetching times...</Text>
+                                    </Group>
+                                ) : scheduleError ? (
+                                    <Text size="10px" fw={600} c="red.6">{scheduleError}</Text>
+                                ) : selectedStopSchedule.length > 0 ? (
+                                    selectedStopSchedule.map((item, i) => {
+                                        const route = routes.find(r => r.id === item.trip?.route_id);
+                                        return (
+                                            <Paper key={i} p={8} bg={isDarkMode ? 'rgba(255,255,255,0.03)' : '#fcfcfc'} withBorder style={{ borderColor: isDarkMode ? '#333' : '#eee' }}>
+                                                <Group justify="space-between" wrap="nowrap">
+                                                    <Group gap={8} wrap="nowrap">
+                                                        <Box w={4} h={16} style={{ backgroundColor: `#${route?.color || 'ddd'}`, borderRadius: 2 }} />
+                                                        <Stack gap={0}>
+                                                            <Text size="10px" fw={900} truncate>{route?.short_name || '??'} &mdash; {item.trip?.headsign || 'Unnamed'}</Text>
+                                                            <Text size="9px" fw={700} c="dimmed">SEQ #{item.sequence}</Text>
+                                                        </Stack>
+                                                    </Group>
+                                                    <Stack gap={0} align="end">
+                                                        <Text size="10px" fw={900} c="system-blue">ARR {item.arrival_time.slice(0, 5)}</Text>
+                                                        <Text size="9px" fw={700} c="dimmed">DEP {item.departure_time.slice(0, 5)}</Text>
+                                                    </Stack>
+                                                </Group>
+                                            </Paper>
+                                        );
+                                    })
+                                ) : (
+                                    <Text size="10px" fw={600} c="dimmed" style={{ fontStyle: 'italic' }}>No upcoming arrivals scheduled.</Text>
+                                )}
+                            </Stack>
 
                             <Divider my={16} color={isDarkMode ? '#333' : '#eee'} />
 

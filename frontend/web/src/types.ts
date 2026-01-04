@@ -26,6 +26,16 @@ export interface Trip {
   shape_id: string;
 }
 
+export interface TripStop {
+  id: number;
+  trip_id: number;
+  stop_id: number;
+  sequence: number;
+  arrival_time: string;
+  departure_time: string;
+  trip?: Trip;
+}
+
 export interface ShapePoint {
   id: number;
   shape_id: string;
