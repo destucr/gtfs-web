@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { Search, Sun, Moon, Target, Locate, Info as InfoIcon } from 'lucide-react';
+import { Search, Sun, Moon, Target, Locate, X } from 'lucide-react';
 import {
     Box,
     Paper,
@@ -44,6 +44,13 @@ const MapController: React.FC<{ focusedPoints: [number, number][] | null }> = ({
     return null;
 };
 
+const MapEvents: React.FC<{ onMapClick: () => void }> = ({ onMapClick }) => {
+    useMapEvents({
+        click: () => onMapClick()
+    });
+    return null;
+};
+
 const MapComponent: React.FC = () => {
     const [stops, setStops] = useState<Stop[]>([]);
     const [routes, setRoutes] = useState<Route[]>([]);
@@ -51,8 +58,10 @@ const MapComponent: React.FC = () => {
     const [shapes, setShapes] = useState<Record<string, [number, number][]>>({});
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
+    const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [systemStatus, setSystemStatus] = useState<'online' | 'offline'>('online');
 
     const fetchData = async () => {
         try {
@@ -74,8 +83,10 @@ const MapComponent: React.FC = () => {
                 }
             }));
             setShapes(shapeData);
+            setSystemStatus('online');
         } catch (e) {
             console.error('Fetch failed', e);
+            setSystemStatus('offline');
         } finally {
             setLoading(false);
         }
@@ -86,6 +97,15 @@ const MapComponent: React.FC = () => {
         const interval = setInterval(fetchData, 5000);
         return () => clearInterval(interval);
     }, []);
+
+    // Clear stop selection if the route filter changes and excludes it
+    useEffect(() => {
+        if (selectedStop && selectedRouteId) {
+            if (!selectedStop.route_ids?.includes(selectedRouteId)) {
+                setSelectedStop(null);
+            }
+        }
+    }, [selectedRouteId, selectedStop]);
 
     const filteredRoutes = routes.filter(r =>
         r.long_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -125,16 +145,16 @@ const MapComponent: React.FC = () => {
                     <Group justify="space-between" align="start">
                         <Stack gap={4}>
                             <Text fw={900} size="24px" c="white" style={{ letterSpacing: '-0.5px', lineHeight: 1 }}>
-                                GTFS<br />TERMINAL
+                                TRANSIT<br />MAP
                             </Text>
                             <Badge
-                                color="yellow"
+                                color={systemStatus === 'online' ? "yellow" : "red"}
                                 size="sm"
                                 radius="xs"
                                 variant="filled"
                                 styles={{ root: { color: 'black', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' } }}
                             >
-                                Network Live
+                                {systemStatus === 'online' ? "System Online" : "Offline"}
                             </Badge>
                         </Stack>
                         <ActionIcon
@@ -150,7 +170,7 @@ const MapComponent: React.FC = () => {
                 {/* 2. Integrated Search */}
                 <Box px={16} py={12} style={{ borderBottom: `1px solid ${isDarkMode ? '#333' : '#eee'}` }}>
                     <TextInput
-                        placeholder="SEARCH ROUTE / STATION"
+                        placeholder="Find a route or stop..."
                         leftSection={<Search size={14} strokeWidth={3} />}
                         radius="xs"
                         size="sm"
@@ -171,7 +191,7 @@ const MapComponent: React.FC = () => {
                 {/* 3. Route List: Table-Row Style */}
                 <Box px={16} py={12} pb={4}>
                     <Text size="11px" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.5px' }}>
-                        Active Corridors
+                        Available Routes
                     </Text>
                 </Box>
 
@@ -212,7 +232,7 @@ const MapComponent: React.FC = () => {
                                                     {route.long_name}
                                                 </Text>
                                                 <Text size="11px" fw={500} c="dimmed" mt={2}>
-                                                    {isSelected ? 'Viewing Route' : 'Normal Service'}
+                                                    {isSelected ? 'Showing Route' : 'Select to view'}
                                                 </Text>
                                             </Stack>
                                         </Group>
@@ -232,15 +252,21 @@ const MapComponent: React.FC = () => {
                 >
                     <Group justify="space-between" align="center" mb={4}>
                         <Text size="11px" fw={800} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.5px' }}>
-                            System Status
+                            Status
                         </Text>
                         <Group gap={6}>
-                            <Box w={8} h={8} style={{ borderRadius: '50%', backgroundColor: '#40c057' }} />
-                            <Text size="11px" fw={700} c="green">GOOD</Text>
+                            <Box w={8} h={8} style={{ borderRadius: '50%', backgroundColor: systemStatus === 'online' ? '#40c057' : '#fa5252' }} />
+                            <Text size="11px" fw={700} c={systemStatus === 'online' ? 'green' : 'red'}>
+                                {systemStatus === 'online' ? "GOOD" : "OFFLINE"}
+                            </Text>
                         </Group>
                     </Group>
                     <Text size="12px" fw={500} c={isDarkMode ? 'gray.3' : 'gray.7'} style={{ lineHeight: 1.4 }}>
-                        {loading ? 'Updating feeds...' : `System Online. ${routes.length} Lines Active. ${trips.length} Trips Scheduled.`}
+                        {loading ? 'Updating feeds...' : (
+                            systemStatus === 'online'
+                                ? `Live updates active. ${routes.length} routes available.`
+                                : `Connection failed. Retrying...`
+                        )}
                     </Text>
                 </Box>
             </Paper>
@@ -251,7 +277,8 @@ const MapComponent: React.FC = () => {
                 zoomControl={false}
                 style={{ height: '100%', marginLeft: '360px', width: 'calc(100% - 360px)' }} // Offset for sidebar
             >
-                <MapController focusedPoints={activeShape} />
+                <MapController focusedPoints={selectedStop ? [[selectedStop.lat, selectedStop.lon]] : activeShape} />
+                <MapEvents onMapClick={() => setSelectedStop(null)} />
                 <TileLayer
                     url={isDarkMode
                         ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
@@ -280,53 +307,112 @@ const MapComponent: React.FC = () => {
                 })}
 
                 {filteredStops.map(stop => (
-                    <Marker key={stop.id} position={[stop.lat, stop.lon]} icon={busStopIcon}>
-                        <Popup minWidth={240}>
-                            <Stack gap={4} p={4}>
-                                <Group justify="space-between">
-                                    <Text fw={900} size="sm">{stop.name.toUpperCase()}</Text>
-                                    <InfoIcon size={14} />
-                                </Group>
-                                <Text size="xs" c="dimmed" fw={800} mt={-4}>NETWORK STATION POINT</Text>
-                                <Divider my={4} />
-
-                                {/* Route Badges via Hydration */}
-                                <Group gap={4} wrap="wrap" mb={4}>
-                                    {stop.route_ids && stop.route_ids.length > 0 ? (
-                                        stop.route_ids.map(rId => {
-                                            const route = routes.find(r => r.id === rId);
-                                            if (!route) return null;
-                                            return (
-                                                <Box
-                                                    key={rId}
-                                                    px={6} py={2}
-                                                    style={{
-                                                        backgroundColor: `#${route.color}`,
-                                                        borderRadius: '4px',
-                                                        color: 'white',
-                                                        fontSize: '10px',
-                                                        fontWeight: 800
-                                                    }}
-                                                >
-                                                    {route.short_name}
-                                                </Box>
-                                            );
-                                        })
-                                    ) : (
-                                        <Text size="10px" c="dimmed" fw={600} style={{ fontStyle: 'italic' }}>No active service</Text>
-                                    )}
-                                </Group>
-
-                                <Group gap="xs" mt={2}>
-                                    <Text size="10px" c="dimmed" fw={600}>
-                                        {stop.lat.toFixed(5)}, {stop.lon.toFixed(5)}
-                                    </Text>
-                                </Group>
-                            </Stack>
-                        </Popup>
-                    </Marker>
+                    <Marker
+                        key={stop.id}
+                        position={[stop.lat, stop.lon]}
+                        icon={selectedStop?.id === stop.id ? L.divIcon({
+                            className: 'custom-bus-stop-selected',
+                            html: `<div style="
+                                width: 16px; 
+                                height: 16px; 
+                                background: #FF9500; 
+                                border: 3px solid white; 
+                                border-radius: 50%; 
+                                box-shadow: 0 0 0 4px rgba(255,149,0,0.3);
+                            "></div>`,
+                            iconSize: [16, 16],
+                            iconAnchor: [8, 8]
+                        }) : busStopIcon}
+                        eventHandlers={{
+                            click: () => setSelectedStop(stop)
+                        }}
+                    />
                 ))}
             </MapContainer>
+
+            {/* Station Hub - Proximal Hub Overlay Pattern */}
+            {selectedStop && (
+                <Paper
+                    pos="absolute" top={20} right={20}
+                    style={{
+                        zIndex: 1000,
+                        width: 320,
+                        borderRadius: '12px',
+                        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+                        backgroundColor: isDarkMode ? '#1a1a1a' : '#fff',
+                        border: `1px solid ${isDarkMode ? '#333' : '#eee'}`,
+                        overflow: 'hidden'
+                    }}
+                >
+                    <Stack gap={0}>
+                        <Box p={16} bg={isDarkMode ? '#000' : '#f8f9fa'} style={{ borderBottom: `1px solid ${isDarkMode ? '#333' : '#eee'}` }}>
+                            <Group justify="space-between" align="start" wrap="nowrap">
+                                <Stack gap={2}>
+                                    <Text fw={900} size="16px" c={isDarkMode ? 'white' : 'black'} style={{ lineHeight: 1.2, letterSpacing: '-0.5px' }}>
+                                        {selectedStop.name.toUpperCase()}
+                                    </Text>
+                                    <Text size="10px" fw={800} c="dimmed" tt="uppercase" style={{ letterSpacing: '1px' }}>
+                                        Bus Stop
+                                    </Text>
+                                </Stack>
+                                <ActionIcon
+                                    variant="subtle"
+                                    color="gray"
+                                    onClick={() => setSelectedStop(null)}
+                                    size="sm"
+                                    aria-label="Close station details"
+                                >
+                                    <X size={16} />
+                                </ActionIcon>
+                            </Group>
+                        </Box>
+
+                        <Box p={16}>
+                            <Text size="11px" fw={700} c="dimmed" tt="uppercase" mb={10} style={{ letterSpacing: '0.5px' }}>
+                                Serving Lines
+                            </Text>
+                            <Group gap={6} wrap="wrap">
+                                {selectedStop.route_ids && selectedStop.route_ids.length > 0 ? (
+                                    selectedStop.route_ids.map(rId => {
+                                        const route = routes.find(r => r.id === rId);
+                                        if (!route) return null;
+                                        return (
+                                            <Box
+                                                key={rId}
+                                                px={8} py={3}
+                                                style={{
+                                                    backgroundColor: `#${route.color}`,
+                                                    borderRadius: '4px',
+                                                    color: 'white',
+                                                    fontSize: '10px',
+                                                    fontWeight: 900,
+                                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                                }}
+                                            >
+                                                {route.short_name}
+                                            </Box>
+                                        );
+                                    })
+                                ) : (
+                                    <Text size="11px" c="dimmed" fw={600} style={{ fontStyle: 'italic' }}>No buses at this time</Text>
+                                )}
+                            </Group>
+
+                            <Divider my={16} color={isDarkMode ? '#333' : '#eee'} />
+
+                            <Group justify="space-between">
+                                <Stack gap={0}>
+                                    <Text size="10px" fw={800} c="dimmed" tt="uppercase">Location</Text>
+                                    <Text size="11px" fw={600} c={isDarkMode ? 'gray.4' : 'gray.7'} style={{ fontFamily: 'monospace' }}>
+                                        {selectedStop.lat.toFixed(6)}, {selectedStop.lon.toFixed(6)}
+                                    </Text>
+                                </Stack>
+                                <Target size={16} className={isDarkMode ? 'text-zinc-600' : 'text-zinc-300'} />
+                            </Group>
+                        </Box>
+                    </Stack>
+                </Paper>
+            )}
 
             <Box pos="absolute" bottom={30} right={20} style={{ zIndex: 1000 }}>
                 <Stack gap="xs">
