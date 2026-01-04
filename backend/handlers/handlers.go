@@ -225,14 +225,19 @@ func DeleteAgency(c *gin.Context) {
 
 	// 2. For each route, delete dependencies
 	for _, r := range routes {
-		// Delete TripStops
+		// Delete TripStops and Collect Shapes
 		var trips []models.Trip
 		if err := tx.Where("route_id = ?", r.ID).Find(&trips).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find trips"})
 			return
 		}
+		
+		shapeIDs := make(map[string]bool)
 		for _, t := range trips {
+			if t.ShapeID != "" {
+				shapeIDs[t.ShapeID] = true
+			}
 			if err := tx.Where("trip_id = ?", t.ID).Delete(&models.TripStop{}).Error; err != nil {
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip stops"})
@@ -245,6 +250,21 @@ func DeleteAgency(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trips"})
 			return
 		}
+
+		// Cleanup Shapes if orphaned
+		for sID := range shapeIDs {
+			var count int64
+			if err := tx.Model(&models.Trip{}).Where("shape_id = ?", sID).Count(&count).Error; err == nil {
+				if count == 0 {
+					if err := tx.Where("shape_id = ?", sID).Delete(&models.ShapePoint{}).Error; err != nil {
+						tx.Rollback()
+						c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cleanup orphaned shapes"})
+						return
+					}
+				}
+			}
+		}
+
 		// Delete Route
 		if err := tx.Delete(&models.Route{}, r.ID).Error; err != nil {
 			tx.Rollback()
@@ -430,9 +450,12 @@ func DeleteRoute(c *gin.Context) {
 		return
 	}
 
-	// 2. Delete Trips (and their TripStops due to GORM hooks or manual if needed)
-	// Manual: Delete TripStops first
+	// 2. Delete TripStops and Collect Shapes
+	shapeIDs := make(map[string]bool)
 	for _, t := range trips {
+		if t.ShapeID != "" {
+			shapeIDs[t.ShapeID] = true
+		}
 		if err := tx.Where("trip_id = ?", t.ID).Delete(&models.TripStop{}).Error; err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip stops"})
@@ -447,7 +470,21 @@ func DeleteRoute(c *gin.Context) {
 		return
 	}
 
-	// 4. Delete Route
+	// 4. Cleanup Shapes if orphaned
+	for sID := range shapeIDs {
+		var count int64
+		if err := tx.Model(&models.Trip{}).Where("shape_id = ?", sID).Count(&count).Error; err == nil {
+			if count == 0 {
+				if err := tx.Where("shape_id = ?", sID).Delete(&models.ShapePoint{}).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cleanup orphaned shapes"})
+					return
+				}
+			}
+		}
+	}
+
+	// 5. Delete Route
 	if err := tx.Delete(&models.Route{}, id).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete route: " + err.Error()})
@@ -459,7 +496,7 @@ func DeleteRoute(c *gin.Context) {
 		return
 	}
 	LogActivity("DELETE_ROUTE", fmt.Sprintf("Deleted route ID: %s", id))
-	c.JSON(http.StatusOK, gin.H{"message": "Route and associated trips deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "Route and associated trips/shapes deleted"})
 }
 
 // --- Trip ---
@@ -503,16 +540,40 @@ func DeleteTrip(c *gin.Context) {
 		return
 	}
 
+	// 1. Get trip to find its shape_id
+	var trip models.Trip
+	if err := tx.First(&trip, id).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusNotFound, gin.H{"error": "Trip not found"})
+		return
+	}
+
+	// 2. Delete TripStops
 	if err := tx.Where("trip_id = ?", id).Delete(&models.TripStop{}).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip stops"})
 		return
 	}
 
+	// 3. Delete Trip
 	if err := tx.Delete(&models.Trip{}, id).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip"})
 		return
+	}
+
+	// 4. Cleanup Shape if orphaned
+	if trip.ShapeID != "" {
+		var count int64
+		if err := tx.Model(&models.Trip{}).Where("shape_id = ?", trip.ShapeID).Count(&count).Error; err == nil {
+			if count == 0 {
+				if err := tx.Where("shape_id = ?", trip.ShapeID).Delete(&models.ShapePoint{}).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cleanup orphaned shape"})
+					return
+				}
+			}
+		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -520,7 +581,7 @@ func DeleteTrip(c *gin.Context) {
 		return
 	}
 	LogActivity("DELETE_TRIP", fmt.Sprintf("Deleted trip ID: %s", id))
-	c.JSON(http.StatusOK, gin.H{"message": "Trip deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "Trip and associated stops/shapes deleted"})
 }
 
 // --- StopRoutes ---
