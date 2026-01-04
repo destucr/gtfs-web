@@ -9,6 +9,7 @@ import (
 	"gtfs-cms/models"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -170,6 +171,7 @@ func ExportGTFS(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=gtfs_export.zip")
 	c.Header("Content-Type", "application/zip")
 	c.Data(http.StatusOK, "application/zip", buf.Bytes())
+	LogActivity("EXPORT_GTFS", "Exported GTFS zip bundle")
 }
 
 // --- Agency ---
@@ -260,6 +262,7 @@ func CreateStop(c *gin.Context) {
 		return
 	}
 	database.DB.Create(&stop)
+	LogActivity("CREATE_STOP", fmt.Sprintf("Created stop: %s", stop.Name))
 	c.JSON(http.StatusOK, stop)
 }
 
@@ -275,6 +278,7 @@ func UpdateStop(c *gin.Context) {
 		return
 	}
 	database.DB.Save(&stop)
+	LogActivity("UPDATE_STOP", fmt.Sprintf("Updated stop: %s", stop.Name))
 	c.JSON(http.StatusOK, stop)
 }
 
@@ -299,6 +303,7 @@ func CreateRoute(c *gin.Context) {
 		return
 	}
 	database.DB.Create(&route)
+	LogActivity("CREATE_ROUTE", fmt.Sprintf("Created route: %s", route.ShortName))
 	c.JSON(http.StatusOK, route)
 }
 
@@ -314,6 +319,7 @@ func UpdateRoute(c *gin.Context) {
 		return
 	}
 	database.DB.Save(&route)
+	LogActivity("UPDATE_ROUTE", fmt.Sprintf("Updated route: %s", route.ShortName))
 	c.JSON(http.StatusOK, route)
 }
 
@@ -680,4 +686,22 @@ func DeleteShape(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Shape deleted"})
+}
+
+// --- Activity Logs ---
+
+func LogActivity(action string, details string) {
+	log := models.ActivityLog{
+		Timestamp: time.Now(),
+		Action:    action,
+		Details:   details,
+	}
+	database.DB.Create(&log)
+}
+
+func GetActivityLogs(c *gin.Context) {
+	var logs []models.ActivityLog
+	// Get last 50 logs, newest first
+	database.DB.Order("timestamp desc").Limit(50).Find(&logs)
+	c.JSON(http.StatusOK, logs)
 }

@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type Agency struct {
 	ID       uint   `gorm:"primaryKey" json:"id"`
 	Name     string `json:"name"`
@@ -56,4 +58,11 @@ type ShapePoint struct {
 	Lat      float64 `json:"lat"`
 	Lon      float64 `json:"lon"`
 	Sequence int     `json:"sequence"`
+}
+
+type ActivityLog struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Action    string    `json:"action"`
+	Details   string    `json:"details"`
 }

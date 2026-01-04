@@ -60,6 +60,7 @@ func main() {
 		api.DELETE("/shapes/:shape_id", handlers.DeleteShape)
 
 		api.GET("/export/gtfs", handlers.ExportGTFS)
+		api.GET("/activity-logs", handlers.GetActivityLogs)
 	}
 
 	r.Run(":8080")

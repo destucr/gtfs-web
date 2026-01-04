@@ -45,6 +45,7 @@ const ShortcutManager: React.FC = () => {
 
 const Home: React.FC = () => {
   const [stats, setStats] = useState<{ agencies: any[], stops: any[], routes: any[], trips: any[] }>({ agencies: [], stops: [], routes: [], trips: [] });
+  const [logs, setLogs] = useState<{ timestamp: string, action: string, details: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [health, setHealth] = useState<'checking' | 'online' | 'error'>('checking');
   const navigate = useNavigate();
@@ -57,10 +58,11 @@ const Home: React.FC = () => {
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
-      const [a, s, r, t] = await Promise.all([
-        api.get('/agencies'), api.get('/stops'), api.get('/routes'), api.get('/trips')
+      const [a, s, r, t, l] = await Promise.all([
+        api.get('/agencies'), api.get('/stops'), api.get('/routes'), api.get('/trips'), api.get('/activity-logs')
       ]);
       setStats({ agencies: a.data || [], stops: s.data || [], routes: r.data || [], trips: t.data || [] });
+      setLogs(l.data || []);
       setHealth('online');
     } catch (err) {
       console.error('System: Failed to fetch registry statistics.', err);
@@ -257,9 +259,14 @@ const Home: React.FC = () => {
             <div className="flex items-center gap-2 text-[8px] font-black text-emerald-500 uppercase tracking-widest"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Live updates active</div>
           </div>
           <div className="flex-1 overflow-y-auto p-5 font-mono text-[10px] space-y-2 custom-scrollbar text-zinc-500 bg-zinc-50/20">
-            <div className="flex gap-6 opacity-60"><span className="text-zinc-300">14:22:01</span><span className="font-black text-zinc-400">SAVING</span><span>Changes saved to the server successfully.</span></div>
-            <div className="flex gap-6 opacity-60"><span className="text-zinc-300">14:21:45</span><span className="font-black text-zinc-400">ROUTING</span><span>Calculated a new road path for your route.</span></div>
-            <div className="flex gap-6 opacity-60"><span className="text-zinc-300">14:15:00</span><span className="font-black text-zinc-400">READY</span><span>Everything is up and running. System ready.</span></div>
+            {logs.map((log, i) => (
+              <div key={i} className="flex gap-6 opacity-60">
+                <span className="text-zinc-300 w-16 shrink-0">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false })}</span>
+                <span className="font-black text-zinc-400 w-24 shrink-0 truncate" title={log.action}>{log.action}</span>
+                <span className="truncate" title={log.details}>{log.details}</span>
+              </div>
+            ))}
+            {logs.length === 0 && <div className="text-zinc-300 text-center py-4">No recent activity</div>}
           </div>
         </div>
       </div>
