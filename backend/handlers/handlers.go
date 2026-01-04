@@ -261,7 +261,10 @@ func CreateStop(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Create(&stop)
+	if err := database.DB.Create(&stop).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create stop: " + err.Error()})
+		return
+	}
 	LogActivity("CREATE_STOP", fmt.Sprintf("Created stop: %s", stop.Name))
 	c.JSON(http.StatusOK, stop)
 }
@@ -277,7 +280,10 @@ func UpdateStop(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Save(&stop)
+	if err := database.DB.Save(&stop).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update stop: " + err.Error()})
+		return
+	}
 	LogActivity("UPDATE_STOP", fmt.Sprintf("Updated stop: %s", stop.Name))
 	c.JSON(http.StatusOK, stop)
 }
@@ -302,7 +308,10 @@ func CreateRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Create(&route)
+	if err := database.DB.Create(&route).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create route: " + err.Error()})
+		return
+	}
 	LogActivity("CREATE_ROUTE", fmt.Sprintf("Created route: %s", route.ShortName))
 	c.JSON(http.StatusOK, route)
 }
@@ -318,7 +327,10 @@ func UpdateRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Save(&route)
+	if err := database.DB.Save(&route).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update route: " + err.Error()})
+		return
+	}
 	LogActivity("UPDATE_ROUTE", fmt.Sprintf("Updated route: %s", route.ShortName))
 	c.JSON(http.StatusOK, route)
 }
@@ -696,12 +708,17 @@ func LogActivity(action string, details string) {
 		Action:    action,
 		Details:   details,
 	}
-	database.DB.Create(&log)
+	if err := database.DB.Create(&log).Error; err != nil {
+		fmt.Printf("Error logging activity: %v\n", err)
+	}
 }
 
 func GetActivityLogs(c *gin.Context) {
 	var logs []models.ActivityLog
 	// Get last 50 logs, newest first
-	database.DB.Order("timestamp desc").Limit(50).Find(&logs)
+	if err := database.DB.Order("timestamp desc").Limit(50).Find(&logs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch activity logs: " + err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, logs)
 }
