@@ -240,30 +240,43 @@ const RouteStudio: React.FC = () => {
         if (!selectedRoute) return;
         if (!isAuto) setStatus({ message: 'Saving Changes...', type: 'loading' });
         try {
-            if (selectedRoute.id) await api.put(`/routes/${selectedRoute.id}`, selectedRoute);
-            else if (!isAuto) {
-                const res = await api.post('/routes', selectedRoute);
-                setSelectedRoute(res.data);
-                setOriginalRoute(res.data);
+            let currentRoute = { ...selectedRoute };
+
+            if (currentRoute.id) {
+                await api.put(`/routes/${currentRoute.id}`, currentRoute);
+            } else if (!isAuto) {
+                const res = await api.post('/routes', currentRoute);
+                currentRoute = res.data;
+                setSelectedRoute(currentRoute);
+                setOriginalRoute(currentRoute);
             }
-            if (selectedRoute.id || !isAuto) {
-                const rId = selectedRoute.id || 0;
-                const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${rId}`;
+
+            if (currentRoute.id) {
+                const rId = currentRoute.id;
+                const sId = currentRoute.short_name ? `SHP_${currentRoute.short_name.toUpperCase()}` : `SHP_${rId}`;
                 await api.put(`/shapes/${sId}`, shapePoints.map(p => ({ ...p, shape_id: sId })));
+                
                 const trips: { data: Trip[] } = await api.get('/trips');
-                if (!trips.data.find(t => t.route_id === rId)) await api.post('/trips', { route_id: rId, headsign: selectedRoute.long_name, shape_id: sId, service_id: 'DAILY' });
+                if (!trips.data.find(t => t.route_id === rId)) {
+                    await api.post('/trips', { 
+                        route_id: rId, 
+                        headsign: currentRoute.long_name, 
+                        shape_id: sId, 
+                        service_id: 'DAILY' 
+                    });
+                }
                 setOriginalShape(shapePoints);
-            }
-            if (selectedRoute.id) {
-                const tripsRes = await api.get('/trips');
-                const trip = (tripsRes.data || []).find((t: Trip) => t.route_id === selectedRoute.id);
+                
+                // Refresh trips to get the one we just potentially created/verified
+                const updatedTripsRes = await api.get('/trips');
+                const trip = (updatedTripsRes.data || []).find((t: Trip) => t.route_id === currentRoute.id);
                 if (trip) {
                     const reordered = assignedStops.map((s, i) => ({ ...s, sequence: i + 1, trip_id: trip.id }));
                     await api.put(`/trips/${trip.id}/stops`, reordered);
                     setOriginalAssignedStops(assignedStops);
                 }
             }
-            if (!isAuto) { setStatus({ message: 'Saved successfully', type: 'success' }); setTimeout(() => setStatus(null), 2000); }
+            if (!isAuto) { setStatus({ message: 'Route saved. Default "Daily" trip created.', type: 'success' }); setTimeout(() => setStatus(null), 2000); }
             await refreshAllData();
         } catch (e) { setStatus({ message: 'Save failed', type: 'error' }); }
     }, [selectedRoute, shapePoints, assignedStops, refreshAllData, setStatus]);
@@ -546,7 +559,7 @@ const RouteStudio: React.FC = () => {
                                             <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Color</label><div className="flex gap-1.5 items-center"><input type="color" className="w-6 h-6 rounded cursor-pointer bg-transparent border-none p-0" value={`#${(selectedRoute.color || '007AFF').replace('#', '')}`} onChange={e => { setSelectedRoute({ ...selectedRoute, color: e.target.value.replace('#', '') }); }} /><input className="hig-input text-[10px] font-mono p-1 h-6 uppercase" value={selectedRoute.color} onChange={e => { setSelectedRoute({ ...selectedRoute, color: e.target.value.replace('#', '') }); }} /></div></div>
                                         </div>
                                         <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Public Name</label><input className="hig-input text-[11px] py-1.5 font-bold" value={selectedRoute.long_name} onChange={e => { setSelectedRoute({ ...selectedRoute, long_name: e.target.value }); }} /></div>
-                                        {selectedRoute.id !== 0 && (<div className="pt-4 mt-4 border-t border-zinc-100"><button type="button" onClick={() => { if (window.confirm('Delete record?')) api.delete(`/routes/${selectedRoute.id}`).then(refreshData).then(() => setSelectedRoute(null)); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}
+                                        {selectedRoute.id !== 0 && (<div className="pt-4 mt-4 border-t border-zinc-100"><button type="button" onClick={() => { if (window.confirm('Delete record?')) api.delete(`/routes/${selectedRoute.id}`).then(() => { refreshData(); setSelectedRoute(null); setStatus({ message: 'Route deleted.', type: 'success' }); }).catch(err => setStatus({ message: 'Delete failed: ' + (err.response?.data?.error || err.message), type: 'error' })); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}
                                     </div>
                                 )}
                                 {activeSection === 'path' && (

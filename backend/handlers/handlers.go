@@ -9,6 +9,7 @@ import (
 	"gtfs-cms/models"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -170,6 +171,7 @@ func ExportGTFS(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=gtfs_export.zip")
 	c.Header("Content-Type", "application/zip")
 	c.Data(http.StatusOK, "application/zip", buf.Bytes())
+	LogActivity("EXPORT_GTFS", "Exported GTFS zip bundle")
 }
 
 // --- Agency ---
@@ -207,8 +209,83 @@ func UpdateAgency(c *gin.Context) {
 
 func DeleteAgency(c *gin.Context) {
 	id := c.Param("id")
-	database.DB.Delete(&models.Agency{}, id)
-	c.JSON(http.StatusOK, gin.H{"message": "Agency deleted"})
+	tx := database.DB.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
+		return
+	}
+
+	// 1. Find all routes
+	var routes []models.Route
+	if err := tx.Where("agency_id = ?", id).Find(&routes).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find agency routes"})
+		return
+	}
+
+	// 2. For each route, delete dependencies
+	for _, r := range routes {
+		// Delete TripStops and Collect Shapes
+		var trips []models.Trip
+		if err := tx.Where("route_id = ?", r.ID).Find(&trips).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find trips"})
+			return
+		}
+		
+		shapeIDs := make(map[string]bool)
+		for _, t := range trips {
+			if t.ShapeID != "" {
+				shapeIDs[t.ShapeID] = true
+			}
+			if err := tx.Where("trip_id = ?", t.ID).Delete(&models.TripStop{}).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip stops"})
+				return
+			}
+		}
+		// Delete Trips
+		if err := tx.Where("route_id = ?", r.ID).Delete(&models.Trip{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trips"})
+			return
+		}
+
+		// Cleanup Shapes if orphaned
+		for sID := range shapeIDs {
+			var count int64
+			if err := tx.Model(&models.Trip{}).Where("shape_id = ?", sID).Count(&count).Error; err == nil {
+				if count == 0 {
+					if err := tx.Where("shape_id = ?", sID).Delete(&models.ShapePoint{}).Error; err != nil {
+						tx.Rollback()
+						c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cleanup orphaned shapes"})
+						return
+					}
+				}
+			}
+		}
+
+		// Delete Route
+		if err := tx.Delete(&models.Route{}, r.ID).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete route"})
+			return
+		}
+	}
+
+	// 3. Delete Agency
+	if err := tx.Delete(&models.Agency{}, id).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete agency"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+	LogActivity("DELETE_AGENCY", fmt.Sprintf("Deleted agency ID: %s", id))
+	c.JSON(http.StatusOK, gin.H{"message": "Agency and all related data deleted"})
 }
 
 // --- Stop ---
@@ -259,7 +336,11 @@ func CreateStop(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Create(&stop)
+	if err := database.DB.Create(&stop).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create stop: " + err.Error()})
+		return
+	}
+	LogActivity("CREATE_STOP", fmt.Sprintf("Created stop: %s", stop.Name))
 	c.JSON(http.StatusOK, stop)
 }
 
@@ -274,13 +355,39 @@ func UpdateStop(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Save(&stop)
+	if err := database.DB.Save(&stop).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update stop: " + err.Error()})
+		return
+	}
+	LogActivity("UPDATE_STOP", fmt.Sprintf("Updated stop: %s", stop.Name))
 	c.JSON(http.StatusOK, stop)
 }
 
 func DeleteStop(c *gin.Context) {
 	id := c.Param("id")
-	database.DB.Delete(&models.Stop{}, id)
+	tx := database.DB.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
+		return
+	}
+
+	if err := tx.Where("stop_id = ?", id).Delete(&models.TripStop{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete associated trip stops"})
+		return
+	}
+
+	if err := tx.Delete(&models.Stop{}, id).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete stop"})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction commit failed"})
+		return
+	}
+	LogActivity("DELETE_STOP", fmt.Sprintf("Deleted stop ID: %s", id))
 	c.JSON(http.StatusOK, gin.H{"message": "Stop deleted"})
 }
 
@@ -298,7 +405,11 @@ func CreateRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Create(&route)
+	if err := database.DB.Create(&route).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create route: " + err.Error()})
+		return
+	}
+	LogActivity("CREATE_ROUTE", fmt.Sprintf("Created route: %s", route.ShortName))
 	c.JSON(http.StatusOK, route)
 }
 
@@ -313,14 +424,79 @@ func UpdateRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	database.DB.Save(&route)
+	if err := database.DB.Save(&route).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update route: " + err.Error()})
+		return
+	}
+	LogActivity("UPDATE_ROUTE", fmt.Sprintf("Updated route: %s", route.ShortName))
 	c.JSON(http.StatusOK, route)
 }
 
 func DeleteRoute(c *gin.Context) {
 	id := c.Param("id")
-	database.DB.Delete(&models.Route{}, id)
-	c.JSON(http.StatusOK, gin.H{"message": "Route deleted"})
+
+	// Cascade delete via Transaction
+	tx := database.DB.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
+		return
+	}
+
+	// 1. Find Trips
+	var trips []models.Trip
+	if err := tx.Where("route_id = ?", id).Find(&trips).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query trips"})
+		return
+	}
+
+	// 2. Delete TripStops and Collect Shapes
+	shapeIDs := make(map[string]bool)
+	for _, t := range trips {
+		if t.ShapeID != "" {
+			shapeIDs[t.ShapeID] = true
+		}
+		if err := tx.Where("trip_id = ?", t.ID).Delete(&models.TripStop{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip stops"})
+			return
+		}
+	}
+
+	// 3. Delete Trips
+	if err := tx.Where("route_id = ?", id).Delete(&models.Trip{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trips"})
+		return
+	}
+
+	// 4. Cleanup Shapes if orphaned
+	for sID := range shapeIDs {
+		var count int64
+		if err := tx.Model(&models.Trip{}).Where("shape_id = ?", sID).Count(&count).Error; err == nil {
+			if count == 0 {
+				if err := tx.Where("shape_id = ?", sID).Delete(&models.ShapePoint{}).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cleanup orphaned shapes"})
+					return
+				}
+			}
+		}
+	}
+
+	// 5. Delete Route
+	if err := tx.Delete(&models.Route{}, id).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete route: " + err.Error()})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction: " + err.Error()})
+		return
+	}
+	LogActivity("DELETE_ROUTE", fmt.Sprintf("Deleted route ID: %s", id))
+	c.JSON(http.StatusOK, gin.H{"message": "Route and associated trips/shapes deleted"})
 }
 
 // --- Trip ---
@@ -358,8 +534,54 @@ func UpdateTrip(c *gin.Context) {
 
 func DeleteTrip(c *gin.Context) {
 	id := c.Param("id")
-	database.DB.Delete(&models.Trip{}, id)
-	c.JSON(http.StatusOK, gin.H{"message": "Trip deleted"})
+	tx := database.DB.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
+		return
+	}
+
+	// 1. Get trip to find its shape_id
+	var trip models.Trip
+	if err := tx.First(&trip, id).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusNotFound, gin.H{"error": "Trip not found"})
+		return
+	}
+
+	// 2. Delete TripStops
+	if err := tx.Where("trip_id = ?", id).Delete(&models.TripStop{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip stops"})
+		return
+	}
+
+	// 3. Delete Trip
+	if err := tx.Delete(&models.Trip{}, id).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip"})
+		return
+	}
+
+	// 4. Cleanup Shape if orphaned
+	if trip.ShapeID != "" {
+		var count int64
+		if err := tx.Model(&models.Trip{}).Where("shape_id = ?", trip.ShapeID).Count(&count).Error; err == nil {
+			if count == 0 {
+				if err := tx.Where("shape_id = ?", trip.ShapeID).Delete(&models.ShapePoint{}).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cleanup orphaned shape"})
+					return
+				}
+			}
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction commit failed"})
+		return
+	}
+	LogActivity("DELETE_TRIP", fmt.Sprintf("Deleted trip ID: %s", id))
+	c.JSON(http.StatusOK, gin.H{"message": "Trip and associated stops/shapes deleted"})
 }
 
 // --- StopRoutes ---
@@ -602,7 +824,10 @@ func CreateShape(c *gin.Context) {
 			return
 		}
 	}
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction: " + err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Shape created", "count": len(points), "shape_id": points[0].ShapeID})
 }
@@ -636,7 +861,10 @@ func UpdateShape(c *gin.Context) {
 		}
 	}
 
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction: " + err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "Shape updated", "shape_id": shapeID})
 }
 
@@ -680,4 +908,27 @@ func DeleteShape(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Shape deleted"})
+}
+
+// --- Activity Logs ---
+
+func LogActivity(action string, details string) {
+	log := models.ActivityLog{
+		Timestamp: time.Now(),
+		Action:    action,
+		Details:   details,
+	}
+	if err := database.DB.Create(&log).Error; err != nil {
+		fmt.Printf("Error logging activity: %v\n", err)
+	}
+}
+
+func GetActivityLogs(c *gin.Context) {
+	var logs []models.ActivityLog
+	// Get last 50 logs, newest first
+	if err := database.DB.Order("timestamp desc").Limit(50).Find(&logs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch activity logs: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, logs)
 }
