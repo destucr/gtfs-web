@@ -337,8 +337,49 @@ func UpdateRoute(c *gin.Context) {
 
 func DeleteRoute(c *gin.Context) {
 	id := c.Param("id")
-	database.DB.Delete(&models.Route{}, id)
-	c.JSON(http.StatusOK, gin.H{"message": "Route deleted"})
+
+	// Cascade delete via Transaction
+	tx := database.DB.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
+		return
+	}
+
+	// 1. Find Trips
+	var trips []models.Trip
+	if err := tx.Where("route_id = ?", id).Find(&trips).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query trips"})
+		return
+	}
+
+	// 2. Delete Trips (and their TripStops due to GORM hooks or manual if needed)
+	// Manual: Delete TripStops first
+	for _, t := range trips {
+		if err := tx.Where("trip_id = ?", t.ID).Delete(&models.TripStop{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trip stops"})
+			return
+		}
+	}
+
+	// 3. Delete Trips
+	if err := tx.Where("route_id = ?", id).Delete(&models.Trip{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete trips"})
+		return
+	}
+
+	// 4. Delete Route
+	if err := tx.Delete(&models.Route{}, id).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete route: " + err.Error()})
+		return
+	}
+
+	tx.Commit()
+	LogActivity("DELETE_ROUTE", fmt.Sprintf("Deleted route ID: %s", id))
+	c.JSON(http.StatusOK, gin.H{"message": "Route and associated trips deleted"})
 }
 
 // --- Trip ---
