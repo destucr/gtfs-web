@@ -10,7 +10,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { Route, Stop, TripStop, Trip, ShapePoint } from '../types';
 
 const Stops: React.FC = () => {
-    const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, hoveredEntityId } = useWorkspace();
+    const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen, setSidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, hoveredEntityId } = useWorkspace();
     const navigate = useNavigate();
 
     // Registry Data
@@ -279,7 +279,12 @@ const Stops: React.FC = () => {
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
             <motion.div animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-zinc-100 pointer-events-auto shadow-2xl" style={{ width: 400 }}>
-                <SidebarHeader title="Stops" Icon={MapPin} actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all" title="Add a new stop"><Plus size={18} /></button>} />
+                <SidebarHeader 
+                    title="Stops" 
+                    Icon={MapPin} 
+                    onToggleSidebar={() => setSidebarOpen(false)}
+                    actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all" title="Add a new stop"><Plus size={18} /></button>} 
+                />
                 <div className="p-4 px-6 border-b border-zinc-100 bg-white shrink-0">
                     <div className="flex gap-2 mb-4">
                         <div className="relative flex-1">

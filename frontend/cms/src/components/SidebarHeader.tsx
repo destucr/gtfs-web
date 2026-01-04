@@ -1,14 +1,15 @@
 import React from 'react';
-import { ChevronLeft, LucideIcon } from 'lucide-react';
+import { ChevronLeft, LucideIcon, PanelLeftClose } from 'lucide-react';
 
 interface SidebarHeaderProps {
   title: string;
   Icon: LucideIcon;
   onBack?: () => void;
   actions?: React.ReactNode;
+  onToggleSidebar?: () => void;
 }
 
-export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ title, Icon, onBack, actions }) => {
+export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ title, Icon, onBack, actions, onToggleSidebar }) => {
   return (
     <div className="p-6 border-b border-black/5 flex items-center justify-between shrink-0 bg-white sticky top-0 z-50">
       <div className="flex items-center gap-3">
@@ -23,8 +24,17 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ title, Icon, onBac
         )}
         <h1 className="text-xl font-black tracking-tight leading-none text-black">{title}</h1>
       </div>
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         {actions}
+        {onToggleSidebar && (
+          <button 
+            onClick={onToggleSidebar} 
+            className="p-2 hover:bg-black/5 rounded-lg transition-colors text-zinc-400 hover:text-black"
+            title="Hide Sidebar"
+          >
+            <PanelLeftClose size={18} />
+          </button>
+        )}
       </div>
     </div>
   );

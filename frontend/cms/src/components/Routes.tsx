@@ -8,7 +8,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { Route, Agency, Trip, ShapePoint, TripStop } from '../types';
 
 const RouteStudio: React.FC = () => {
-    const { setMapLayers, setStatus, quickMode, setQuickMode, sidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert } = useWorkspace();
+    const { setMapLayers, setStatus, quickMode, setQuickMode, sidebarOpen, setSidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert } = useWorkspace();
     const [routes, setRoutes] = useState<Route[]>([]);
     const [agencies, setAgencies] = useState<Agency[]>([]);
 
@@ -441,16 +441,21 @@ const RouteStudio: React.FC = () => {
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
             <motion.div animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black pointer-events-auto shadow-2xl border-r border-zinc-100" style={{ width: 400 }}>
-                <SidebarHeader title="Routes" Icon={Bus} actions={
-                    <button
-                        onClick={handleAddNew}
-                        disabled={agencies.length === 0}
-                        className={`p-2 rounded-lg shadow-lg transition-all ${agencies.length === 0 ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-system-blue text-white hover:scale-105'}`}
-                        title={agencies.length === 0 ? "Create an agency before adding routes" : "Add Route"}
-                    >
-                        {agencies.length === 0 ? <AlertCircle size={18} /> : <Plus size={18} />}
-                    </button>
-                } />
+                <SidebarHeader 
+                    title="Routes" 
+                    Icon={Bus} 
+                    onToggleSidebar={() => setSidebarOpen(false)}
+                    actions={
+                        <button
+                            onClick={handleAddNew}
+                            disabled={agencies.length === 0}
+                            className={`p-2 rounded-lg shadow-lg transition-all ${agencies.length === 0 ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-system-blue text-white hover:scale-105'}`}
+                            title={agencies.length === 0 ? "Create an agency before adding routes" : "Add Route"}
+                        >
+                            {agencies.length === 0 ? <AlertCircle size={18} /> : <Plus size={18} />}
+                        </button>
+                    } 
+                />
                 <div className="p-4 px-6 border-b border-zinc-100 bg-white shrink-0">
                     <div className="relative"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search routes..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
                 </div>

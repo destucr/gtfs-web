@@ -12,7 +12,7 @@ import UnifiedMap from './components/UnifiedMap';
 import {
   Globe, MapPin, Route as RouteIcon, Database, 
   ArrowRight, ShieldCheck, Zap, AlertCircle, Loader2, 
-  ChevronRight, ChevronLeft, X, RotateCcw, Hash, Clock, ArrowUpDown, Filter
+  ChevronRight, X, RotateCcw, Hash, Clock, ArrowUpDown, Filter, PanelLeftOpen
 } from 'lucide-react';
 
 const ShortcutManager: React.FC = () => {
@@ -346,10 +346,14 @@ const WorkspaceContainer: React.FC = () => {
           <Route path="/trips" element={<Trips />} />
         </Routes>
       </div>
-      {!isHome && (
-        <div onClick={() => setSidebarOpen(!sidebarOpen)} className={`absolute top-1/2 -translate-y-1/2 z-[4000] w-1.5 h-16 bg-black/20 hover:bg-system-blue rounded-full flex items-center justify-center cursor-pointer transition-all hover:w-2.5 active:scale-95 group ${sidebarOpen ? 'left-[392px]' : 'left-2'}`} title={sidebarOpen ? "Hide Sidebar" : "Show Sidebar"}>
-          <div className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">{sidebarOpen ? <ChevronLeft size={10} className="text-white" /> : <ChevronRight size={10} className="text-white" />}</div>
-        </div>
+      {!isHome && !sidebarOpen && (
+        <button 
+          onClick={() => setSidebarOpen(true)}
+          className="absolute top-6 left-6 z-[4000] p-3 bg-white shadow-2xl rounded-2xl border border-black/5 hover:scale-105 active:scale-95 transition-all text-system-blue pointer-events-auto"
+          title="Show Sidebar"
+        >
+          <PanelLeftOpen size={20} />
+        </button>
       )}
     </div>
   );
