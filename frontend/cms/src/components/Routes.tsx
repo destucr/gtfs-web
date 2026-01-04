@@ -449,7 +449,7 @@ const RouteStudio: React.FC = () => {
                         <button
                             onClick={handleAddNew}
                             disabled={agencies.length === 0}
-                            className={`p-2 rounded-lg shadow-lg transition-all ${agencies.length === 0 ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-system-blue text-white hover:scale-105'}`}
+                            className={`p-1.5 rounded-lg transition-colors ${agencies.length === 0 ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-system-blue/10 text-system-blue hover:bg-system-blue/20'}`}
                             title={agencies.length === 0 ? "Create an agency before adding routes" : "Add Route"}
                         >
                             {agencies.length === 0 ? <AlertCircle size={18} /> : <Plus size={18} />}

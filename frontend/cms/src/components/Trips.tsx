@@ -121,7 +121,7 @@ const Trips: React.FC = () => {
                     title="Bindings" 
                     Icon={Database} 
                     onToggleSidebar={() => setSidebarOpen(false)}
-                    actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all" title="Add a new binding"><Plus size={18} /></button>} 
+                    actions={<button onClick={handleAddNew} className="p-1.5 bg-system-blue/10 text-system-blue rounded-lg hover:bg-system-blue/20 transition-colors" title="Add a new binding"><Plus size={18} /></button>} 
                 />
                 <div className="p-4 px-6 border-b border-zinc-100 bg-white shrink-0"><div className="relative"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search trips..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div></div>
                 <div className="flex-1 overflow-y-auto divide-y divide-zinc-50">

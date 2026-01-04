@@ -7,7 +7,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { Agency, Route, Stop, TripStop, Trip, ShapePoint } from '../types';
 
 const Agencies: React.FC = () => {
-    const { setMapLayers, setStatus, sidebarOpen, quickMode } = useWorkspace();
+    const { setMapLayers, setStatus, sidebarOpen, setSidebarOpen, quickMode } = useWorkspace();
     const [agencies, setAgencies] = useState<Agency[]>([]);
     const [allRoutes, setAllRoutes] = useState<Route[]>([]);
     const [allStops, setAllStops] = useState<Stop[]>([]);
@@ -206,7 +206,12 @@ const Agencies: React.FC = () => {
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
             <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-zinc-100 pointer-events-auto shadow-2xl" style={{ width: 400 }}>
-                <SidebarHeader title="Operators" Icon={Landmark} actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all" title="System: Initializing new operator record."><Plus size={18} /></button>} />
+                <SidebarHeader 
+                    title="Operators" 
+                    Icon={Landmark} 
+                    onToggleSidebar={() => setSidebarOpen(false)}
+                    actions={<button onClick={handleAddNew} className="p-1.5 bg-system-blue/10 text-system-blue rounded-lg hover:bg-system-blue/20 transition-colors" title="System: Initializing new operator record."><Plus size={18} /></button>} 
+                />
                 <div className="p-4 px-6 border-b border-zinc-100 bg-white shrink-0 flex gap-2">
                     <div className="relative flex-1"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search operators..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
                     <button onClick={fetchInitialData} className="p-2 bg-zinc-50 rounded-lg text-zinc-400 hover:text-zinc-900 transition-colors"><RotateCcw size={18} /></button>
