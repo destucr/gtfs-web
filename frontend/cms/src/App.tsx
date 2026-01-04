@@ -258,15 +258,15 @@ const Home: React.FC = () => {
             <h3 className="text-[9px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2"><Clock size={12}/> Recent Activity</h3>
             <div className="flex items-center gap-2 text-[8px] font-black text-emerald-500 uppercase tracking-widest"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Live updates active</div>
           </div>
-          <div className="flex-1 overflow-y-auto p-5 font-mono text-[10px] space-y-2 custom-scrollbar text-zinc-500 bg-zinc-50/20">
+          <div className="flex-1 overflow-y-auto p-5 font-mono text-[10px] space-y-3 custom-scrollbar text-zinc-500 bg-zinc-50/20 select-text">
             {logs.map((log, i) => (
-              <div key={i} className="flex gap-6 opacity-60">
-                <span className="text-zinc-300 w-16 shrink-0">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false })}</span>
+              <div key={i} className="flex gap-6 opacity-70 hover:opacity-100 transition-opacity">
+                <span className="text-zinc-300 w-16 shrink-0 font-bold">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false })}</span>
                 <span className="font-black text-zinc-400 w-24 shrink-0 truncate" title={log.action}>{log.action}</span>
-                <span className="truncate" title={log.details}>{log.details}</span>
+                <span className="text-zinc-600 leading-relaxed">{log.details}</span>
               </div>
             ))}
-            {logs.length === 0 && <div className="text-zinc-300 text-center py-4">No recent activity</div>}
+            {logs.length === 0 && <div className="text-zinc-300 text-center py-4">No recent activity found.</div>}
           </div>
         </div>
       </div>
