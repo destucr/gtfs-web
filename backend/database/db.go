@@ -149,7 +149,7 @@ func Connect() {
 		DB.Migrator().DropTable("route_stops")
 	}
 
-	err = DB.AutoMigrate(&models.Agency{}, &models.Stop{}, &models.Route{}, &models.Trip{}, &models.ShapePoint{}, &models.TripStop{})
+	err = DB.AutoMigrate(&models.Agency{}, &models.Stop{}, &models.Route{}, &models.Trip{}, &models.ShapePoint{}, &models.TripStop{}, &models.ActivityLog{})
 	if err != nil {
 		log.Fatal("Failed to migrate database!", err)
 	}
