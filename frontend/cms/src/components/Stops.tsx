@@ -18,6 +18,7 @@ const Stops: React.FC = () => {
     const [routes, setRoutes] = useState<Route[]>([]);
     const [stopRouteMap, setStopRouteMap] = useState<Record<number, Route[]>>({});
     const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState<'name' | 'newest' | 'routes'>('name');
 
     // Editor State
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
@@ -253,18 +254,51 @@ const Stops: React.FC = () => {
         }));
     }, [stops, routeShapes, formData, routes, hoveredRouteIds, selectedStopRouteIds, persistentRouteIds, hoveredEntityId, focusType, setMapLayers]);
 
-    const filteredStops = stops.filter(s => {
-        const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesRoute = focusedRouteId ? (stopRouteMap[s.id] || []).some(r => r.id === focusedRouteId) : true;
-        return matchesSearch && matchesRoute;
-    });
+    const filteredStops = useMemo(() => {
+        let result = stops.filter(s => {
+            const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesRoute = focusedRouteId ? (stopRouteMap[s.id] || []).some(r => r.id === focusedRouteId) : true;
+            return matchesSearch && matchesRoute;
+        });
+
+        // Apply Sorting
+        result.sort((a, b) => {
+            if (sortBy === 'name') return a.name.localeCompare(b.name);
+            if (sortBy === 'newest') return b.id - a.id;
+            if (sortBy === 'routes') {
+                const countA = (stopRouteMap[a.id] || []).length;
+                const countB = (stopRouteMap[b.id] || []).length;
+                return countB - countA;
+            }
+            return 0;
+        });
+
+        return result;
+    }, [stops, searchQuery, focusedRouteId, stopRouteMap, sortBy]);
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
             <motion.div animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-zinc-100 pointer-events-auto shadow-2xl" style={{ width: 400 }}>
                 <SidebarHeader title="Stops" Icon={MapPin} actions={<button onClick={handleAddNew} className="p-2 bg-system-blue text-white rounded-lg shadow-lg hover:scale-105 transition-all" title="Add a new stop"><Plus size={18} /></button>} />
                 <div className="p-4 px-6 border-b border-zinc-100 bg-white shrink-0">
-                    <div className="relative mb-4"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search stops..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
+                    <div className="flex gap-2 mb-4">
+                        <div className="relative flex-1">
+                            <Search size={14} className="absolute left-3 top-3 text-zinc-400" />
+                            <input className="hig-input text-sm pl-9 py-2 font-bold w-full" placeholder="Search stops..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                        </div>
+                        <div className="flex bg-zinc-50 p-1 rounded-xl border border-zinc-100">
+                            {(['name', 'newest', 'routes'] as const).map((mode) => (
+                                <button
+                                    key={mode}
+                                    onClick={() => setSortBy(mode)}
+                                    className={`px-2 rounded-lg text-[8px] font-black uppercase transition-all ${sortBy === mode ? 'bg-white text-system-blue shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                    title={`Sort by ${mode}`}
+                                >
+                                    {mode === 'name' ? 'A-Z' : mode === 'newest' ? 'New' : 'Hub'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <div className="space-y-2">
                         <div className="flex items-center justify-between px-1"><h3 className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Link to Route</h3>{focusedRouteId && <button onClick={() => setFocusedRouteId(null)} className="text-[8px] font-black text-red-500 hover:underline uppercase">Clear</button>}</div>
                         <div className="flex flex-wrap gap-1.5">
