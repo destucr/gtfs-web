@@ -253,16 +253,24 @@ const RouteStudio: React.FC = () => {
 
             if (currentRoute.id) {
                 const rId = currentRoute.id;
-                const sId = currentRoute.short_name ? `SHP_${currentRoute.short_name.toUpperCase()}` : `SHP_${rId}`;
+                const sId = `SHP_${rId}`;
                 await api.put(`/shapes/${sId}`, shapePoints.map(p => ({ ...p, shape_id: sId })));
                 
                 const trips: { data: Trip[] } = await api.get('/trips');
-                if (!trips.data.find(t => t.route_id === rId)) {
+                const existingTrip = (trips.data || []).find(t => t.route_id === rId);
+                
+                if (!existingTrip) {
                     await api.post('/trips', { 
                         route_id: rId, 
                         headsign: currentRoute.long_name, 
                         shape_id: sId, 
                         service_id: 'DAILY' 
+                    });
+                } else if (existingTrip.shape_id !== sId) {
+                    // Update existing trip to use the new stable shape ID
+                    await api.put(`/trips/${existingTrip.id}`, {
+                        ...existingTrip,
+                        shape_id: sId
                     });
                 }
                 setOriginalShape(shapePoints);
@@ -313,7 +321,7 @@ const RouteStudio: React.FC = () => {
             return;
         }
 
-        const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
+        const sId = `SHP_${selectedRoute.id}`;
 
         const handleMapClick = async (latlng: { lat: number, lng: number }) => {
             if (activeSection !== 'path') setActiveSection('path');
@@ -422,7 +430,7 @@ const RouteStudio: React.FC = () => {
         if (shapePoints.length < 2 || !selectedRoute) return;
         setStatus({ message: 'Re-routing full path...', type: 'loading' });
         const coords = shapePoints.map(p => `${p.lon},${p.lat}`).join(';');
-        const sId = selectedRoute.short_name ? `SHP_${selectedRoute.short_name.toUpperCase()}` : `SHP_${selectedRoute.id}`;
+        const sId = `SHP_${selectedRoute.id}`;
         try {
             const res = await axios.get(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
             if (res.data.routes?.[0]) {

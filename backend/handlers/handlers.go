@@ -941,6 +941,17 @@ func GetUniqueShapes(c *gin.Context) {
 	c.JSON(http.StatusOK, shapes)
 }
 
+// GetStopTimes returns all scheduled times for a specific stop
+func GetStopTimes(c *gin.Context) {
+	stopID := c.Param("id")
+	var tripStops []models.TripStop
+	if err := database.DB.Preload("Trip.Route").Where("stop_id = ?", stopID).Find(&tripStops).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stop times: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, tripStops)
+}
+
 // --- Activity Logs ---
 
 func LogActivity(action string, details string) {
