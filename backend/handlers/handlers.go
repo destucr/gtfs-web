@@ -377,7 +377,10 @@ func DeleteRoute(c *gin.Context) {
 		return
 	}
 
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction: " + err.Error()})
+		return
+	}
 	LogActivity("DELETE_ROUTE", fmt.Sprintf("Deleted route ID: %s", id))
 	c.JSON(http.StatusOK, gin.H{"message": "Route and associated trips deleted"})
 }
@@ -661,7 +664,10 @@ func CreateShape(c *gin.Context) {
 			return
 		}
 	}
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction: " + err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Shape created", "count": len(points), "shape_id": points[0].ShapeID})
 }
@@ -695,7 +701,10 @@ func UpdateShape(c *gin.Context) {
 		}
 	}
 
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction: " + err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "Shape updated", "shape_id": shapeID})
 }
 
