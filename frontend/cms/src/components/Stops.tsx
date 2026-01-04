@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { MapPin, Plus, Trash2, Search, Loader2, CheckCircle2, ChevronRight, X, Maximize2, Minimize2, Bus, Save, Eye, EyeOff } from 'lucide-react';
+import { MapPin, Plus, Trash2, Search, Loader2, CheckCircle2, ChevronRight, X, Maximize2, Minimize2, Bus, Save, Eye, EyeOff, ArrowDownAz, Clock, Share2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
@@ -286,15 +286,21 @@ const Stops: React.FC = () => {
                             <Search size={14} className="absolute left-3 top-3 text-zinc-400" />
                             <input className="hig-input text-sm pl-9 py-2 font-bold w-full" placeholder="Search stops..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                         </div>
-                        <div className="flex bg-zinc-50 p-1 rounded-xl border border-zinc-100">
+                        <div className="flex bg-zinc-50 p-1 rounded-xl border border-zinc-100 gap-0.5">
                             {(['name', 'newest', 'routes'] as const).map((mode) => (
                                 <button
                                     key={mode}
                                     onClick={() => setSortBy(mode)}
-                                    className={`px-2 rounded-lg text-[8px] font-black uppercase transition-all ${sortBy === mode ? 'bg-white text-system-blue shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
-                                    title={`Sort by ${mode}`}
+                                    className={`p-1.5 rounded-lg transition-all ${sortBy === mode ? 'bg-white text-system-blue shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                    title={
+                                        mode === 'name' ? '[Sort: Alpha] Click to reorder A-Z' :
+                                        mode === 'newest' ? '[Sort: Recent] Click to show latest first' :
+                                        '[Sort: Connectivity] Click to show major hubs first'
+                                    }
                                 >
-                                    {mode === 'name' ? 'A-Z' : mode === 'newest' ? 'New' : 'Hub'}
+                                    {mode === 'name' && <ArrowDownAz size={14} />}
+                                    {mode === 'newest' && <Clock size={14} />}
+                                    {mode === 'routes' && <Share2 size={14} />}
                                 </button>
                             ))}
                         </div>
