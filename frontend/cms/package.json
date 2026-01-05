@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:demo": "VITE_DEMO_MODE=true tsc && VITE_DEMO_MODE=true vite build --base=/gtfs-cms/",
+    "demo-data": "node ../../scripts/export-demo-data.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -31,6 +33,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.23",
+    "axios-mock-adapter": "^2.1.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",

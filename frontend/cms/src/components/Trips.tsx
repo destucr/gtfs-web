@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import api from '../api';
 import { SidebarHeader } from './SidebarHeader';
 import { Route, Trip } from '../types';
+import UnifiedMap from './UnifiedMap';
 
 const Trips: React.FC = () => {
     const { setMapLayers, setStatus, sidebarOpen, setSidebarOpen, quickMode, setSelectedEntityId, selectedEntityId } = useWorkspace();
@@ -34,7 +35,10 @@ const Trips: React.FC = () => {
             setRoutes(rRes.data || []);
             setAvailableShapes(sRes.data || []);
             setStatus(null);
-        } catch (e) { setStatus({ message: 'Sync failed', type: 'error' }); }
+        } catch (e) { 
+            setStatus({ message: 'Sync failed', type: 'error' }); 
+            setTimeout(() => setStatus(null), 3000);
+        }
     }, [setStatus]);
 
     useEffect(() => { fetchInitialData(); }, [fetchInitialData]);
@@ -81,10 +85,22 @@ const Trips: React.FC = () => {
             setStatus({ message: 'Saved successfully.', type: 'success' });
             setTimeout(() => setStatus(null), 2000);
             fetchInitialData();
-        } catch (err) { setStatus({ message: 'Save failed.', type: 'error' }); }
+        } catch (err) { 
+            setStatus({ message: 'Save failed.', type: 'error' }); 
+            setTimeout(() => setStatus(null), 3000);
+        }
     };
 
     const handleSelectTrip = async (trip: Trip) => {
+        if (selectedTrip?.id === trip.id) {
+            if (isDirty && !window.confirm('Unsaved changes will be lost. Unselect?')) return;
+            setSelectedTrip(null);
+            setFormData({ route_id: '', headsign: '', shape_id: '', service_id: 'DAILY', direction_id: '0' });
+            initialFormData.current = '';
+            setIsDirty(false);
+            setActivePoints([]);
+            return;
+        }
         setSelectedTrip(trip);
         const data = {
             route_id: trip.route_id.toString(),
@@ -116,6 +132,9 @@ const Trips: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
+            <div className="absolute inset-0 z-0 pointer-events-auto">
+                <UnifiedMap />
+            </div>
             <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white dark:bg-zinc-950 relative z-20 overflow-hidden text-black dark:text-white border-r border-zinc-200 dark:border-zinc-800 pointer-events-auto shadow-none" style={{ width: 320 }}>
                 <SidebarHeader
                     title="Bindings"

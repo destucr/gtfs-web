@@ -7,6 +7,7 @@ import axios from 'axios';
 import L from 'leaflet';
 import { SidebarHeader } from './SidebarHeader';
 import { Route, Stop, TripStop, Trip, ShapePoint } from '../types';
+import UnifiedMap from './UnifiedMap';
 
 const Stops: React.FC = () => {
     const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen, setSidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, hoveredEntityId } = useWorkspace();
@@ -57,10 +58,73 @@ const Stops: React.FC = () => {
             });
             setStopRouteMap(map);
             setStatus(null);
-        } catch (e) { setStatus({ message: 'Sync failed', type: 'error' }); }
+        } catch (e) { 
+            setStatus({ message: 'Sync failed', type: 'error' }); 
+            setTimeout(() => setStatus(null), 3000);
+        }
     }, [setStatus]);
 
     useEffect(() => { fetchInitialData(); }, [fetchInitialData]);
+
+    // Auto-load all routes in demo mode
+    useEffect(() => {
+        if (import.meta.env.VITE_DEMO_MODE !== 'true' || routes.length === 0) return;
+
+        const loadAllRoutes = async () => {
+            console.log('🚀 [Demo Mode] Loading all routes for Stops page...');
+            try {
+                const tripsRes: { data: Trip[] } = await api.get('/trips');
+                const trips = tripsRes.data || [];
+                console.log(`📦 [Demo Mode] Found ${trips.length} trips`);
+                
+                // Get unique route IDs that have trips with shapes
+                const routeIdsWithShapes = new Set<number>();
+                const shapeIdToRouteId = new Map<string, number>();
+                
+                trips.forEach((trip: Trip) => {
+                    if (trip.route_id && trip.shape_id) {
+                        routeIdsWithShapes.add(trip.route_id);
+                        shapeIdToRouteId.set(trip.shape_id, trip.route_id);
+                    }
+                });
+
+                console.log(`🗺️ [Demo Mode] Found ${routeIdsWithShapes.size} routes with shapes`);
+
+                // Set all routes as persistent first (so they show up even while loading)
+                setPersistentRouteIds(Array.from(routeIdsWithShapes));
+
+                // Use bulk API to load all shapes at once (more efficient)
+                const shapeIds = Array.from(shapeIdToRouteId.keys());
+                if (shapeIds.length > 0) {
+                    try {
+                        console.log(`📥 [Demo Mode] Loading ${shapeIds.length} shapes in bulk...`);
+                        const bulkRes = await api.post('/shapes/bulk', shapeIds);
+                        const bulkData: Record<string, ShapePoint[]> = bulkRes.data || {};
+                        
+                        // Map shapes to routes
+                        const newShapes: Record<number, [number, number][]> = {};
+                        Object.keys(bulkData).forEach(shapeId => {
+                            const routeId = shapeIdToRouteId.get(shapeId);
+                            if (routeId) {
+                                const points = bulkData[shapeId].sort((a, b) => a.sequence - b.sequence);
+                                newShapes[routeId] = points.map(p => [p.lat, p.lon] as [number, number]);
+                            }
+                        });
+                        
+                        console.log(`✅ [Demo Mode] Loaded ${Object.keys(newShapes).length} route shapes`);
+                        setRouteShapes(prev => ({ ...prev, ...newShapes }));
+                    } catch (e) {
+                        console.error('❌ [Demo Mode] Failed to load shapes in bulk:', e);
+                    }
+                }
+            } catch (e) {
+                console.error('❌ [Demo Mode] Failed to load routes:', e);
+            }
+        };
+
+        loadAllRoutes();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [routes.length]); // Only depend on routes.length to avoid infinite loops
 
     const handleRouteHighlight = useCallback(async (routeId: number, isPersistent: boolean) => {
         if (!isPersistent) {
@@ -82,6 +146,15 @@ const Stops: React.FC = () => {
     }, [routeShapes, setRouteShapes]);
 
     const handleSelectStop = useCallback(async (stop: Stop) => {
+        if (selectedStop?.id === stop.id) {
+            if (isDirty && !window.confirm('Unsaved changes will be lost. Unselect?')) return;
+            setSelectedStop(null);
+            setFormData({ id: 0, name: '', lat: 0, lon: 0 });
+            setOriginalData(null);
+            setFocusType(null);
+            setSelectedStopRouteIds([]);
+            return;
+        }
         setQuickMode(null);
         setSelectedStop(stop);
         setFormData({ ...stop });
@@ -92,7 +165,7 @@ const Stops: React.FC = () => {
         const routesForStop = stopRouteMap[stop.id] || [];
         setSelectedStopRouteIds(routesForStop.map(r => r.id));
         await Promise.all(routesForStop.map(r => handleRouteHighlight(r.id, true)));
-    }, [stopRouteMap, setQuickMode, handleRouteHighlight]);
+    }, [stopRouteMap, setQuickMode, handleRouteHighlight, selectedStop, isDirty]);
 
     useEffect(() => {
         if (selectedEntityId && stops.length > 0) {
@@ -148,9 +221,8 @@ const Stops: React.FC = () => {
 
     useEffect(() => {
         if (isDirty) setStatus({ message: 'Unsaved edits. Save to sync.', type: 'info', isDirty: true });
-        else if (selectedStop) setStatus({ message: 'Saved successfully.', type: 'info', isDirty: false });
         else setStatus(null);
-    }, [isDirty, selectedStop, setStatus]);
+    }, [isDirty, setStatus]);
 
     const handleSave = useCallback(async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -170,7 +242,10 @@ const Stops: React.FC = () => {
             setStatus({ message: 'Saved successfully.', type: 'success' });
             setTimeout(() => setStatus(null), 3000);
             fetchInitialData();
-        } catch (err) { setStatus({ message: 'Save failed.', type: 'error' }); }
+        } catch (err) { 
+            setStatus({ message: 'Save failed.', type: 'error' }); 
+            setTimeout(() => setStatus(null), 3000);
+        }
     }, [formData, selectedStop, fetchInitialData, setStatus]);
 
     const toggleStopInRoute = async (stop: Stop, routeId: number) => {
@@ -208,12 +283,19 @@ const Stops: React.FC = () => {
 
     useEffect(() => {
         const hoveredStop = stops.find(s => s.id === hoveredEntityId);
+        const allRouteIds = [...new Set([...selectedStopRouteIds, ...persistentRouteIds])];
+        const routeLayers = allRouteIds.map(rid => ({
+            id: rid, color: routes.find(r => r.id === rid)?.color || '007AFF',
+            positions: routeShapes[rid] || [], isFocused: true
+        })).filter(r => r.positions.length > 0);
+
+        if (import.meta.env.VITE_DEMO_MODE === 'true' && routeLayers.length > 0) {
+            console.log(`🗺️ [Stops] Setting ${routeLayers.length} routes on map`);
+        }
+
         setMapLayers(prev => ({
             ...prev,
-            routes: [...new Set([...selectedStopRouteIds, ...persistentRouteIds])].map(rid => ({
-                id: rid, color: routes.find(r => r.id === rid)?.color || '007AFF',
-                positions: routeShapes[rid] || [], isFocused: true
-            })),
+            routes: routeLayers,
             stops: stops.map(s => ({
                 ...s, isSmall: true, hidePopup: false,
                 isCustom: s.id === hoveredEntityId,
@@ -258,6 +340,9 @@ const Stops: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
+            <div className="absolute inset-0 z-0 pointer-events-auto">
+                <UnifiedMap />
+            </div>
             <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white dark:bg-zinc-950 relative z-20 overflow-hidden text-black dark:text-white border-r border-zinc-200 dark:border-zinc-800 pointer-events-auto shadow-none" style={{ width: 320 }}>
                 <SidebarHeader title="Stops" Icon={MapPin} onToggleSidebar={() => setSidebarOpen(false)} actions={<button onClick={handleAddNew} className="p-1.5 bg-blue-50 dark:bg-zinc-900 text-blue-600 rounded-sm hover:bg-blue-100 dark:hover:bg-zinc-800 transition-colors" title="Add Stop"><Plus size={18} /></button>} />
                 <div className="p-4 px-6 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0">

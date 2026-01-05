@@ -1,12 +1,12 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-    LayoutDashboard, 
-    Globe, 
-    MapPin, 
-    Route as RouteIcon, 
-    Database, 
-    Settings, 
+import {
+    LayoutDashboard,
+    Globe,
+    MapPin,
+    Route as RouteIcon,
+    Database,
+    Settings,
     Box
 } from 'lucide-react';
 
@@ -52,14 +52,14 @@ const Navigation: React.FC = () => {
                             to={item.path!}
                             className={({ isActive }) => `
                                 flex items-center h-10 rounded-sm transition-colors duration-75 group relative px-[10px] outline-none border
-                                ${isActive 
-                                    ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-blue-600' 
+                                ${isActive
+                                    ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-blue-600'
                                     : 'border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100'
                                 }
                             `}
                         >
                             <Icon size={18} strokeWidth={2} className={`${isActive ? 'text-blue-600' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-500 dark:group-hover:text-zinc-300'} shrink-0`} />
-                            
+
                             <span className="ml-3 text-xs font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                                 {item.label}
                             </span>

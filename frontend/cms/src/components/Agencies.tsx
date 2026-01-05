@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import api from '../api';
 import { SidebarHeader } from './SidebarHeader';
 import { Agency, Route, Stop, TripStop, Trip, ShapePoint } from '../types';
+import UnifiedMap from './UnifiedMap';
 
 const Agencies: React.FC = () => {
     const { setMapLayers, setStatus, sidebarOpen, setSidebarOpen, quickMode } = useWorkspace();
@@ -54,6 +55,7 @@ const Agencies: React.FC = () => {
             setStatus(null);
         } catch (e: any) {
             setStatus({ message: 'Sync failed', type: 'error' });
+            setTimeout(() => setStatus(null), 3000);
         }
     }, [setStatus]);
 
@@ -146,10 +148,19 @@ const Agencies: React.FC = () => {
             fetchInitialData();
         } catch (error: any) {
             setStatus({ message: 'Save failed', type: 'error' });
+            setTimeout(() => setStatus(null), 3000);
         }
     };
 
     const handleSelectAgency = (agency: Agency) => {
+        if (selectedAgency?.id === agency.id) {
+            if (isDirty && !window.confirm('Unsaved changes will be lost. Unselect?')) return;
+            setSelectedAgency(null);
+            setFormData({ name: '', url: '', timezone: '' });
+            initialFormData.current = '';
+            setIsDirty(false);
+            return;
+        }
         setSelectedAgency(agency);
         const data = { name: agency.name, url: agency.url, timezone: agency.timezone };
         setFormData(data);
@@ -175,6 +186,9 @@ const Agencies: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
+            <div className="absolute inset-0 z-0 pointer-events-auto">
+                <UnifiedMap />
+            </div>
             <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white dark:bg-zinc-950 relative z-20 overflow-hidden text-black dark:text-white border-r border-zinc-200 dark:border-zinc-800 pointer-events-auto shadow-none" style={{ width: 320 }}>
                 <SidebarHeader
                     title="Operators"

@@ -6,6 +6,7 @@ import api from '../api';
 import { SidebarHeader } from './SidebarHeader';
 import { RouteSign } from './RouteSign';
 import { Route, Agency, Trip, ShapePoint, TripStop } from '../types';
+import UnifiedMap from './UnifiedMap';
 
 const RouteStudio: React.FC = () => {
     const { settings, setMapLayers, setStatus, quickMode, setQuickMode, sidebarOpen, setSidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert } = useWorkspace();
@@ -89,6 +90,17 @@ const RouteStudio: React.FC = () => {
     };
 
     const handleSelectRoute = async (route: Route) => {
+        if (selectedRoute?.id === route.id) {
+            if (isDirty) await saveChanges(true);
+            setSelectedRoute(null);
+            setOriginalRoute(null);
+            setShapePoints([]);
+            setOriginalShape([]);
+            setAssignedStops([]);
+            setOriginalAssignedStops([]);
+            setFocusType(null);
+            return;
+        }
         setQuickMode(null);
         setFocusType('select');
         if (isDirty) await saveChanges(true);
@@ -114,12 +126,14 @@ const RouteStudio: React.FC = () => {
             }
         } catch (e) {
             setStatus({ message: 'Failed to load route data', type: 'error' });
+            setTimeout(() => setStatus(null), 3000);
         }
     };
 
     const handleAddNew = useCallback(() => {
         if (agencies.length === 0) {
             setStatus({ message: 'Create an operator first.', type: 'error' });
+            setTimeout(() => setStatus(null), 3000);
             return;
         }
         setFocusType('select');
@@ -164,6 +178,66 @@ const RouteStudio: React.FC = () => {
         }
     }, [selectedEntityId, routes, setSelectedEntityId]);
 
+    // Auto-load all routes in demo mode
+    useEffect(() => {
+        if (import.meta.env.VITE_DEMO_MODE !== 'true' || routes.length === 0) return;
+
+        const loadAllRoutes = async () => {
+            console.log('🚀 [Demo Mode] Loading all routes for Routes page...');
+            try {
+                const tripsRes = await api.get('/trips');
+                const trips = tripsRes.data || [];
+                console.log(`📦 [Demo Mode] Found ${trips.length} trips`);
+                
+                // Get unique route IDs that have trips with shapes
+                const routeIdsWithShapes = new Set<number>();
+                const shapeIdToRouteId = new Map<string, number>();
+                
+                trips.forEach((trip: Trip) => {
+                    if (trip.route_id && trip.shape_id) {
+                        routeIdsWithShapes.add(trip.route_id);
+                        shapeIdToRouteId.set(trip.shape_id, trip.route_id);
+                    }
+                });
+
+                console.log(`🗺️ [Demo Mode] Found ${routeIdsWithShapes.size} routes with shapes`);
+
+                // Set all routes as persistent first (so they show up even while loading)
+                setPersistentRouteIds(Array.from(routeIdsWithShapes));
+
+                // Use bulk API to load all shapes at once (more efficient)
+                const shapeIds = Array.from(shapeIdToRouteId.keys());
+                if (shapeIds.length > 0) {
+                    try {
+                        console.log(`📥 [Demo Mode] Loading ${shapeIds.length} shapes in bulk...`);
+                        const bulkRes = await api.post('/shapes/bulk', shapeIds);
+                        const bulkData: Record<string, ShapePoint[]> = bulkRes.data || {};
+                        
+                        // Map shapes to routes
+                        const newShapes: Record<number, [number, number][]> = {};
+                        Object.keys(bulkData).forEach(shapeId => {
+                            const routeId = shapeIdToRouteId.get(shapeId);
+                            if (routeId) {
+                                const points = bulkData[shapeId].sort((a, b) => a.sequence - b.sequence);
+                                newShapes[routeId] = points.map(p => [p.lat, p.lon] as [number, number]);
+                            }
+                        });
+                        
+                        console.log(`✅ [Demo Mode] Loaded ${Object.keys(newShapes).length} route shapes`);
+                        setPersistentRouteShapes(prev => ({ ...prev, ...newShapes }));
+                    } catch (e) {
+                        console.error('❌ [Demo Mode] Failed to load shapes in bulk:', e);
+                    }
+                }
+            } catch (e) {
+                console.error('❌ [Demo Mode] Failed to load routes:', e);
+            }
+        };
+
+        loadAllRoutes();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [routes.length]); // Only depend on routes.length to avoid infinite loops
+
     const saveChanges = useCallback(async (isAuto = false) => {
         if (!selectedRoute) return;
         if (!isAuto) setStatus({ message: 'Saving Changes...', type: 'loading' });
@@ -195,7 +269,10 @@ const RouteStudio: React.FC = () => {
             }
             if (!isAuto) { setStatus({ message: 'Changes committed.', type: 'success' }); setTimeout(() => setStatus(null), 2000); }
             await refreshAllData();
-        } catch (e) { setStatus({ message: 'Save failed', type: 'error' }); }
+        } catch (e) { 
+            setStatus({ message: 'Save failed', type: 'error' }); 
+            setTimeout(() => setStatus(null), 3000);
+        }
     }, [selectedRoute, shapePoints, assignedStops, refreshAllData, setStatus]);
 
     useEffect(() => {
@@ -213,8 +290,8 @@ const RouteStudio: React.FC = () => {
             return;
         }
 
-        // Use cache if available
-        if (persistentRouteShapes[routeId]) {
+        // Use cache if available (this should always be available in demo mode after auto-load)
+        if (persistentRouteShapes[routeId] && persistentRouteShapes[routeId].length > 0) {
             setMapLayers(prev => ({
                 ...prev,
                 previewRoutes: [{
@@ -224,6 +301,13 @@ const RouteStudio: React.FC = () => {
                     isFocused: true
                 }]
             }));
+            return;
+        }
+
+        // Only try to fetch if not in demo mode (in demo mode, shapes should already be loaded)
+        if (import.meta.env.VITE_DEMO_MODE === 'true') {
+            // In demo mode, if shape is not in cache, just don't show preview
+            setMapLayers(prev => ({ ...prev, previewRoutes: [] }));
             return;
         }
 
@@ -248,7 +332,8 @@ const RouteStudio: React.FC = () => {
                 }));
             }
         } catch (e) {
-            console.error('Hover preview error', e);
+            // Silently fail - don't show preview if shape can't be loaded
+            console.warn('Hover preview: shape not available for route', routeId);
         }
     }, [routes, setHoveredEntityId, setMapLayers, persistentRouteShapes]);
 
@@ -277,6 +362,7 @@ const RouteStudio: React.FC = () => {
             setTimeout(() => setStatus(null), 2000);
         } else {
             setStatus({ message: 'Snapping failed.', type: 'error' });
+            setTimeout(() => setStatus(null), 3000);
         }
     };
 
@@ -319,6 +405,10 @@ const RouteStudio: React.FC = () => {
                 id, color: routes.find(r => r.id === id)?.color || '007AFF',
                 positions: persistentRouteShapes[id] || [], isFocused: false
             })).filter(pr => pr.positions.length > 0);
+
+        if (import.meta.env.VITE_DEMO_MODE === 'true' && pRoutes.length > 0) {
+            console.log(`🗺️ [Routes] Setting ${pRoutes.length} persistent routes on map`);
+        }
 
         setMapLayers(prev => ({
             ...prev,
@@ -375,6 +465,9 @@ const RouteStudio: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
+            <div className="absolute inset-0 z-0 pointer-events-auto">
+                <UnifiedMap />
+            </div>
             <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white dark:bg-zinc-950 relative z-20 overflow-hidden text-black dark:text-white border-r border-zinc-200 dark:border-zinc-800 pointer-events-auto shadow-none" style={{ width: 320 }}>
                 <SidebarHeader title="Routes" Icon={Bus} onToggleSidebar={() => setSidebarOpen(false)} actions={<button onClick={handleAddNew} disabled={agencies.length === 0} className={`p-1.5 rounded-sm transition-colors ${agencies.length === 0 ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-blue-50 dark:bg-zinc-900 text-blue-600 hover:bg-blue-100 dark:hover:bg-zinc-800'}`}>{agencies.length === 0 ? <AlertCircle size={18} /> : <Plus size={18} />}</button>} />
                 <div className="p-4 px-6 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0">
@@ -385,7 +478,7 @@ const RouteStudio: React.FC = () => {
                         <div key={r.id} onMouseEnter={() => handleRouteHoverEffect(r.id)} onMouseLeave={() => handleRouteHoverEffect(null)} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer transition-colors duration-75 flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-2 border-blue-600' : ''}`}>
                             <RouteSign key={settings['global_sign_style']} route={r} size="md" />
                             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-tighter">Line #{r.id}</div></div>
-                            <div className={`flex items-center gap-1 transition-all ${persistentRouteIds.includes(r.id) || selectedRoute?.id === r.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                            <div className={`flex items-center gap-1 transition-all ${persistentRouteIds.includes(r.id) || selectedRoute?.id === r.id || import.meta.env.VITE_DEMO_MODE === 'true' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                                 <button onClick={(e) => { e.stopPropagation(); togglePersistentRoute(r.id); }} className={`p-1.5 rounded-sm transition-all ${persistentRouteIds.includes(r.id) || selectedRoute?.id === r.id ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' : 'text-zinc-300 hover:text-zinc-600'}`}>
                                     {persistentRouteIds.includes(r.id) || selectedRoute?.id === r.id ? <Eye size={14} /> : <EyeOff size={14} />}
                                 </button>

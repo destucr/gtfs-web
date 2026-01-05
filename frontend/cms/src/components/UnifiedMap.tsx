@@ -71,10 +71,11 @@ const UnifiedMap: React.FC = () => {
         />
 
         {/* Halo Layer */}
-        {mapLayers.previewRoutes?.map(route => (
+        {mapLayers.previewRoutes?.map(route => route.positions.length > 0 && (
           <Polyline
-            key={`halo-${route.id}`}
+            key={`halo-${route.id}-${route.positions.length}`}
             positions={route.positions}
+            smoothFactor={0}
             pathOptions={{
               color: 'white',
               weight: 8,
@@ -85,31 +86,41 @@ const UnifiedMap: React.FC = () => {
         ))}
 
         {/* Preview Layer */}
-        {mapLayers.previewRoutes?.map(route => (
-          <Polyline
-            key={`preview-${route.id}`}
-            positions={route.positions}
-            pathOptions={{
-              color: `#${route.color.replace('#', '')}`,
-              weight: 4,
-              opacity: 0.8,
-              lineCap: 'round'
-            }}
-          />
-        ))}
+        {mapLayers.previewRoutes?.map(route => {
+          if (!route.positions || route.positions.length === 0) return null;
+          const color = route.color ? (route.color.startsWith('#') ? route.color : `#${route.color}`) : '#007AFF';
+          return (
+            <Polyline
+              key={`preview-${route.id}-${route.positions.length}`}
+              positions={route.positions}
+              smoothFactor={0}
+              pathOptions={{
+                color: color,
+                weight: 4,
+                opacity: 0.8,
+                lineCap: 'round'
+              }}
+            />
+          );
+        })}
 
         {/* Registry Routes */}
-        {mapLayers.routes.map(route => (
-          <Polyline
-            key={route.id}
-            positions={route.positions}
-            pathOptions={{
-              color: `#${route.color.replace('#', '')}`,
-              weight: 4,
-              opacity: route.isFocused ? 1 : 0.3
-            }}
-          />
-        ))}
+        {mapLayers.routes.map(route => {
+          if (!route.positions || route.positions.length === 0) return null;
+          const color = route.color ? (route.color.startsWith('#') ? route.color : `#${route.color}`) : '#007AFF';
+          return (
+            <Polyline
+              key={`route-${route.id}-${route.positions.length}`}
+              positions={route.positions}
+              smoothFactor={0}
+              pathOptions={{
+                color: color,
+                weight: 4,
+                opacity: route.isFocused ? 1 : 0.3
+              }}
+            />
+          );
+        })}
 
         {/* Registry Stops */}
         {mapLayers.stops
