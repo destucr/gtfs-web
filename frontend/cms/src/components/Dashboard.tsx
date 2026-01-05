@@ -152,11 +152,11 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     const StatCard = ({ label, val, icon: Icon, sub, onClick }: any) => (
         <button 
             onClick={onClick}
-            className="bg-white border border-zinc-200 rounded-sm p-3 flex flex-col justify-between h-20 hover:border-zinc-400 transition-all text-left group active:bg-zinc-50"
+            className="bg-white border border-zinc-200 rounded-sm p-3 flex flex-col justify-between h-20 hover:border-zinc-400 transition-colors duration-75 text-left group active:bg-zinc-50"
         >
             <div className="flex items-center justify-between w-full mb-2">
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-zinc-900 transition-colors">{label}</span>
-                <Icon size={14} className="text-zinc-400 group-hover:text-zinc-600 transition-colors" />
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-zinc-900 transition-colors duration-75">{label}</span>
+                <Icon size={14} className="text-zinc-400 group-hover:text-zinc-600 transition-colors duration-75" />
             </div>
             <div className="flex items-end justify-between w-full">
                 <span className="text-2xl font-bold text-zinc-900 tracking-tight leading-none">{loading ? '...' : val}</span>
@@ -191,7 +191,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                         <div 
                             key={item.label} 
                             onClick={() => setActiveType(item.type as any)} 
-                            className={`flex items-center justify-between px-3 py-1.5 rounded-sm transition-all cursor-pointer group ${activeType === item.type ? 'bg-zinc-100 text-zinc-900 font-bold' : 'hover:bg-zinc-50 text-zinc-500 hover:text-zinc-900'}`}
+                            className={`flex items-center justify-between px-3 py-1.5 rounded-sm transition-colors duration-75 cursor-pointer group ${activeType === item.type ? 'bg-zinc-100 text-zinc-900 font-bold' : 'hover:bg-zinc-50 text-zinc-500 hover:text-zinc-900'}`}
                         >
                             <div className="flex items-center gap-2.5">
                                 <item.icon size={14} className={activeType === item.type ? 'text-zinc-900' : 'text-zinc-400 group-hover:text-zinc-600'} />
@@ -227,7 +227,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                             <div className="h-4 w-px bg-zinc-200" />
                             <div className="relative">
                                 <Filter size={10} className="absolute left-2.5 top-2 text-zinc-400" />
-                                <input className="bg-zinc-50 border border-zinc-200 rounded-sm pl-7 pr-3 py-1 text-[10px] font-medium focus:ring-2 focus:ring-zinc-200 focus:border-zinc-300 outline-none w-64 transition-all placeholder:text-zinc-400 text-zinc-900" placeholder={`Search ${activeType}...`} value={filterQuery} onChange={e => setFilterQuery(e.target.value)} />
+                                <input className="bg-zinc-50 border border-zinc-200 rounded-sm pl-7 pr-3 py-1 text-[10px] font-medium focus:ring-2 focus:ring-zinc-200 focus:border-zinc-300 outline-none w-64 transition-all duration-75 placeholder:text-zinc-400 text-zinc-900" placeholder={`Search ${activeType}...`} value={filterQuery} onChange={e => setFilterQuery(e.target.value)} />
                             </div>
                         </div>
                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">{processedData.length} RESULTS</span>
@@ -253,7 +253,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                                                     <ArrowUpDown size={10} className={`opacity-0 group-hover:opacity-100 ${sortConfig.key === h.key ? 'opacity-100 text-zinc-900' : ''}`} />
                                                 </div>
                                                 <div 
-                                                    className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors z-20 ${isResizing === h.key ? 'bg-blue-500' : 'hover:bg-blue-400'}`}
+                                                    className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors duration-75 z-20 ${isResizing === h.key ? 'bg-blue-500' : 'hover:bg-blue-400'}`}
                                                     onMouseDown={(e) => startResize(e, h.key, width)}
                                                 />
                                             </th>
@@ -263,7 +263,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                             </thead>
                             <tbody className="divide-y divide-zinc-100">
                                 {processedData.map(item => (
-                                    <tr key={item.id} onClick={() => handleRowClick(item)} className="hover:bg-zinc-50 transition-colors cursor-pointer group">
+                                    <tr key={item.id} onClick={() => handleRowClick(item)} className="hover:bg-zinc-50 transition-colors duration-75 cursor-pointer group">
                                         <td className="px-4 py-2 font-mono text-zinc-400 border-r border-zinc-100 group-hover:text-zinc-900 truncate">#{item.id}</td>
                                         {activeType === 'routes' ? (
                                             <>
@@ -303,7 +303,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
 
                 {/* Vertical Resizer */}
                 <div 
-                    className="h-1 bg-zinc-200 hover:bg-blue-400 cursor-row-resize transition-colors z-30 flex items-center justify-center group"
+                    className="h-1 bg-zinc-200 hover:bg-blue-400 cursor-row-resize transition-colors duration-75 z-30 flex items-center justify-center group"
                     onMouseDown={startConsoleResize}
                 >
                     <div className="w-8 h-px bg-zinc-300 rounded-full group-hover:bg-blue-500" />
@@ -318,9 +318,9 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                         <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2"><Clock size={12}/> Event Stream</h3>
                         <div className="flex items-center gap-2 text-[9px] font-bold text-emerald-500 uppercase tracking-wider"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Online</div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-1 font-mono text-[10px] space-y-0.5 custom-scrollbar bg-white select-text">
+                    <div className="flex-1 overflow-y-auto p-1 font-mono text-[10px] space-y-0 custom-scrollbar bg-white select-text">
                         {logs.map((log, i) => (
-                            <div key={i} className="flex gap-4 items-start bg-transparent border-b border-zinc-50 p-1.5 hover:bg-zinc-50 transition-colors">
+                            <div key={i} className="flex gap-4 items-start bg-transparent border-b border-zinc-50 p-1.5 hover:bg-zinc-50 transition-colors duration-75">
                                 <span className="text-zinc-400 w-20 shrink-0">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                                 <span className="font-bold text-blue-600 w-24 shrink-0 truncate uppercase">{log.action}</span>
                                 <span className="text-zinc-600 leading-relaxed">{log.details}</span>
