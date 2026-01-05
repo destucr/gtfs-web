@@ -29,8 +29,8 @@ function runScript(scriptPath) {
 }
 
 function main() {
-    const PORTO_WEB_PATH = process.env.PORTO_WEB_PATH || '../porto-web';
-    log(`🚀 Building both GTFS CMS and Web Viewer for ${PORTO_WEB_PATH}...\n`);
+    const PORTO_WEB_ROOT = process.env.PORTO_WEB_ROOT || '../porto-web';
+    log(`🚀 Building both GTFS CMS and Web Viewer for ${PORTO_WEB_ROOT}...\n`);
 
     // Build CMS
     log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -47,9 +47,10 @@ function main() {
     runScript(path.join(__dirname, 'build-web-for-porto.js'));
 
     log('\n🎉 All builds completed successfully!');
-    log(`📁 Both applications are ready in ${PORTO_WEB_PATH}:`);
-    log(`   - ${path.join(PORTO_WEB_PATH, 'gtfs-cms')}`);
-    log(`   - ${path.join(PORTO_WEB_PATH, 'gtfs-web')}`);
+    log(`📁 Both applications are ready in ${PORTO_WEB_ROOT}/public:`);
+    log(`   - ${path.join(PORTO_WEB_ROOT, 'public', 'gtfs-cms')}`);
+    log(`   - ${path.join(PORTO_WEB_ROOT, 'public', 'gtfs-web')}`);
+    log(`\nNote: You can override the portfolio path using the PORTO_WEB_ROOT environment variable.`);
 }
 
 // Run the script

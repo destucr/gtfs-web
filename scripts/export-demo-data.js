@@ -95,8 +95,19 @@ async function exportData() {
     }
 
     for (const file of OUTPUT_FILES) {
-        fs.writeFileSync(file, JSON.stringify(data, null, 2));
-        console.log(`✅ Success! Demo data saved to ${file}`);
+        try {
+            fs.writeFileSync(file, JSON.stringify(data, null, 2));
+            console.log(`✅ Success! Demo data saved to ${file}`);
+        } catch (error) {
+            console.warn(`⚠️ Failed to write to ${file}, attempting to ensure directory exists...`);
+            try {
+                fs.mkdirSync(path.dirname(file), { recursive: true });
+                fs.writeFileSync(file, JSON.stringify(data, null, 2));
+                console.log(`✅ Success! Demo data saved to ${file} after directory creation.`);
+            } catch (retryError) {
+                console.error(`❌ Detailed error: Failed to write demo data to ${file}. Operation: writeFileSync. Error: ${retryError.message}`);
+            }
+        }
     }
     console.log(`📊 Total size: ${Math.round(JSON.stringify(data).length / 1024)} KB`);
 }

@@ -16,8 +16,8 @@ const path = require('path');
 const GTFS_WEB_ROOT = path.join(__dirname, '..');
 const WEB_DIR = path.join(GTFS_WEB_ROOT, 'frontend', 'web');
 const WEB_DIST = path.join(WEB_DIR, 'dist');
-const PORTO_WEB_ROOT = process.env.PORTO_WEB_PATH || '../porto-web';
-const PORTO_WEB_DIR = path.join(PORTO_WEB_ROOT, 'gtfs-web');
+const PORTO_WEB_ROOT = process.env.PORTO_WEB_ROOT || '../porto-web';
+const PORTO_WEB_DIR = path.join(PORTO_WEB_ROOT, 'public', 'gtfs-web');
 
 // Cloudflare Pages redirects file content
 const REDIRECTS_CONTENT = `/* /index.html 200
@@ -105,6 +105,7 @@ function main() {
     log('\n💡 Next steps:');
     log(`   1. cd ${PORTO_WEB_ROOT}`);
     log('   2. Commit and push the changes');
+    log('   Note: You can override the portfolio path using the PORTO_WEB_ROOT environment variable.');
     log('   3. Cloudflare Pages will automatically deploy');
 }
 
