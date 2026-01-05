@@ -29,7 +29,8 @@ function runScript(scriptPath) {
 }
 
 function main() {
-    log('🚀 Building both GTFS CMS and Web Viewer for porto-web...\n');
+    const PORTO_WEB_PATH = process.env.PORTO_WEB_PATH || '/Users/destucr/Desktop/porto-web';
+    log(`🚀 Building both GTFS CMS and Web Viewer for ${PORTO_WEB_PATH}...\n`);
 
     // Build CMS
     log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -46,9 +47,9 @@ function main() {
     runScript(path.join(__dirname, 'build-web-for-porto.js'));
 
     log('\n🎉 All builds completed successfully!');
-    log('📁 Both applications are ready in porto-web:');
-    log('   - /Users/destucr/Desktop/porto-web/gtfs-cms');
-    log('   - /Users/destucr/Desktop/porto-web/gtfs-web');
+    log(`📁 Both applications are ready in ${PORTO_WEB_PATH}:`);
+    log(`   - ${path.join(PORTO_WEB_PATH, 'gtfs-cms')}`);
+    log(`   - ${path.join(PORTO_WEB_PATH, 'gtfs-web')}`);
 }
 
 // Run the script

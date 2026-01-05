@@ -16,7 +16,7 @@ const path = require('path');
 const GTFS_WEB_ROOT = path.join(__dirname, '..');
 const WEB_DIR = path.join(GTFS_WEB_ROOT, 'frontend', 'web');
 const WEB_DIST = path.join(WEB_DIR, 'dist');
-const PORTO_WEB_ROOT = '/Users/destucr/Desktop/porto-web';
+const PORTO_WEB_ROOT = process.env.PORTO_WEB_PATH || '/Users/destucr/Desktop/porto-web';
 const PORTO_WEB_DIR = path.join(PORTO_WEB_ROOT, 'gtfs-web');
 
 // Cloudflare Pages redirects file content
@@ -84,13 +84,13 @@ function main() {
 
     // Step 3: Clean destination directory (optional - comment out if you want to keep old files)
     if (fs.existsSync(PORTO_WEB_DIR)) {
-        log('🧹 Cleaning existing porto-web/gtfs-web directory...');
+        log(`\n🧹 Cleaning existing ${PORTO_WEB_DIR} directory...`);
         fs.rmSync(PORTO_WEB_DIR, { recursive: true, force: true });
         log('✅ Cleaned\n');
     }
 
     // Step 4: Copy dist to porto-web/gtfs-web
-    log('📋 Step 2: Copying build output to porto-web/gtfs-web...');
+    log(`📋 Step 2: Copying build output to ${PORTO_WEB_DIR}...`);
     copyDir(WEB_DIST, PORTO_WEB_DIR);
     log('✅ Files copied!\n');
 
@@ -103,7 +103,7 @@ function main() {
     log('🎉 Success! GTFS Web Viewer is ready for Cloudflare Pages deployment.');
     log(`📁 Output location: ${PORTO_WEB_DIR}`);
     log('\n💡 Next steps:');
-    log('   1. cd /Users/destucr/Desktop/porto-web');
+    log(`   1. cd ${PORTO_WEB_ROOT}`);
     log('   2. Commit and push the changes');
     log('   3. Cloudflare Pages will automatically deploy');
 }
