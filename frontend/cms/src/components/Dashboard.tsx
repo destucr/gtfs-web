@@ -27,7 +27,13 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     
     // Column Resizing State
     const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+    const [isResizing, setIsResizing] = useState<string | null>(null);
+    const [resizingX, setResizingX] = useState<number | null>(null);
     const resizingRef = useRef<{ key: string, startX: number, startWidth: number } | null>(null);
+
+    // Console Resizing State
+    const [consoleHeight, setConsoleHeight] = useState(192);
+    const isResizingConsole = useRef(false);
 
     const fetchStats = useCallback(async () => {
         setLoading(true);
@@ -52,22 +58,53 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     const startResize = (e: React.MouseEvent, key: string, currentWidth: number) => {
         e.preventDefault();
         resizingRef.current = { key, startX: e.clientX, startWidth: currentWidth };
+        setIsResizing(key);
+        setResizingX(e.clientX);
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
     };
 
-    const handleMouseMove = (e: MouseEvent) => {
-        if (!resizingRef.current) return;
-        const { key, startX, startWidth } = resizingRef.current;
-        const diff = e.clientX - startX;
-        setColumnWidths(prev => ({ ...prev, [key]: Math.max(50, startWidth + diff) }));
+    const startConsoleResize = (e: React.MouseEvent) => {
+        e.preventDefault();
+        isResizingConsole.current = true;
+        document.body.style.cursor = 'row-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', handleConsoleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
     };
 
-    const handleMouseUp = () => {
+    const handleMouseMove = useCallback((e: MouseEvent) => {
+        if (!resizingRef.current) return;
+        requestAnimationFrame(() => {
+            if (!resizingRef.current) return;
+            const { key, startX, startWidth } = resizingRef.current;
+            const diff = e.clientX - startX;
+            setColumnWidths(prev => ({ ...prev, [key]: Math.max(50, startWidth + diff) }));
+            setResizingX(e.clientX);
+        });
+    }, []);
+
+    const handleConsoleMouseMove = useCallback((e: MouseEvent) => {
+        if (!isResizingConsole.current) return;
+        requestAnimationFrame(() => {
+            const newHeight = window.innerHeight - e.clientY;
+            setConsoleHeight(Math.max(100, Math.min(600, newHeight)));
+        });
+    }, []);
+
+    const handleMouseUp = useCallback(() => {
         resizingRef.current = null;
+        isResizingConsole.current = false;
+        setIsResizing(null);
+        setResizingX(null);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
         document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mousemove', handleConsoleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
-    };
+    }, [handleMouseMove, handleConsoleMouseMove]);
 
     // Data Processing
     const processedData = useMemo(() => {
@@ -129,7 +166,15 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     );
 
     return (
-        <div className="flex h-full bg-white text-zinc-900 overflow-hidden font-bold select-none animate-in fade-in duration-500">
+        <div className="flex h-full bg-white text-zinc-900 overflow-hidden font-bold select-none animate-in fade-in duration-500 relative">
+            {/* Ghost Resize Line */}
+            {isResizing && resizingX !== null && (
+                <div 
+                    className="absolute top-0 bottom-0 w-px bg-blue-500 z-[100] pointer-events-none shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                    style={{ left: resizingX }}
+                />
+            )}
+
             {/* Explorer Sidebar */}
             <div className="w-64 border-r border-zinc-200 flex flex-col bg-white shrink-0">
                 <div className="h-10 px-3 border-b border-zinc-200 flex items-center justify-between text-zinc-500 bg-zinc-50">
@@ -175,7 +220,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 </div>
 
                 {/* Table View */}
-                <div className="flex-1 flex flex-col border-b border-zinc-200 min-h-0 bg-white">
+                <div className="flex-1 flex flex-col border-b border-zinc-200 min-h-0 bg-white relative">
                     <div className="px-4 py-2 bg-white border-b border-zinc-200 flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2 text-zinc-500 font-bold uppercase text-[10px] tracking-wider"><span>Inventory</span> <ChevronRight size={10}/> <span className="text-zinc-900">{activeType}</span></div>
@@ -189,7 +234,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                     </div>
                     
                     <div className="flex-1 overflow-auto custom-scrollbar bg-white relative">
-                        <table className="w-full border-collapse text-left text-[11px] table-fixed">
+                        <table className="w-full border-collapse text-left text-[11px] table-fixed min-w-max">
                             <thead className="sticky top-0 bg-zinc-50 z-10 border-b border-zinc-200 shadow-sm">
                                 <tr>
                                     {headers[activeType].map((h: any) => {
@@ -208,7 +253,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                                                     <ArrowUpDown size={10} className={`opacity-0 group-hover:opacity-100 ${sortConfig.key === h.key ? 'opacity-100 text-zinc-900' : ''}`} />
                                                 </div>
                                                 <div 
-                                                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 z-20"
+                                                    className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors z-20 ${isResizing === h.key ? 'bg-blue-500' : 'hover:bg-blue-400'}`}
                                                     onMouseDown={(e) => startResize(e, h.key, width)}
                                                 />
                                             </th>
@@ -256,21 +301,32 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                     </div>
                 </div>
 
+                {/* Vertical Resizer */}
+                <div 
+                    className="h-1 bg-zinc-200 hover:bg-blue-400 cursor-row-resize transition-colors z-30 flex items-center justify-center group"
+                    onMouseDown={startConsoleResize}
+                >
+                    <div className="w-8 h-0.5 bg-zinc-400 rounded-full group-hover:bg-blue-500" />
+                </div>
+
                 {/* Console Log */}
-                <div className="h-48 flex flex-col bg-zinc-950 text-zinc-400 border-t border-zinc-800 shrink-0">
-                    <div className="px-4 py-2 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between shrink-0">
+                <div 
+                    className="flex flex-col bg-zinc-50 text-zinc-500 shrink-0"
+                    style={{ height: consoleHeight }}
+                >
+                    <div className="px-4 py-2 bg-white border-b border-zinc-200 flex items-center justify-between shrink-0">
                         <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2"><Clock size={12}/> Event Stream</h3>
                         <div className="flex items-center gap-2 text-[9px] font-bold text-emerald-500 uppercase tracking-wider"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Online</div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 font-mono text-[10px] space-y-1 custom-scrollbar bg-black/50 select-text">
+                    <div className="flex-1 overflow-y-auto p-2 font-mono text-[10px] space-y-1 custom-scrollbar bg-zinc-50/50 select-text">
                         {logs.map((log, i) => (
-                            <div key={i} className="flex gap-4 items-start hover:bg-zinc-900/50 p-0.5 rounded transition-colors">
-                                <span className="text-zinc-600 w-20 shrink-0">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                                <span className="font-bold text-blue-400 w-24 shrink-0 truncate uppercase">{log.action}</span>
-                                <span className="text-zinc-400 leading-relaxed">{log.details}</span>
+                            <div key={i} className="flex gap-4 items-start bg-white border border-zinc-100 shadow-sm p-1.5 rounded-sm hover:border-blue-200 transition-colors">
+                                <span className="text-zinc-400 w-20 shrink-0">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                                <span className="font-bold text-blue-600 w-24 shrink-0 truncate uppercase">{log.action}</span>
+                                <span className="text-zinc-600 leading-relaxed">{log.details}</span>
                             </div>
                         ))}
-                        {logs.length === 0 && <div className="text-zinc-600 italic px-2">Waiting for system events...</div>}
+                        {logs.length === 0 && <div className="text-zinc-400 italic px-2 py-4 text-center">Waiting for system events...</div>}
                     </div>
                 </div>
             </div>
