@@ -5,6 +5,7 @@ import { Reorder, motion } from 'framer-motion';
 import api from '../api';
 import axios from 'axios';
 import { SidebarHeader } from './SidebarHeader';
+import { RouteSign } from './RouteSign';
 import { Route, Agency, Trip, ShapePoint, TripStop } from '../types';
 
 const RouteStudio: React.FC = () => {
@@ -470,7 +471,7 @@ const RouteStudio: React.FC = () => {
                 <div className="flex-1 overflow-y-auto divide-y divide-zinc-50">
                     {filteredRoutes.map(r => (
                         <div key={r.id} onMouseEnter={() => handleRouteHoverEffect(r.id)} onMouseLeave={() => handleRouteHoverEffect(null)} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-zinc-50 cursor-pointer transition-colors duration-75 flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-blue-50/50 border-l-2 border-blue-600' : ''}`}>
-                            <div className="w-8 h-8 rounded-sm flex items-center justify-center text-white shrink-0 shadow-none font-bold text-[10px]" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#', '')}` }}>{r.short_name}</div>
+                            <RouteSign route={r} size="md" />
                             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-zinc-900 truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-zinc-400 uppercase tracking-tighter">Line #{r.id}</div></div>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                                 <button
@@ -570,6 +571,15 @@ const RouteStudio: React.FC = () => {
                                         <div className="grid grid-cols-2 gap-3">
                                             <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Short Name</label><input className="hig-input text-[11px] py-1.5 font-bold uppercase" value={selectedRoute.short_name} onChange={e => { setSelectedRoute({ ...selectedRoute, short_name: e.target.value }); }} /></div>
                                             <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Color</label><div className="flex gap-1.5 items-center"><input type="color" className="w-6 h-6 rounded cursor-pointer bg-transparent border-none p-0" value={`#${(selectedRoute.color || '007AFF').replace('#', '')}`} onChange={e => { setSelectedRoute({ ...selectedRoute, color: e.target.value.replace('#', '') }); }} /><input className="hig-input text-[10px] font-mono p-1 h-6 uppercase" value={selectedRoute.color} onChange={e => { setSelectedRoute({ ...selectedRoute, color: e.target.value.replace('#', '') }); }} /></div></div>
+                                        </div>
+                                        <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Sign Style</label>
+                                            <select className="hig-input text-[11px] py-1.5 font-bold" value={selectedRoute.route_desc || 'standard'} onChange={e => { setSelectedRoute({ ...selectedRoute, route_desc: e.target.value }); }}>
+                                                <option value="standard">Standard (Square)</option>
+                                                <option value="singapore">Singapore (LTA)</option>
+                                                <option value="london">London (TfL)</option>
+                                                <option value="transjakarta">Transjakarta (Blue)</option>
+                                                <option value="paris">Paris (Circle)</option>
+                                            </select>
                                         </div>
                                         <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Public Name</label><input className="hig-input text-[11px] py-1.5 font-bold" value={selectedRoute.long_name} onChange={e => { setSelectedRoute({ ...selectedRoute, long_name: e.target.value }); }} /></div>
                                         {selectedRoute.id !== 0 && (<div className="pt-4 mt-4 border-t border-zinc-100"><button type="button" onClick={() => { if (window.confirm('Delete record?')) api.delete(`/routes/${selectedRoute.id}`).then(() => { refreshData(); setSelectedRoute(null); setStatus({ message: 'Route deleted.', type: 'success' }); }).catch(err => setStatus({ message: 'Delete failed: ' + (err.response?.data?.error || err.message), type: 'error' })); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}
