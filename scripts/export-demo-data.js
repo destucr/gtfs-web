@@ -1,7 +1,20 @@
+/**
+ * Deep Demo Data Export Script
+ * 
+ * This script fetches a complete snapshot of data from the GTFS backend
+ * and saves it as demo-data.json for use in the static demo/portfolio builds.
+ * 
+ * Usage:
+ *   node scripts/export-demo-data.js
+ * 
+ * Environment Variables:
+ *   BACKEND_URL: Override the source API URL (default: http://localhost:8080/api)
+ */
+
 const fs = require('fs');
 const path = require('path');
 
-const BACKEND_URL = 'http://localhost:8080/api';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080/api';
 const OUTPUT_FILES = [
     path.join(__dirname, '..', 'frontend', 'cms', 'src', 'demo-data.json'),
     path.join(__dirname, '..', 'frontend', 'web', 'src', 'demo-data.json')
