@@ -1,5 +1,7 @@
 const { chromium } = require('playwright');
 const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
 
 const PAGES = [
     { name: 'dashboard', url: 'http://localhost:5173/' },
@@ -14,9 +16,20 @@ const PAGES = [
 ];
 
 const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
+const PORTFOLIO_DIR = '/Users/destucr/Desktop/porto-web/public/images/gtfs-web';
+const CWEBP_PATH = '/opt/homebrew/bin/cwebp';
 
 (async () => {
-    console.log('🚀 Starting automated screenshot capture with framed mockups...');
+    console.log('🚀 Starting automated screenshot capture with cwebp conversion...');
+
+    // Ensure directories exist
+    if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    if (!fs.existsSync(PORTFOLIO_DIR)) {
+        console.warn(`⚠️ Portfolio directory not found: ${PORTFOLIO_DIR}`);
+    } else {
+        console.log(`📁 Target portfolio directory: ${PORTFOLIO_DIR}`);
+    }
+
     const browser = await chromium.launch();
     const context = await browser.newContext({
         viewport: { width: 1600, height: 1000 },
@@ -42,9 +55,19 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
                 }
             };
 
+            if (item.name === 'dashboard') {
+                const statCards = await page.$$('div[class*="StatCard"]');
+                if (statCards.length > 0) {
+                    await statCards[0].hover();
+                    await page.waitForTimeout(1000);
+                }
+            }
+
             if (item.name === 'route-studio-path') {
                 await selectFirstItem();
                 await page.click('button:has-text("Path")').catch(() => { });
+                // Show the active snapping zap icon
+                await page.waitForSelector('svg:has([class*="Zap"])', { timeout: 10000 }).catch(() => { });
                 await page.waitForTimeout(2000);
             }
 
@@ -62,11 +85,21 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
             if (item.name === 'stop-and-routes') {
                 await selectFirstItem();
                 await page.click('button:has-text("Links")').catch(() => { }); // Show route assignments
+                // Hover over a linked route if present
+                const linkedRoutes = await page.$$('div[class*="flex items-center gap-3"]');
+                if (linkedRoutes.length > 0) {
+                    await linkedRoutes[0].hover();
+                }
                 await page.waitForTimeout(2000);
             }
 
             if (item.name === 'trip-mapping') {
                 await selectFirstItem();
+                // Expand a Travel Duration if possible
+                const travelInputs = await page.$$('input[type="number"]');
+                if (travelInputs.length > 0) {
+                    await travelInputs[0].focus();
+                }
                 await page.waitForTimeout(3000);
             }
 
@@ -85,13 +118,7 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
 
             if (item.name === 'web-viewer-route') {
                 await page.waitForSelector('button', { timeout: 15000 });
-                // Click the first route in the sidebar list (UnstyledButton)
                 const routes = await page.$$('button');
-                // We need to be careful to pick the route list item, not the theme toggle or search.
-                // Based on structure: Sidebar -> ScrollArea -> Stack -> UnstyledButton
-                // We can look for text or the circle badge structure.
-                // Simpler: Click the 3rd button (Dark mode is 1, maybe search is input).
-                // Actually, the route buttons are UnstyledButtons in the scroll area.
                 if (routes.length > 2) {
                     await routes[2].click();
                     await page.waitForTimeout(2000);
@@ -119,20 +146,48 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
                     root.style.overflow = 'hidden';
                     root.style.position = 'relative';
                     root.style.border = '1px solid rgba(0,0,0,0.05)';
+                    root.style.zIndex = '1';
                 }
             });
 
+            const tempJpegPath = path.join(OUTPUT_DIR, `${item.name}.jpg`);
+            const webpPath = path.join(OUTPUT_DIR, `${item.name}.webp`);
+            const portfolioWebpPath = path.join(PORTFOLIO_DIR, `${item.name}.webp`);
+
             await page.screenshot({
-                path: path.join(OUTPUT_DIR, `${item.name}.jpg`),
+                path: tempJpegPath,
                 quality: 90,
                 type: 'jpeg',
                 fullPage: true
             });
+
+            // Convert to webp using cwebp
+            console.log(`✨ Converting ${item.name} to WebP...`);
+            try {
+                if (fs.existsSync(CWEBP_PATH)) {
+                    execSync(`"${CWEBP_PATH}" -q 90 "${tempJpegPath}" -o "${webpPath}"`);
+                } else {
+                    // Try global cwebp
+                    execSync(`cwebp -q 90 "${tempJpegPath}" -o "${webpPath}"`);
+                }
+
+                // Copy webp to portfolio
+                if (fs.existsSync(PORTFOLIO_DIR)) {
+                    fs.copyFileSync(webpPath, portfolioWebpPath);
+                    console.log(`📤 Exported to portfolio: ${item.name}.webp`);
+                }
+
+                // Optionally remove temp JPEG
+                fs.unlinkSync(tempJpegPath);
+            } catch (convErr) {
+                console.error(`⚠️ WebP conversion failed for ${item.name}: ${convErr.message}`);
+                // If cwebp fails, maybe fall back to keeping the JPEG or use sips for JPEG->PNG then cwebp (too complex)
+            }
         } catch (err) {
             console.error(`❌ Failed to capture ${item.name}: ${err.message}`);
         }
     }
 
     await browser.close();
-    console.log('✅ All framed screenshots updated in assets/screenshots/');
+    console.log('✅ All screenshots captured, converted to WebP, and exported!');
 })();

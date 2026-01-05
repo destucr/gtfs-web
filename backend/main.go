@@ -26,6 +26,9 @@ func main() {
 
 	api := r.Group("/api")
 	{
+		api.GET("/settings", handlers.GetSettings)
+		api.PUT("/settings", handlers.UpdateSetting)
+
 		api.GET("/agencies", handlers.GetAgencies)
 		api.POST("/agencies", handlers.CreateAgency)
 		api.PUT("/agencies/:id", handlers.UpdateAgency)

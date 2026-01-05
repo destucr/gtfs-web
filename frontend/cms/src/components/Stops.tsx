@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { MapPin, Plus, Trash2, Search, Loader2, CheckCircle2, ChevronRight, X, Maximize2, Minimize2, Bus, Save, Eye, EyeOff, ArrowDownAz, Clock, Share2 } from 'lucide-react';
+import { MapPin, Plus, Trash2, Search, Loader2, ChevronRight, X, Maximize2, Minimize2, Save, Eye, EyeOff, ArrowDownAz, Clock, Share2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import axios from 'axios';
 import L from 'leaflet';
@@ -11,21 +10,17 @@ import { Route, Stop, TripStop, Trip, ShapePoint } from '../types';
 
 const Stops: React.FC = () => {
     const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen, setSidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, hoveredEntityId } = useWorkspace();
-    const navigate = useNavigate();
 
-    // Registry Data
     const [stops, setStops] = useState<Stop[]>([]);
     const [routes, setRoutes] = useState<Route[]>([]);
     const [stopRouteMap, setStopRouteMap] = useState<Record<number, Route[]>>({});
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState<'name' | 'newest' | 'routes'>('name');
 
-    // Editor State
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
     const [formData, setFormData] = useState<Stop>({ id: 0, name: '', lat: 0, lon: 0 });
     const [originalData, setOriginalData] = useState<Stop | null>(null);
 
-    // UI State
     const [activeTab, setActiveTab] = useState<'info' | 'bindings'>('info');
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
@@ -37,7 +32,6 @@ const Stops: React.FC = () => {
     const [focusType, setFocusType] = useState<'select' | 'hover' | null>(null);
     const [persistentRouteIds, setPersistentRouteIds] = useState<number[]>([]);
 
-    // Calculate Dirty State
     const isDirty = useMemo(() => {
         if (!selectedStop || !originalData) return false;
         return JSON.stringify(formData) !== JSON.stringify(originalData);
@@ -69,9 +63,7 @@ const Stops: React.FC = () => {
     useEffect(() => { fetchInitialData(); }, [fetchInitialData]);
 
     const handleRouteHighlight = useCallback(async (routeId: number, isPersistent: boolean) => {
-        if (isPersistent) {
-            // No-op for persistent in this context as we are just highlighting
-        } else {
+        if (!isPersistent) {
             setHoveredRouteIds(prev => [...new Set([...prev, routeId])]);
         }
 
@@ -87,7 +79,7 @@ const Stops: React.FC = () => {
                 }
             } catch (e) { }
         }
-    }, [routeShapes, setHoveredRouteIds, setRouteShapes]);
+    }, [routeShapes, setRouteShapes]);
 
     const handleSelectStop = useCallback(async (stop: Stop) => {
         setQuickMode(null);
@@ -156,7 +148,7 @@ const Stops: React.FC = () => {
 
     useEffect(() => {
         if (isDirty) setStatus({ message: 'Unsaved edits. Save to sync.', type: 'info', isDirty: true });
-        else if (selectedStop) setStatus({ message: 'All changes saved.', type: 'info', isDirty: false });
+        else if (selectedStop) setStatus({ message: 'Saved successfully.', type: 'info', isDirty: false });
         else setStatus(null);
     }, [isDirty, selectedStop, setStatus]);
 
@@ -199,9 +191,7 @@ const Stops: React.FC = () => {
             setPersistentRouteIds(prev => prev.filter(id => id !== routeId));
             return;
         }
-
         setPersistentRouteIds(prev => [...prev, routeId]);
-
         if (!routeShapes[routeId]) {
             try {
                 const tripsRes: { data: Trip[] } = await api.get('/trips');
@@ -212,9 +202,7 @@ const Stops: React.FC = () => {
                     const poly = points.sort((a, b) => a.sequence - b.sequence).map(p => [p.lat, p.lon] as [number, number]);
                     setRouteShapes(prev => ({ ...prev, [routeId]: poly }));
                 }
-            } catch (e) {
-                console.error("Failed to load route shape:", e);
-            }
+            } catch (e) { }
         }
     };
 
@@ -234,12 +222,7 @@ const Stops: React.FC = () => {
                     html: `<div style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;">
                             <div style="position: absolute; width: 24px; height: 24px; background-color: rgba(249,115,22,0.3); border-radius: 9999px; animation: leaflet-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
                             <div style="width: 10px; height: 10px; background-color: #F97316; border: 1px solid white; border-radius: 9999px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); position: relative; z-index: 10;"></div>
-                        </div>
-                        <style>
-                          @keyframes leaflet-ping {
-                            75%, 100% { transform: scale(2); opacity: 0; }
-                          }
-                        </style>`,
+                        </div>`,
                     iconSize: [24, 24], iconAnchor: [12, 12]
                 }) : undefined
             })),
@@ -260,8 +243,6 @@ const Stops: React.FC = () => {
             const matchesRoute = focusedRouteId ? (stopRouteMap[s.id] || []).some(r => r.id === focusedRouteId) : true;
             return matchesSearch && matchesRoute;
         });
-
-        // Apply Sorting
         result.sort((a, b) => {
             if (sortBy === 'name') return a.name.localeCompare(b.name);
             if (sortBy === 'newest') return b.id - a.id;
@@ -272,37 +253,22 @@ const Stops: React.FC = () => {
             }
             return 0;
         });
-
         return result;
     }, [stops, searchQuery, focusedRouteId, stopRouteMap, sortBy]);
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
-            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-zinc-100 pointer-events-auto shadow-2xl" style={{ width: 400 }}>
-                <SidebarHeader 
-                    title="Stops" 
-                    Icon={MapPin} 
-                    onToggleSidebar={() => setSidebarOpen(false)}
-                    actions={<button onClick={handleAddNew} className="p-1.5 bg-system-blue/10 text-system-blue rounded-lg hover:bg-system-blue/20 transition-colors" title="Add a new stop"><Plus size={18} /></button>} 
-                />
-                <div className="p-4 px-6 border-b border-zinc-100 bg-white shrink-0">
-                    <div className="flex gap-2 mb-4">
-                        <div className="relative flex-1">
-                            <Search size={14} className="absolute left-3 top-3 text-zinc-400" />
-                            <input className="hig-input text-sm pl-9 py-2 font-bold w-full" placeholder="Search stops..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white dark:bg-zinc-950 relative z-20 overflow-hidden text-black dark:text-white border-r border-zinc-200 dark:border-zinc-800 pointer-events-auto shadow-none" style={{ width: 320 }}>
+                <SidebarHeader title="Stops" Icon={MapPin} onToggleSidebar={() => setSidebarOpen(false)} actions={<button onClick={handleAddNew} className="p-1.5 bg-blue-50 dark:bg-zinc-900 text-blue-600 rounded-sm hover:bg-blue-100 dark:hover:bg-zinc-800 transition-colors" title="Add Stop"><Plus size={18} /></button>} />
+                <div className="p-4 px-6 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0">
+                    <div className="flex flex-col gap-3 mb-4">
+                        <div className="relative w-full">
+                            <Search size={14} className="hig-input-icon" />
+                            <input className="hig-input pl-8" placeholder="Search stops..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                         </div>
-                        <div className="flex bg-zinc-50 p-1 rounded-xl border border-zinc-100 gap-0.5">
+                        <div className="flex bg-zinc-50 dark:bg-zinc-900 p-1 rounded-sm border border-zinc-200 dark:border-zinc-800 gap-0.5">
                             {(['name', 'newest', 'routes'] as const).map((mode) => (
-                                <button
-                                    key={mode}
-                                    onClick={() => setSortBy(mode)}
-                                    className={`p-1.5 rounded-lg transition-all ${sortBy === mode ? 'bg-white text-system-blue shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
-                                    title={
-                                        mode === 'name' ? '[Sort: Alpha] Click to reorder A-Z' :
-                                        mode === 'newest' ? '[Sort: Recent] Click to show latest first' :
-                                        '[Sort: Connectivity] Click to show major hubs first'
-                                    }
-                                >
+                                <button key={mode} onClick={() => setSortBy(mode)} className={`flex-1 flex justify-center py-1 rounded-sm transition-all duration-75 ${sortBy === mode ? 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-blue-600' : 'text-zinc-400 hover:text-zinc-600'}`}>
                                     {mode === 'name' && <ArrowDownAz size={14} />}
                                     {mode === 'newest' && <Clock size={14} />}
                                     {mode === 'routes' && <Share2 size={14} />}
@@ -311,43 +277,27 @@ const Stops: React.FC = () => {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <div className="flex items-center justify-between px-1"><h3 className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Link to Route</h3>{focusedRouteId && <button onClick={() => setFocusedRouteId(null)} className="text-[8px] font-black text-red-500 hover:underline uppercase">Clear</button>}</div>
+                        <div className="flex items-center justify-between px-1"><h3 className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">Link to Route</h3>{focusedRouteId && <button onClick={() => setFocusedRouteId(null)} className="text-[8px] font-bold text-rose-500 hover:underline uppercase">Clear</button>}</div>
                         <div className="flex flex-wrap gap-1.5">
                             {routes.map(r => (
-                                <div key={r.id} className="flex items-center bg-white rounded-lg border border-zinc-100 hover:border-zinc-200 transition-all shadow-sm overflow-hidden">
-                                    <button
-                                        onClick={() => { if (focusedRouteId === r.id) setFocusedRouteId(null); else setFocusedRouteId(r.id); }}
-                                        className={`px-2.5 py-1 text-[9px] font-black transition-all ${focusedRouteId === r.id ? 'bg-black text-white' : 'text-zinc-400 hover:text-black'}`}
-                                    >
-                                        {r.short_name}
-                                    </button>
-                                    <button
-                                        onClick={() => togglePersistentRoute(r.id)}
-                                        className={`p-1 border-l border-zinc-50 transition-all ${persistentRouteIds.includes(r.id) ? 'bg-system-blue text-white' : 'text-zinc-200 hover:text-zinc-400'}`}
-                                        title="Toggle persistent route line"
-                                    >
-                                        {persistentRouteIds.includes(r.id) ? <Eye size={10} /> : <EyeOff size={10} />}
-                                    </button>
+                                <div key={r.id} className="flex items-center bg-white dark:bg-zinc-900 rounded-sm border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors duration-75 overflow-hidden">
+                                    <button onClick={() => { if (focusedRouteId === r.id) setFocusedRouteId(null); else setFocusedRouteId(r.id); }} className={`px-2.5 py-1 text-[9px] font-bold transition-all ${focusedRouteId === r.id ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}>{r.short_name}</button>
+                                    <button onClick={() => togglePersistentRoute(r.id)} className={`p-1 border-l border-zinc-100 dark:border-zinc-800 transition-all ${persistentRouteIds.includes(r.id) ? 'bg-blue-600 text-white' : 'text-zinc-200 dark:text-zinc-700 hover:text-zinc-400'}`}>{persistentRouteIds.includes(r.id) ? <Eye size={10} /> : <EyeOff size={10} />}</button>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
-                <div className="flex-1 overflow-y-auto divide-y divide-zinc-50">
+                <div className="flex-1 overflow-y-auto divide-y divide-zinc-50 dark:divide-zinc-800">
                     {filteredStops.map(stop => (
-                        <div key={stop.id} onMouseEnter={() => handleStopHover(stop.id)} onMouseLeave={() => handleStopHover(null)} className={`p-4 hover:bg-zinc-50 cursor-pointer transition-all group flex items-center justify-between ${selectedStop?.id === stop.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} onClick={() => handleSelectStop(stop)}>
-                            <div className="flex-1 min-w-0">
-                                <div className="font-black text-sm text-zinc-900 uppercase tracking-tight truncate mb-1">{stop.name}</div>
-                                <div className="flex flex-wrap gap-1">{(stopRouteMap[stop.id] || []).map(r => (<div key={r.id} className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ backgroundColor: `#${r.color}` }} />))}</div>
-                            </div>
+                        <div key={stop.id} onMouseEnter={() => handleStopHover(stop.id)} onMouseLeave={() => handleStopHover(null)} className={`p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer transition-colors duration-75 group flex items-center justify-between ${selectedStop?.id === stop.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-2 border-blue-600' : ''}`} onClick={() => handleSelectStop(stop)}>
+                            <div className="flex-1 min-w-0"><div className="font-bold text-sm text-zinc-900 dark:text-zinc-100 truncate mb-1">{stop.name}</div><div className="flex flex-wrap gap-1">{(stopRouteMap[stop.id] || []).map(r => (<div key={r.id} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `#${r.color}` }} />))}</div></div>
                             <div className="flex gap-1 items-center shrink-0">
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                    {focusedRouteId && (
-                                        <button onClick={(e) => { e.stopPropagation(); toggleStopInRoute(stop, focusedRouteId); }} className={`p-1.5 rounded-lg transition-all shadow-sm ${(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? 'bg-orange-500 text-white' : 'bg-system-blue text-white'}`}>{(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? <X size={14} /> : <Plus size={14} />}</button>
-                                    )}
-                                    <button onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this stop record permanently?')) api.delete(`/stops/${stop.id}`).then(fetchInitialData); }} className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all"><Trash2 size={14} /></button>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-75">
+                                    {focusedRouteId && (<button onClick={(e) => { e.stopPropagation(); toggleStopInRoute(stop, focusedRouteId); }} className={`p-1.5 rounded-sm transition-colors duration-75 ${(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? 'bg-orange-500 text-white' : 'bg-blue-600 text-white'}`}>{(stopRouteMap[stop.id] || []).some(r => r.id === focusedRouteId) ? <X size={14} /> : <Plus size={14} />}</button>)}
+                                    <button onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete stop?')) api.delete(`/stops/${stop.id}`).then(fetchInitialData); }} className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-sm transition-all"><Trash2 size={14} /></button>
                                 </div>
-                                <ChevronRight size={18} className={`text-zinc-300 ml-2 transition-all ${selectedStop?.id === stop.id ? 'translate-x-1 text-system-blue' : ''}`} />
+                                <ChevronRight size={18} className={`text-zinc-300 ml-2 transition-all duration-75 ${selectedStop?.id === stop.id ? 'translate-x-1 text-blue-600' : ''}`} />
                             </div>
                         </div>
                     ))}
@@ -355,12 +305,101 @@ const Stops: React.FC = () => {
             </motion.div>
 
             {selectedStop && (
-                <motion.div drag dragMomentum={false} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} className={`absolute top-6 z-[3000] w-[320px] bg-white/90 backdrop-blur-xl rounded-[1.5rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] border border-black/5 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`} style={{ right: 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }} initial={{ opacity: 0, x: 20 }} animate={{ opacity: (quickMode && !isHovered ? 0.2 : 1), x: 0 }}>
-                    <div className="p-4 pb-3 flex items-center justify-between shrink-0 cursor-move border-b border-black/[0.03]">
-                        <div className="flex items-center gap-3 flex-1 min-w-0"><div className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-500 text-white shadow-lg shrink-0"><MapPin size={16} /></div><div className="min-w-0"><h2 className="text-sm font-black tracking-tight truncate leading-none mb-0.5">{formData.name || 'Unlabeled'}</h2><p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest truncate">Stop Details</p></div></div>
-                        <div className="flex items-center gap-0.5"><button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400">{isCollapsed ? <Maximize2 size={14} /> : <Minimize2 size={14} />}</button><button onClick={() => setSelectedStop(null)} className="p-1.5 hover:bg-black/5 rounded-full text-zinc-400 transition-all hover:rotate-90"><X size={16} /></button></div>
+                <motion.div drag dragMomentum={false} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} className={`absolute top-6 z-[3000] w-[320px] bg-white dark:bg-zinc-950 rounded-sm shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`} style={{ right: 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }} initial={{ opacity: 0, x: 20 }} animate={{ opacity: (quickMode && !isHovered ? 0.2 : 1), x: 0 }}>
+                    <div className="p-3 flex items-center justify-between shrink-0 cursor-move border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0"><div className="w-7 h-7 rounded-sm flex items-center justify-center bg-orange-500 text-white shrink-0"><MapPin size={14} /></div><div className="min-w-0"><h2 className="text-xs font-bold tracking-tight truncate leading-none mb-0.5 dark:text-zinc-100">{formData.name || 'New Stop'}</h2><p className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest truncate">Stop Details</p></div></div>
+                        <div className="flex items-center gap-0.5"><button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-sm text-zinc-400">{isCollapsed ? <Maximize2 size={14} /> : <Minimize2 size={14} />}</button><button onClick={() => setSelectedStop(null)} className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-sm text-zinc-400 transition-all hover:rotate-90"><X size={16} /></button></div>
                     </div>
-                    {!isCollapsed && (<><div className="px-4 py-2 shrink-0"><div className="bg-black/5 p-1 rounded-lg flex gap-0.5 border border-black/5">{(['info', 'bindings'] as const).map((tab) => (<button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-1.5 rounded-md text-[9px] font-black uppercase tracking-tight transition-all ${activeTab === tab ? 'bg-white text-system-blue shadow-sm' : 'text-zinc-400 hover:text-black'}`}>{tab === 'info' ? 'Details' : 'Links'}</button>))}</div></div><div className="flex-1 overflow-y-auto p-4 pt-2 pb-24 custom-scrollbar">{activeTab === 'info' && (<form onSubmit={handleSave} className="space-y-4 animate-in fade-in duration-300"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Name</label><div className="relative"><input className="hig-input text-[11px] font-bold py-1.5 pr-8" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />{isNaming && <Loader2 size={12} className="animate-spin absolute right-2.5 top-2.5 text-system-blue" />}</div></div><div className="grid grid-cols-2 gap-3"><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Lat</label><input type="number" step="any" className="hig-input text-[10px] font-mono py-1.5" value={formData.lat} onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) })} required /></div><div><label className="text-[8px] font-black uppercase mb-1 block text-zinc-400">Lon</label><input type="number" step="any" className="hig-input text-[10px] font-mono py-1.5" value={formData.lon} onChange={e => setFormData({ ...formData, lon: parseFloat(e.target.value) })} required /></div></div><div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100 text-center"><p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Drag marker on map to move.</p></div>{selectedStop.id !== 0 && (<div className="pt-4 mt-4 border-t border-black/[0.03]"><button type="button" onClick={() => { if (window.confirm('Delete this stop record permanently?')) api.delete(`/stops/${selectedStop.id}`).then(fetchInitialData).then(() => setSelectedStop(null)); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}</form>)}{activeTab === 'bindings' && (<div className="space-y-3 animate-in fade-in duration-300"><div className="flex items-center justify-between mb-1 px-1"><h4 className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">One-Click Toggle</h4></div>{selectedStop.id === 0 ? (<div className="p-8 bg-zinc-50 rounded-2xl border border-zinc-100 flex flex-col items-center justify-center gap-3 text-center"><div className="w-12 h-12 rounded-full bg-zinc-200/50 flex items-center justify-center text-zinc-400"><Save size={24} /></div><div><p className="text-[10px] font-black text-zinc-900 uppercase tracking-tight">Save Stop First</p><p className="text-[9px] text-zinc-400 font-bold leading-tight mt-1">You must commit the stop record to the server before managing route links.</p></div></div>) : (<div className="space-y-1.5">{routes.map(r => { const isAssigned = (stopRouteMap[selectedStop.id] || []).some(assigned => assigned.id === r.id); return (<div key={r.id} onMouseEnter={() => handleRouteHighlight(r.id, false)} onMouseLeave={() => handleRouteHighlight(r.id, false)} className={`p-2.5 rounded-xl flex items-center justify-between transition-all border ${isAssigned ? 'border-system-blue bg-system-blue/5 shadow-sm scale-[1.02]' : 'border-black/5 bg-white hover:border-black/10'}`}><div onClick={() => toggleStopInRoute(selectedStop, r.id)} className="flex-1 flex items-center gap-2.5 cursor-pointer"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: `#${r.color}` }} /><span className="font-black text-[10px] text-zinc-900">{r.short_name} &mdash; {r.long_name}</span></div><div className="flex items-center gap-1"><button onClick={(e) => { e.stopPropagation(); setSelectedEntityId(r.id); navigate('/routes'); }} className="p-1 hover:bg-system-blue hover:text-white rounded-md transition-all text-system-blue/40"><Bus size={12} /></button>{isAssigned ? <CheckCircle2 size={14} className="text-system-blue" /> : <Plus size={14} className="text-zinc-200" />}</div></div>); })}</div>)}</div>)}</div><div className="p-4 bg-white/50 backdrop-blur-md border-t border-zinc-100 rounded-b-[1.5rem] flex justify-center"><button onClick={handleSave} disabled={!isDirty} className="px-8 py-2.5 bg-system-blue text-white rounded-full font-black text-[9px] shadow-xl shadow-system-blue/20 flex items-center justify-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-30 active:scale-95 tracking-widest uppercase"><Save size={14} /> Commit Changes</button></div></>)}
+                    {!isCollapsed && (
+                        <>
+                            <div className="px-4 py-2 shrink-0 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+                                <div className="bg-zinc-100 dark:bg-zinc-900 p-1 rounded-sm flex gap-0.5 border border-zinc-200 dark:border-zinc-800">
+                                    {(['info', 'bindings'] as const).map((tab) => (
+                                        <button
+                                            key={tab}
+                                            onClick={() => setActiveTab(tab)}
+                                            className={`flex-1 py-1.5 rounded-sm text-[9px] font-bold uppercase transition-all duration-75 ${activeTab === tab ? 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-blue-600' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}
+                                        >
+                                            {tab === 'info' ? 'Details' : 'Links'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-white dark:bg-zinc-950">
+                                {activeTab === 'info' && (
+                                    <form onSubmit={handleSave} className="space-y-4 animate-in fade-in duration-300">
+                                        <div>
+                                            <label className="text-[8px] font-bold uppercase mb-1 block text-zinc-400 dark:text-zinc-500">Name</label>
+                                            <div className="relative">
+                                                <input className="hig-input pr-8" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                                                {isNaming && <Loader2 size={12} className="animate-spin absolute right-2 top-2 text-blue-600" />}
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-[8px] font-bold uppercase mb-1 block text-zinc-400 dark:text-zinc-500">Lat</label>
+                                                <input type="number" step="any" className="hig-input font-mono" value={formData.lat} onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) })} required />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] font-bold uppercase mb-1 block text-zinc-400 dark:text-zinc-500">Lon</label>
+                                                <input type="number" step="any" className="hig-input font-mono" value={formData.lon} onChange={e => setFormData({ ...formData, lon: parseFloat(e.target.value) })} required />
+                                            </div>
+                                        </div>
+                                        <div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-sm border border-zinc-100 dark:border-zinc-800 text-center">
+                                            <p className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-tight">Drag marker on map to move.</p>
+                                        </div>
+                                        {selectedStop.id !== 0 && (
+                                            <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                                <button type="button" onClick={() => { if (window.confirm('Delete record?')) api.delete(`/stops/${selectedStop.id}`).then(() => { fetchInitialData(); setSelectedStop(null); }); }} className="w-full py-2 text-[8px] font-bold text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button>
+                                            </div>
+                                        )}
+                                    </form>
+                                )}
+                                {activeTab === 'bindings' && (
+                                    <div className="space-y-2 animate-in fade-in duration-300">
+                                        <div className="px-1 mb-2">
+                                            <h3 className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">Select routes to link</h3>
+                                        </div>
+                                        {selectedStop.id === 0 ? (
+                                            <div className="p-4 text-center border border-dashed border-zinc-200 dark:border-zinc-800 rounded-sm">
+                                                <p className="text-[10px] text-zinc-400 font-bold uppercase">Save stop first to link routes</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                {routes.map(route => {
+                                                    const isLinked = (stopRouteMap[selectedStop.id] || []).some(r => r.id === route.id);
+                                                    return (
+                                                        <div
+                                                            key={route.id}
+                                                            onClick={() => toggleStopInRoute(selectedStop, route.id)}
+                                                            className={`p-2 flex items-center justify-between rounded-sm border transition-all cursor-pointer ${isLinked ? 'bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'bg-white dark:bg-zinc-950 border-zinc-100 dark:border-zinc-900 hover:border-zinc-200 dark:hover:border-zinc-800'}`}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-6 h-6 rounded-sm flex items-center justify-center font-bold text-[10px] text-white" style={{ backgroundColor: `#${route.color}` }}>
+                                                                    {route.short_name}
+                                                                </div>
+                                                                <div className="text-[10px] font-bold text-zinc-900 dark:text-zinc-100 truncate w-32">
+                                                                    {route.long_name}
+                                                                </div>
+                                                            </div>
+                                                            <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all ${isLinked ? 'bg-blue-600 border-blue-600' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                                                                {isLinked && <Plus size={10} className="text-white rotate-45" />}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 sticky bottom-0 flex justify-center shadow-none">
+                                <button onClick={() => handleSave()} disabled={!isDirty || activeTab === 'bindings'} className="w-full py-2 bg-blue-600 text-white rounded-sm font-bold text-[10px] flex items-center justify-center gap-2 hover:bg-blue-700 transition-all duration-75 disabled:opacity-30 active:scale-95 tracking-widest uppercase shadow-none">
+                                    <Save size={14} /> Sync Stop
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </motion.div>
             )}
         </div>

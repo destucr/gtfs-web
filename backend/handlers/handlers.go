@@ -974,3 +974,33 @@ func GetActivityLogs(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, logs)
 }
+
+// --- Settings ---
+
+func GetSettings(c *gin.Context) {
+	var settings []models.Setting
+	if err := database.DB.Find(&settings).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settings"})
+		return
+	}
+	// Convert array to map for easier frontend consumption
+	result := make(map[string]string)
+	for _, s := range settings {
+		result[s.Key] = s.Value
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func UpdateSetting(c *gin.Context) {
+	var setting models.Setting
+	if err := c.ShouldBindJSON(&setting); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := database.DB.Save(&setting).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update setting"})
+		return
+	}
+	LogActivity("SETTINGS", fmt.Sprintf("System setting [%s] has been updated.", setting.Key))
+	c.JSON(http.StatusOK, setting)
+}

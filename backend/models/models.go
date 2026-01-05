@@ -66,3 +66,8 @@ type ActivityLog struct {
 	Action    string    `json:"action"`
 	Details   string    `json:"details"`
 }
+
+type Setting struct {
+	Key   string `gorm:"primaryKey" json:"key"`
+	Value string `json:"value"`
+}
