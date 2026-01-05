@@ -5,6 +5,7 @@ import Agencies from './components/Agencies';
 import Stops from './components/Stops';
 import RouteStudio from './components/Routes';
 import Trips from './components/Trips';
+import SettingsPage from './components/SettingsPage';
 import { Dashboard } from './components/Dashboard';
 import { WorkspaceProvider } from './context/WorkspaceContext';
 import { useWorkspace } from './context/useWorkspace';
@@ -16,7 +17,16 @@ import {
 
 const ShortcutManager: React.FC = () => {
   const navigate = useNavigate();
-  const { setSelectedEntityId, setQuickMode } = useWorkspace();
+  const { setSelectedEntityId, setQuickMode, settings } = useWorkspace();
+  
+  // Sync dark mode to document root
+  useEffect(() => {
+    if (settings['dark_mode'] === 'true') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [settings]);
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -112,6 +122,7 @@ const WorkspaceContainer: React.FC = () => {
           <Route path="/stops" element={<Stops />} />
           <Route path="/routes" element={<RouteStudio />} />
           <Route path="/trips" element={<Trips />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </div>
       {!isHome && !sidebarOpen && (
