@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
 import { MapPin, Plus, Trash2, Search, Loader2, ChevronRight, X, Maximize2, Minimize2, Save, Eye, EyeOff, ArrowDownAz, Clock, Share2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import axios from 'axios';
 import L from 'leaflet';
@@ -11,7 +10,6 @@ import { Route, Stop, TripStop, Trip, ShapePoint } from '../types';
 
 const Stops: React.FC = () => {
     const { setMapLayers, setOnMapClick, setStatus, quickMode, setQuickMode, sidebarOpen, setSidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, hoveredEntityId } = useWorkspace();
-    const navigate = useNavigate();
 
     const [stops, setStops] = useState<Stop[]>([]);
     const [routes, setRoutes] = useState<Route[]>([]);
@@ -309,7 +307,96 @@ const Stops: React.FC = () => {
                         <div className="flex items-center gap-2.5 flex-1 min-w-0"><div className="w-7 h-7 rounded-sm flex items-center justify-center bg-orange-500 text-white shrink-0"><MapPin size={14} /></div><div className="min-w-0"><h2 className="text-xs font-bold tracking-tight truncate leading-none mb-0.5 dark:text-zinc-100">{formData.name || 'New Stop'}</h2><p className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest truncate">Stop Details</p></div></div>
                         <div className="flex items-center gap-0.5"><button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-sm text-zinc-400">{isCollapsed ? <Maximize2 size={14} /> : <Minimize2 size={14} />}</button><button onClick={() => setSelectedStop(null)} className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-sm text-zinc-400 transition-all hover:rotate-90"><X size={16} /></button></div>
                     </div>
-                    {!isCollapsed && (<><div className="px-4 py-2 shrink-0 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950"><div className="bg-zinc-100 dark:bg-zinc-900 p-1 rounded-sm flex gap-0.5 border border-zinc-200 dark:border-zinc-800">{(['info', 'bindings'] as const).map((tab) => (<button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-1.5 rounded-sm text-[9px] font-bold uppercase transition-all duration-75 ${activeTab === tab ? 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-blue-600' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}>{tab === 'info' ? 'Details' : 'Links'}</button>))}</div></div><div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-white dark:bg-zinc-950">{activeTab === 'info' && (<form onSubmit={handleSave} className="space-y-4 animate-in fade-in duration-300"><div><label className="text-[8px] font-bold uppercase mb-1 block text-zinc-400 dark:text-zinc-500">Name</label><div className="relative"><input className="hig-input pr-8" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />{isNaming && <Loader2 size={12} className="animate-spin absolute right-2 top-2 text-blue-600" />}</div></div><div className="grid grid-cols-2 gap-3"><div><label className="text-[8px] font-bold uppercase mb-1 block text-zinc-400 dark:text-zinc-500">Lat</label><input type="number" step="any" className="hig-input font-mono" value={formData.lat} onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) })} required /></div><div><label className="text-[8px] font-bold uppercase mb-1 block text-zinc-400 dark:text-zinc-500">Lon</label><input type="number" step="any" className="hig-input font-mono" value={formData.lon} onChange={e => setFormData({ ...formData, lon: parseFloat(e.target.value) })} required /></div></div><div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-sm border border-zinc-100 dark:border-zinc-800 text-center"><p className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-tight">Drag marker on map to move.</p></div>{selectedStop.id !== 0 && (<div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800"><button type="button" onClick={() => { if (window.confirm('Delete record?')) api.delete(`/stops/${selectedStop.id}`).then(() => { fetchInitialData(); setSelectedStop(null); }); }} className="w-full py-2 text-[8px] font-bold text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}</form>)}</div><div className="p-4 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 sticky bottom-0 flex justify-center shadow-none"><button onClick={() => handleSave()} disabled={!isDirty} className="w-full py-2 bg-blue-600 text-white rounded-sm font-bold text-[10px] flex items-center justify-center gap-2 hover:bg-blue-700 transition-all duration-75 disabled:opacity-30 active:scale-95 tracking-widest uppercase shadow-none"><Save size={14} /> Sync Stop</button></div></>)}
+                    {!isCollapsed && (
+                        <>
+                            <div className="px-4 py-2 shrink-0 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+                                <div className="bg-zinc-100 dark:bg-zinc-900 p-1 rounded-sm flex gap-0.5 border border-zinc-200 dark:border-zinc-800">
+                                    {(['info', 'bindings'] as const).map((tab) => (
+                                        <button
+                                            key={tab}
+                                            onClick={() => setActiveTab(tab)}
+                                            className={`flex-1 py-1.5 rounded-sm text-[9px] font-bold uppercase transition-all duration-75 ${activeTab === tab ? 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-blue-600' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}
+                                        >
+                                            {tab === 'info' ? 'Details' : 'Links'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-white dark:bg-zinc-950">
+                                {activeTab === 'info' && (
+                                    <form onSubmit={handleSave} className="space-y-4 animate-in fade-in duration-300">
+                                        <div>
+                                            <label className="text-[8px] font-bold uppercase mb-1 block text-zinc-400 dark:text-zinc-500">Name</label>
+                                            <div className="relative">
+                                                <input className="hig-input pr-8" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                                                {isNaming && <Loader2 size={12} className="animate-spin absolute right-2 top-2 text-blue-600" />}
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-[8px] font-bold uppercase mb-1 block text-zinc-400 dark:text-zinc-500">Lat</label>
+                                                <input type="number" step="any" className="hig-input font-mono" value={formData.lat} onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) })} required />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] font-bold uppercase mb-1 block text-zinc-400 dark:text-zinc-500">Lon</label>
+                                                <input type="number" step="any" className="hig-input font-mono" value={formData.lon} onChange={e => setFormData({ ...formData, lon: parseFloat(e.target.value) })} required />
+                                            </div>
+                                        </div>
+                                        <div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-sm border border-zinc-100 dark:border-zinc-800 text-center">
+                                            <p className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-tight">Drag marker on map to move.</p>
+                                        </div>
+                                        {selectedStop.id !== 0 && (
+                                            <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                                <button type="button" onClick={() => { if (window.confirm('Delete record?')) api.delete(`/stops/${selectedStop.id}`).then(() => { fetchInitialData(); setSelectedStop(null); }); }} className="w-full py-2 text-[8px] font-bold text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button>
+                                            </div>
+                                        )}
+                                    </form>
+                                )}
+                                {activeTab === 'bindings' && (
+                                    <div className="space-y-2 animate-in fade-in duration-300">
+                                        <div className="px-1 mb-2">
+                                            <h3 className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">Select routes to link</h3>
+                                        </div>
+                                        {selectedStop.id === 0 ? (
+                                            <div className="p-4 text-center border border-dashed border-zinc-200 dark:border-zinc-800 rounded-sm">
+                                                <p className="text-[10px] text-zinc-400 font-bold uppercase">Save stop first to link routes</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                {routes.map(route => {
+                                                    const isLinked = (stopRouteMap[selectedStop.id] || []).some(r => r.id === route.id);
+                                                    return (
+                                                        <div
+                                                            key={route.id}
+                                                            onClick={() => toggleStopInRoute(selectedStop, route.id)}
+                                                            className={`p-2 flex items-center justify-between rounded-sm border transition-all cursor-pointer ${isLinked ? 'bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'bg-white dark:bg-zinc-950 border-zinc-100 dark:border-zinc-900 hover:border-zinc-200 dark:hover:border-zinc-800'}`}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-6 h-6 rounded-sm flex items-center justify-center font-bold text-[10px] text-white" style={{ backgroundColor: `#${route.color}` }}>
+                                                                    {route.short_name}
+                                                                </div>
+                                                                <div className="text-[10px] font-bold text-zinc-900 dark:text-zinc-100 truncate w-32">
+                                                                    {route.long_name}
+                                                                </div>
+                                                            </div>
+                                                            <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all ${isLinked ? 'bg-blue-600 border-blue-600' : 'border-zinc-200 dark:border-zinc-800'}`}>
+                                                                {isLinked && <Plus size={10} className="text-white rotate-45" />}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 sticky bottom-0 flex justify-center shadow-none">
+                                <button onClick={() => handleSave()} disabled={!isDirty || activeTab === 'bindings'} className="w-full py-2 bg-blue-600 text-white rounded-sm font-bold text-[10px] flex items-center justify-center gap-2 hover:bg-blue-700 transition-all duration-75 disabled:opacity-30 active:scale-95 tracking-widest uppercase shadow-none">
+                                    <Save size={14} /> Sync Stop
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </motion.div>
             )}
         </div>

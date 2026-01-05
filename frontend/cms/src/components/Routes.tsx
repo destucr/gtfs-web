@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWorkspace } from '../context/useWorkspace';
-import { Plus, Save, Zap, ChevronRight, Bus, Loader2, Search, X, Maximize2, Minimize2, Clock, ArrowDownWideNarrow, Eye, EyeOff, AlertCircle, Trash2 } from 'lucide-react';
+import { Plus, Save, Zap, ChevronRight, Bus, Search, X, Maximize2, Minimize2, Clock, ArrowDownWideNarrow, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Reorder, motion } from 'framer-motion';
 import api from '../api';
-import axios from 'axios';
 import { SidebarHeader } from './SidebarHeader';
 import { RouteSign } from './RouteSign';
 import { Route, Agency, Trip, ShapePoint, TripStop } from '../types';
 
 const RouteStudio: React.FC = () => {
-    const { settings, setMapLayers, setStatus, quickMode, setQuickMode, sidebarOpen, setSidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert } = useWorkspace();
+    const { settings, setMapLayers, setStatus, quickMode, setQuickMode, sidebarOpen, setSidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, setOnMapClick } = useWorkspace();
     const [routes, setRoutes] = useState<Route[]>([]);
     const [agencies, setAgencies] = useState<Agency[]>([]);
 
@@ -20,7 +19,6 @@ const RouteStudio: React.FC = () => {
     const [assignedStops, setAssignedStops] = useState<TripStop[]>([]);
     const [originalAssignedStops, setOriginalAssignedStops] = useState<TripStop[]>([]);
 
-    const [history, setHistory] = useState<ShapePoint[][]>([]);
     const [searchQuery, setSearchQuery] = useState('');
 
     const [activeSection, setActiveSection] = useState<'info' | 'path' | 'sequence' | null>('info');
@@ -84,37 +82,12 @@ const RouteStudio: React.FC = () => {
         setAssignedStops(newStops);
     };
 
-    const setDwellTime = (index: number, minutes: number) => {
-        const newStops = [...assignedStops];
-        const arr = timeToSeconds(newStops[index].arrival_time || '08:00:00');
-        const newDep = secondsToTime(arr + (minutes * 60));
-        const diff = (minutes * 60) - (timeToSeconds(newStops[index].departure_time || '08:00:00') - arr);
-        newStops[index] = { ...newStops[index], departure_time: newDep };
-        for (let i = index + 1; i < newStops.length; i++) {
-            const sArr = timeToSeconds(newStops[i].arrival_time || '08:00:00') + diff;
-            const sDep = timeToSeconds(newStops[i].departure_time || '08:00:00') + diff;
-            newStops[i] = { ...newStops[i], arrival_time: secondsToTime(sArr), departure_time: secondsToTime(sDep) };
-        }
-        setAssignedStops(newStops);
-    };
-
     const setTravelDuration = (index: number, minutes: number) => {
         if (index === 0) return;
         const prevDep = timeToSeconds(assignedStops[index - 1].departure_time || '08:00:00');
         const newArrival = secondsToTime(prevDep + (minutes * 60));
         updateFlow(index, newArrival, 'arrival');
     };
-
-    const pushToHistory = useCallback((newPoints: ShapePoint[]) => {
-        setHistory(prev => [...prev.slice(-19), shapePoints]);
-        setShapePoints(newPoints);
-    }, [shapePoints]);
-
-    const undo = useCallback(() => {
-        if (history.length === 0) return;
-        setShapePoints(history[history.length - 1]);
-        setHistory(prev => prev.slice(0, -1));
-    }, [history]);
 
     const handleSelectRoute = async (route: Route) => {
         setQuickMode(null);
@@ -174,7 +147,7 @@ const RouteStudio: React.FC = () => {
                     const poly = (shapeRes.data || []).sort((a: any, b: any) => a.sequence - b.sequence).map((p: any) => [p.lat, p.lon] as [number, number]);
                     setPersistentRouteShapes(prev => ({ ...prev, [routeId]: poly }));
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
     };
 
@@ -241,7 +214,7 @@ const RouteStudio: React.FC = () => {
                     const poly = (shapeRes.data || []).sort((a: any, b: any) => a.sequence - b.sequence).map((p: any) => [p.lat, p.lon] as [number, number]);
                     setMapLayers(prev => ({ ...prev, previewRoutes: [{ id: routeId, color: routes.find(r => r.id === routeId)?.color || '007AFF', positions: poly, isFocused: true }] }));
                 }
-            } catch (e) {}
+            } catch (e) { }
         } else { setMapLayers(prev => ({ ...prev, previewRoutes: [] })); }
     }, [routes, setHoveredEntityId, setMapLayers]);
 
@@ -255,11 +228,11 @@ const RouteStudio: React.FC = () => {
             if (activeSection !== 'path') setActiveSection('path');
             if (quickMode === 'add-route') setQuickMode(null);
             const newPoint = { shape_id: sId, lat: latlng.lat, lon: latlng.lng, sequence: shapePoints.length + 1 };
-            pushToHistory([...shapePoints, newPoint]);
+            setShapePoints([...shapePoints, newPoint]);
         };
         setOnMapClick(handleMapClick);
         return () => setOnMapClick(null);
-    }, [selectedRoute, activeSection, shapePoints, quickMode, setQuickMode, pushToHistory, setOnMapClick]);
+    }, [selectedRoute, activeSection, shapePoints, quickMode, setQuickMode, setOnMapClick]);
 
     useEffect(() => {
         const pRoutes = persistentRouteIds.map(id => ({
@@ -356,7 +329,7 @@ const RouteStudio: React.FC = () => {
                                 {activeSection === 'path' && (
                                     <div className="space-y-4 animate-in fade-in duration-300">
                                         <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 rounded-sm border border-zinc-100 dark:border-zinc-800"><div className="flex items-center gap-2"><Zap size={12} className={autoRoute ? "text-blue-600" : "text-zinc-400"} /><span className="text-[9px] font-bold uppercase tracking-tight">Auto-snap to roads</span></div><button onClick={() => setAutoRoute(!autoRoute)} className={`w-8 h-4 rounded-full transition-all relative ${autoRoute ? 'bg-blue-600' : 'bg-zinc-200 dark:bg-zinc-800'}`}><div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${autoRoute ? 'left-4.5' : 'left-0.5'}`} /></button></div>
-                                        <div className="grid grid-cols-2 gap-2"><button onClick={() => {}} className="py-2.5 bg-blue-600 text-white rounded-sm font-bold text-[9px] uppercase">Full Path</button><button onClick={() => {}} className="py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-sm font-bold text-[9px] uppercase">Snap Anchors</button></div>
+                                        <div className="grid grid-cols-2 gap-2"><button onClick={() => { }} className="py-2.5 bg-blue-600 text-white rounded-sm font-bold text-[9px] uppercase">Full Path</button><button onClick={() => { }} className="py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-sm font-bold text-[9px] uppercase">Snap Anchors</button></div>
                                         <div className="p-3 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-sm border border-zinc-100 dark:border-zinc-800"><p className="text-[9px] text-zinc-400 dark:text-zinc-500 leading-relaxed font-bold italic text-center">Click map to add stops. Drag to move. Right-click to remove.</p></div>
                                     </div>
                                 )}

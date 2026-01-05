@@ -53,6 +53,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     fetchSettings();
+    const interval = setInterval(fetchSettings, 10000);
+    return () => clearInterval(interval);
   }, [fetchSettings]);
 
   const updateSetting = useCallback(async (key: string, value: string) => {
