@@ -64,8 +64,8 @@ const Agencies: React.FC = () => {
         const dirty = current !== initialFormData.current && initialFormData.current !== '';
         setIsDirty(dirty);
         if (dirty) setStatus({ message: 'Unsaved edits. Save to sync.', type: 'info', isDirty: true });
-        else if (selectedAgency) setStatus({ message: 'Operator synchronized.', type: 'info', isDirty: false });
-    }, [formData, selectedAgency, setStatus]);
+        else setStatus(null);
+    }, [formData, setStatus]);
 
     useEffect(() => {
         if (!selectedAgency || selectedAgency.id === undefined) {
@@ -176,15 +176,15 @@ const Agencies: React.FC = () => {
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
             <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white dark:bg-zinc-950 relative z-20 overflow-hidden text-black dark:text-white border-r border-zinc-200 dark:border-zinc-800 pointer-events-auto shadow-none" style={{ width: 320 }}>
-                <SidebarHeader 
-                    title="Operators" 
-                    Icon={Landmark} 
+                <SidebarHeader
+                    title="Operators"
+                    Icon={Landmark}
                     onToggleSidebar={() => setSidebarOpen(false)}
-                    actions={<button onClick={handleAddNew} className="p-1.5 bg-blue-50 dark:bg-zinc-900 text-blue-600 rounded-sm hover:bg-blue-100 dark:hover:bg-zinc-800 transition-colors" title="Add Operator"><Plus size={18} /></button>} 
+                    actions={<button onClick={handleAddNew} className="p-1.5 bg-blue-50 dark:bg-zinc-900 text-blue-600 rounded-sm hover:bg-blue-100 dark:hover:bg-zinc-800 transition-colors" title="Add Operator"><Plus size={18} /></button>}
                 />
-                <div className="p-4 px-6 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0 flex gap-2">
-                    <div className="relative flex-1"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="hig-input" placeholder="Search operators..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
-                    <button onClick={fetchInitialData} className="p-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-sm text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"><RotateCcw size={18} /></button>
+                <div className="p-4 px-6 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0 flex gap-2 overflow-hidden">
+                    <div className="relative flex-1"><Search size={14} className="hig-input-icon" /><input className="hig-input pl-8" placeholder="Search operators..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
+                    <button onClick={fetchInitialData} className="p-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-sm text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors shrink-0"><RotateCcw size={18} /></button>
                 </div>
                 <div className="flex-1 overflow-y-auto divide-y divide-zinc-50 dark:divide-zinc-800">
                     {filteredAgencies.map(agency => (

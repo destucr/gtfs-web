@@ -261,11 +261,14 @@ const Stops: React.FC = () => {
             <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white dark:bg-zinc-950 relative z-20 overflow-hidden text-black dark:text-white border-r border-zinc-200 dark:border-zinc-800 pointer-events-auto shadow-none" style={{ width: 320 }}>
                 <SidebarHeader title="Stops" Icon={MapPin} onToggleSidebar={() => setSidebarOpen(false)} actions={<button onClick={handleAddNew} className="p-1.5 bg-blue-50 dark:bg-zinc-900 text-blue-600 rounded-sm hover:bg-blue-100 dark:hover:bg-zinc-800 transition-colors" title="Add Stop"><Plus size={18} /></button>} />
                 <div className="p-4 px-6 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0">
-                    <div className="flex gap-2 mb-4">
-                        <div className="relative flex-1"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="hig-input" placeholder="Search stops..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
+                    <div className="flex flex-col gap-3 mb-4">
+                        <div className="relative w-full">
+                            <Search size={14} className="hig-input-icon" />
+                            <input className="hig-input pl-8" placeholder="Search stops..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                        </div>
                         <div className="flex bg-zinc-50 dark:bg-zinc-900 p-1 rounded-sm border border-zinc-200 dark:border-zinc-800 gap-0.5">
                             {(['name', 'newest', 'routes'] as const).map((mode) => (
-                                <button key={mode} onClick={() => setSortBy(mode)} className={`p-1.5 rounded-sm transition-all duration-75 ${sortBy === mode ? 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-blue-600' : 'text-zinc-400 hover:text-zinc-600'}`}>
+                                <button key={mode} onClick={() => setSortBy(mode)} className={`flex-1 flex justify-center py-1 rounded-sm transition-all duration-75 ${sortBy === mode ? 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-blue-600' : 'text-zinc-400 hover:text-zinc-600'}`}>
                                     {mode === 'name' && <ArrowDownAz size={14} />}
                                     {mode === 'newest' && <Clock size={14} />}
                                     {mode === 'routes' && <Share2 size={14} />}

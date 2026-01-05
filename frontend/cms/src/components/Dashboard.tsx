@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-    Globe, MapPin, Route as RouteIcon, Database, 
-    ShieldCheck, ArrowUpDown, Filter, ChevronRight, 
-    Clock, RotateCcw, Hash 
+import {
+    Globe, MapPin, Route as RouteIcon, Database,
+    ShieldCheck, ArrowUpDown, Filter, ChevronRight,
+    Clock, RotateCcw, Hash
 } from 'lucide-react';
 import api from '../api';
 import { useWorkspace } from '../context/useWorkspace';
@@ -20,12 +20,12 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     const [health, setHealth] = useState<'checking' | 'online' | 'error'>('checking');
     const [stats, setStats] = useState<{ agencies: any[], stops: any[], routes: any[], trips: any[] }>({ agencies: [], stops: [], routes: [], trips: [] });
     const [logs, setLogs] = useState<{ timestamp: string, action: string, details: string }[]>([]);
-    
+
     // UI State
     const [activeType, setActiveType] = useState<'routes' | 'stops' | 'agencies' | 'trips'>('routes');
     const [filterQuery, setFilterQuery] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'id', direction: 'asc' });
-    
+
     // Column Resizing State
     const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
     const [isResizing, setIsResizing] = useState<string | null>(null);
@@ -112,7 +112,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
         let items = [...(stats[activeType] || [])];
         if (filterQuery) {
             const q = filterQuery.toLowerCase();
-            items = items.filter(i => 
+            items = items.filter(i =>
                 (i.name && i.name.toLowerCase().includes(q)) ||
                 (i.short_name && i.short_name.toLowerCase().includes(q)) ||
                 (i.long_name && i.long_name.toLowerCase().includes(q)) ||
@@ -144,14 +144,14 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     };
 
     const headers = {
-        routes: [{label:'ID',key:'id',w:60},{label:'Sign',key:'short_name',w:60},{label:'Name',key:'long_name',w:200},{label:'Operator',key:'agency_id',w:100}],
-        stops: [{label:'ID',key:'id',w:60},{label:'Name',key:'name',w:200},{label:'Lat',key:'lat',w:100},{label:'Lon',key:'lon',w:100}],
-        agencies: [{label:'ID',key:'id',w:60},{label:'Operator',key:'name',w:150},{label:'URL',key:'url',w:200},{label:'Timezone',key:'timezone',w:100}],
-        trips: [{label:'ID',key:'id',w:60},{label:'Route',key:'route_id',w:80},{label:'Heading',key:'headsign',w:200},{label:'Path ID',key:'shape_id',w:100}]
+        routes: [{ label: 'ID', key: 'id', w: 60 }, { label: 'Sign', key: 'short_name', w: 60 }, { label: 'Name', key: 'long_name', w: 200 }, { label: 'Operator', key: 'agency_id', w: 100 }],
+        stops: [{ label: 'ID', key: 'id', w: 60 }, { label: 'Name', key: 'name', w: 200 }, { label: 'Lat', key: 'lat', w: 100 }, { label: 'Lon', key: 'lon', w: 100 }],
+        agencies: [{ label: 'ID', key: 'id', w: 60 }, { label: 'Operator', key: 'name', w: 150 }, { label: 'URL', key: 'url', w: 200 }, { label: 'Timezone', key: 'timezone', w: 100 }],
+        trips: [{ label: 'ID', key: 'id', w: 60 }, { label: 'Route', key: 'route_id', w: 80 }, { label: 'Heading', key: 'headsign', w: 200 }, { label: 'Path ID', key: 'shape_id', w: 100 }]
     };
 
     const StatCard = ({ label, val, icon: Icon, sub, onClick }: any) => (
-        <button 
+        <button
             onClick={onClick}
             className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-sm p-3 flex flex-col justify-between h-20 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors duration-75 text-left group active:bg-zinc-50 dark:active:bg-zinc-800"
         >
@@ -170,7 +170,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
         <div className="flex h-full bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden font-bold select-none animate-in fade-in duration-500 relative">
             {/* Ghost Resize Line */}
             {isResizing && resizingX !== null && (
-                <div 
+                <div
                     className="absolute top-0 bottom-0 w-px bg-blue-500 z-[100] pointer-events-none"
                     style={{ left: resizingX }}
                 />
@@ -180,7 +180,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
             <div className="w-64 border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-white dark:bg-zinc-950 shrink-0">
                 <div className="h-10 px-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50">
                     <div className="flex items-center gap-2"><Database size={12} /><span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Explorer</span></div>
-                    <button onClick={fetchStats} className={`hover:text-zinc-900 dark:hover:text-zinc-100 transition-transform ${loading ? 'animate-spin' : 'active:rotate-180'}`}><RotateCcw size={12}/></button>
+                    <button onClick={fetchStats} className={`hover:text-zinc-900 dark:hover:text-zinc-100 transition-transform ${loading ? 'animate-spin' : 'active:rotate-180'}`}><RotateCcw size={12} /></button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
                     {[
@@ -189,9 +189,9 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                         { label: 'Routes', type: 'routes', count: stats.routes.length, icon: RouteIcon },
                         { label: 'Trips', type: 'trips', count: stats.trips.length, icon: Hash },
                     ].map(item => (
-                        <div 
-                            key={item.label} 
-                            onClick={() => setActiveType(item.type as any)} 
+                        <div
+                            key={item.label}
+                            onClick={() => setActiveType(item.type as any)}
                             className={`flex items-center justify-between px-3 py-1.5 rounded-sm transition-colors duration-75 cursor-pointer group outline-none border ${activeType === item.type ? 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold' : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}
                         >
                             <div className="flex items-center gap-2.5">
@@ -201,12 +201,12 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                             <span className={`text-[10px] font-mono px-1.5 rounded-sm border border-zinc-200 dark:border-zinc-800 ${activeType === item.type ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-500 bg-zinc-50 dark:bg-zinc-900'}`}>{loading ? '...' : item.count}</span>
                         </div>
                     ))}
-                    
+
                     <div className="pt-6 px-3 pb-2 text-[8px] font-black text-zinc-300 dark:text-zinc-600 uppercase tracking-[0.2em] border-t border-zinc-100 dark:border-zinc-800 mt-4">Global Settings</div>
                     <div className="px-3 space-y-2">
                         <div>
                             <label className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1 block">Transit Sign Style</label>
-                            <select 
+                            <select
                                 className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-sm text-[10px] py-1 px-1.5 outline-none focus:border-blue-400 transition-colors font-bold dark:text-zinc-100"
                                 value={settings['global_sign_style'] || 'standard'}
                                 onChange={(e) => updateSetting('global_sign_style', e.target.value)}
@@ -221,9 +221,19 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                     </div>
 
                     <div className="pt-6 px-3 pb-2 text-[8px] font-black text-zinc-300 dark:text-zinc-600 uppercase tracking-[0.2em] border-t border-zinc-100 dark:border-zinc-800 mt-4">System Status</div>
-                    <div className="px-3 py-2.5 flex items-center gap-3 bg-zinc-50 dark:bg-zinc-900/50 mx-2 rounded-sm border border-zinc-200 dark:border-zinc-800">
-                        <div className={`w-1.5 h-1.5 rounded-full ${health === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-                        <span className="text-[10px] font-black text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">{health === 'online' ? 'All systems ready' : 'Server error'}</span>
+                    <div className="px-3 py-2.5 flex flex-col gap-2 bg-zinc-50 dark:bg-zinc-900/50 mx-2 rounded-sm border border-zinc-200 dark:border-zinc-800">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-1.5 h-1.5 rounded-full ${health === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                            <span className="text-[10px] font-black text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">{health === 'online' ? 'All systems ready' : 'Server error'}</span>
+                        </div>
+                        <a
+                            href={`${api.defaults.baseURL}/export/gtfs`}
+                            download="gtfs.zip"
+                            className="mt-2 w-full py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-sm font-bold text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all active:scale-95"
+                        >
+                            <Database size={12} />
+                            Export GTFS Bundle
+                        </a>
                     </div>
                 </div>
             </div>
@@ -235,14 +245,14 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                     <StatCard label="Network Coverage" val={stats.stops.length} icon={Globe} sub="Total Stops" onClick={() => navigate('/stops')} />
                     <StatCard label="Active Services" val={stats.routes.length} icon={RouteIcon} sub="Routes Online" onClick={() => navigate('/routes')} />
                     <StatCard label="Total Schedule" val={stats.trips.length} icon={Database} sub="Trip Entries" onClick={() => navigate('/trips')} />
-                    <StatCard label="Data Integrity" val={integrityScore} icon={ShieldCheck} sub="Health Score" onClick={() => {}} />
+                    <StatCard label="Data Integrity" val={integrityScore} icon={ShieldCheck} sub="Health Score" onClick={() => { }} />
                 </div>
 
                 {/* Table View */}
                 <div className="flex-1 flex flex-col border-b border-zinc-200 dark:border-zinc-800 min-h-0 bg-white dark:bg-zinc-950 relative">
                     <div className="px-4 py-2 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 font-bold uppercase text-[10px] tracking-wider"><span>Inventory</span> <ChevronRight size={10}/> <span className="text-zinc-900 dark:text-zinc-100">{activeType}</span></div>
+                            <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 font-bold uppercase text-[10px] tracking-wider"><span>Inventory</span> <ChevronRight size={10} /> <span className="text-zinc-900 dark:text-zinc-100">{activeType}</span></div>
                             <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
                             <div className="relative">
                                 <Filter size={10} className="absolute left-2.5 top-2 text-zinc-400 dark:text-zinc-500" />
@@ -251,7 +261,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                         </div>
                         <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">{processedData.length} RESULTS</span>
                     </div>
-                    
+
                     <div className="flex-1 overflow-auto custom-scrollbar bg-white dark:bg-zinc-950 relative">
                         <table className="w-full border-collapse text-left text-[11px] table-fixed min-w-max">
                             <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-900 z-10 border-b border-zinc-200 dark:border-zinc-800">
@@ -259,19 +269,19 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                                     {headers[activeType].map((h: any) => {
                                         const width = columnWidths[h.key] || h.w || 100;
                                         return (
-                                            <th 
-                                                key={h.label} 
+                                            <th
+                                                key={h.label}
                                                 style={{ width }}
                                                 className="relative px-4 py-2 text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200/50 dark:border-zinc-800/50 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 group select-none"
                                             >
-                                                <div 
-                                                    className="flex items-center justify-between overflow-hidden" 
+                                                <div
+                                                    className="flex items-center justify-between overflow-hidden"
                                                     onClick={() => setSortConfig({ key: h.key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })}
                                                 >
-                                                    {h.label} 
+                                                    {h.label}
                                                     <ArrowUpDown size={10} className={`opacity-0 group-hover:opacity-100 ${sortConfig.key === h.key ? 'opacity-100 text-zinc-900 dark:text-zinc-100' : ''}`} />
                                                 </div>
-                                                <div 
+                                                <div
                                                     className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize transition-colors duration-75 z-20 ${isResizing === h.key ? 'bg-blue-500' : 'hover:bg-blue-400'}`}
                                                     onMouseDown={(e) => startResize(e, h.key, width)}
                                                 />
@@ -287,10 +297,10 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                                         {activeType === 'routes' ? (
                                             <>
                                                 <td className="px-4 py-2 border-r border-zinc-100 dark:border-zinc-800 truncate flex items-center justify-center h-10">
-                                                    <RouteSign 
-                                                        key={settings['global_sign_style']} 
-                                                        route={item} 
-                                                        size="sm" 
+                                                    <RouteSign
+                                                        key={settings['global_sign_style']}
+                                                        route={item}
+                                                        size="sm"
                                                     />
                                                 </td>
                                                 <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-100 border-r border-zinc-100 dark:border-zinc-800 truncate">{item.long_name}</td>
@@ -327,7 +337,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 </div>
 
                 {/* Vertical Resizer */}
-                <div 
+                <div
                     className="h-1 bg-zinc-200 dark:bg-zinc-800 hover:bg-blue-400 cursor-row-resize transition-colors duration-75 z-30 flex items-center justify-center group"
                     onMouseDown={startConsoleResize}
                 >
@@ -335,12 +345,12 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 </div>
 
                 {/* Console Log */}
-                <div 
+                <div
                     className="flex flex-col bg-white dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 shrink-0"
                     style={{ height: consoleHeight }}
                 >
                     <div className="px-4 py-2 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
-                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-2"><Clock size={12}/> Event Stream</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-2"><Clock size={12} /> Event Stream</h3>
                         <div className="flex items-center gap-2 text-[9px] font-bold text-emerald-500 uppercase tracking-wider"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Online</div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-1 font-mono text-[10px] space-y-0 custom-scrollbar bg-white dark:bg-zinc-950 select-text">
