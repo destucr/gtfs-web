@@ -286,7 +286,13 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                                         <td className="px-4 py-2 font-mono text-zinc-400 dark:text-zinc-500 border-r border-zinc-100 dark:border-zinc-800 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 truncate">#{item.id}</td>
                                         {activeType === 'routes' ? (
                                             <>
-                                                <td className="px-4 py-2 border-r border-zinc-100 dark:border-zinc-800 truncate flex items-center justify-center h-10"><RouteSign route={item} size="sm" /></td>
+                                                <td className="px-4 py-2 border-r border-zinc-100 dark:border-zinc-800 truncate flex items-center justify-center h-10">
+                                                    <RouteSign 
+                                                        key={settings['global_sign_style']} 
+                                                        route={item} 
+                                                        size="sm" 
+                                                    />
+                                                </td>
                                                 <td className="px-4 py-2 font-medium text-zinc-900 dark:text-zinc-100 border-r border-zinc-100 dark:border-zinc-800 truncate">{item.long_name}</td>
                                                 <td className="px-4 py-2 text-zinc-500 dark:text-zinc-400 uppercase text-[10px] truncate">{stats.agencies.find(a => a.id === item.agency_id)?.name || '...'}</td>
                                             </>

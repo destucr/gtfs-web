@@ -75,4 +75,8 @@
   .status-badge {
     @apply inline-flex items-center px-1.5 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wide;
   }
+
+  .hig-input {
+    @apply w-full px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500 transition-colors placeholder:text-zinc-400 text-[11px] font-bold;
+  }
 }

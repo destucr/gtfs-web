@@ -13,6 +13,10 @@ export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', classN
 
     useEffect(() => {
         api.get('/settings').then(res => setSettings(res.data || {}));
+        const interval = setInterval(() => {
+            api.get('/settings').then(res => setSettings(res.data || {}));
+        }, 10000); // Poll for global design changes every 10s
+        return () => clearInterval(interval);
     }, []);
 
     const template = settings['global_sign_style'] || 'standard';
@@ -31,8 +35,8 @@ export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', classN
         case 'singapore':
             return (
                 <div 
-                    className={`${baseClasses} rounded-md border-2`} 
-                    style={{ backgroundColor: color, borderColor: 'rgba(0,0,0,0.1)', color: textColor }}
+                    className={`${baseClasses} rounded-[4px] border border-black/5`} 
+                    style={{ backgroundColor: color, color: textColor, fontWeight: 800 }}
                 >
                     {route.short_name}
                 </div>
@@ -40,19 +44,17 @@ export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', classN
         case 'london':
             return (
                 <div 
-                    className={`${baseClasses} rounded-full border-2 bg-white`} 
-                    style={{ borderColor: color, color: '#000000' }}
+                    className={`${baseClasses} rounded-none border-b-2 border-black/20`} 
+                    style={{ backgroundColor: color, color: textColor }}
                 >
-                    <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: color, color: textColor, margin: '2px', borderRadius: '999px' }}>
-                        {route.short_name}
-                    </div>
+                    {route.short_name}
                 </div>
             );
         case 'transjakarta':
             return (
                 <div 
-                    className={`${baseClasses} rounded-sm`} 
-                    style={{ backgroundColor: '#00529B', color: '#FFFFFF', borderLeft: `4px solid ${color}` }}
+                    className={`${baseClasses} rounded-full`} 
+                    style={{ backgroundColor: color, color: textColor }}
                 >
                     {route.short_name}
                 </div>
@@ -60,10 +62,12 @@ export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', classN
         case 'paris':
             return (
                 <div 
-                    className={`${baseClasses} rounded-full`} 
-                    style={{ backgroundColor: color, color: textColor }}
+                    className={`${baseClasses} rounded-full border-2 bg-white`} 
+                    style={{ borderColor: color, color: '#000000' }}
                 >
-                    {route.short_name}
+                    <div className="w-[85%] h-[85%] flex items-center justify-center rounded-full" style={{ backgroundColor: color, color: textColor }}>
+                        {route.short_name}
+                    </div>
                 </div>
             );
         case 'standard':

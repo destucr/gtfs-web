@@ -71,7 +71,7 @@ const FloatingFeedback: React.FC = () => {
 const MapHUD: React.FC = () => {
   const { mapLayers, status, quickMode, setQuickMode, sidebarOpen } = useWorkspace();
   const location = useLocation();
-  if (location.pathname === '/') return null;
+  if (location.pathname === '/' || location.pathname === '/settings') return null;
   return (
     <div className="absolute top-6 z-[1000] pointer-events-none flex flex-col gap-3 transition-all duration-500" style={{ left: sidebarOpen ? 424 : 24 }}>
       {(status?.isDirty || mapLayers.activeShape.length > 0) && (
@@ -94,7 +94,7 @@ const QuickActionMenu: React.FC = () => {
   const { setQuickMode, quickMode, sidebarOpen } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();
-  if (location.pathname === '/') return null;
+  if (location.pathname === '/' || location.pathname === '/settings') return null;
   const handleAction = (mode: 'add-stop' | 'add-route') => { if (quickMode === mode) { setQuickMode(null); } else { setQuickMode(mode); if (mode === 'add-stop') navigate('/stops'); if (mode === 'add-route') navigate('/routes'); } };
   return (
     <div className="absolute bottom-10 z-[1000] flex flex-col gap-3 transition-all duration-500 pointer-events-none" style={{ left: sidebarOpen ? 424 : 24 }}>
@@ -110,12 +110,13 @@ const WorkspaceContainer: React.FC = () => {
   const location = useLocation();
   const { sidebarOpen, setSidebarOpen } = useWorkspace();
   const isHome = location.pathname === '/';
+  const isSettings = location.pathname === '/settings';
   return (
     <div className="flex-1 h-full overflow-hidden relative text-zinc-900 font-bold bg-zinc-100">
       <FloatingFeedback />
-      {!isHome && <div className="absolute inset-0 z-0"><UnifiedMap /></div>}
-      {!isHome && <><MapHUD /><QuickActionMenu /></>}
-      <div className={`absolute inset-0 transition-all duration-300 ${isHome ? 'z-30 pointer-events-auto' : 'z-20 pointer-events-none'}`}>
+      {!isHome && !isSettings && <div className="absolute inset-0 z-0"><UnifiedMap /></div>}
+      {!isHome && !isSettings && <><MapHUD /><QuickActionMenu /></>}
+      <div className={`absolute inset-0 transition-all duration-300 ${isHome || isSettings ? 'z-30 pointer-events-auto' : 'z-20 pointer-events-none'}`}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/agencies" element={<Agencies />} />
@@ -125,7 +126,7 @@ const WorkspaceContainer: React.FC = () => {
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </div>
-      {!isHome && !sidebarOpen && (
+      {!isHome && !isSettings && !sidebarOpen && (
         <button 
           onClick={() => setSidebarOpen(true)}
           className="absolute top-6 left-6 z-[4000] p-3 bg-white shadow-2xl rounded-2xl border border-black/5 hover:scale-105 active:scale-95 transition-all text-system-blue pointer-events-auto"

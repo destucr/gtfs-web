@@ -25,45 +25,45 @@ export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', classN
 
     switch (template) {
         case 'singapore':
-            // LTA style: Rounded rectangle with thicker borders or solid blocks
+            // LTA style: Very clean rounded rectangle, bold font
             return (
                 <div 
-                    className={`${baseClasses} rounded-md border-2`} 
-                    style={{ backgroundColor: color, borderColor: 'rgba(0,0,0,0.1)', color: textColor }}
+                    className={`${baseClasses} rounded-[4px] border border-black/5`} 
+                    style={{ backgroundColor: color, color: textColor, fontWeight: 800 }}
                 >
                     {route.short_name}
                 </div>
             );
         case 'london':
-            // TfL inspired: Roundel-ish or pill
+            // TfL bus style: Red rectangle (usually) with white text, but here we use route color
             return (
                 <div 
-                    className={`${baseClasses} rounded-full border-2 bg-white`} 
-                    style={{ borderColor: color, color: '#000000' }}
-                >
-                    <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: color, color: textColor, margin: '2px', borderRadius: '999px' }}>
-                        {route.short_name}
-                    </div>
-                </div>
-            );
-        case 'transjakarta':
-            // Transjakarta style: Blueish header or specific border
-            return (
-                <div 
-                    className={`${baseClasses} rounded-sm`} 
-                    style={{ backgroundColor: '#00529B', color: '#FFFFFF', borderLeft: `4px solid ${color}` }}
+                    className={`${baseClasses} rounded-none border-b-2 border-black/20`} 
+                    style={{ backgroundColor: color, color: textColor }}
                 >
                     {route.short_name}
                 </div>
             );
-        case 'paris':
-            // RATP: Perfect circle
+        case 'transjakarta':
+            // Transjakarta: Circle background one color and then only number
             return (
                 <div 
                     className={`${baseClasses} rounded-full`} 
                     style={{ backgroundColor: color, color: textColor }}
                 >
                     {route.short_name}
+                </div>
+            );
+        case 'paris':
+            // RATP Metro Style: Circle with specific border
+            return (
+                <div 
+                    className={`${baseClasses} rounded-full border-2 bg-white`} 
+                    style={{ borderColor: color, color: '#000000' }}
+                >
+                    <div className="w-[85%] h-[85%] flex items-center justify-center rounded-full" style={{ backgroundColor: color, color: textColor }}>
+                        {route.short_name}
+                    </div>
                 </div>
             );
         case 'standard':

@@ -26,6 +26,9 @@ func main() {
 
 	api := r.Group("/api")
 	{
+		api.GET("/settings", handlers.GetSettings)
+		api.PUT("/settings", handlers.UpdateSetting)
+
 		api.GET("/agencies", handlers.GetAgencies)
 		api.POST("/agencies", handlers.CreateAgency)
 		api.PUT("/agencies/:id", handlers.UpdateAgency)
@@ -68,9 +71,6 @@ func main() {
 
 		api.GET("/export/gtfs", handlers.ExportGTFS)
 		api.GET("/activity-logs", handlers.GetActivityLogs)
-
-		api.GET("/settings", handlers.GetSettings)
-		api.PUT("/settings", handlers.UpdateSetting)
 	}
 
 	r.Run(":8080")

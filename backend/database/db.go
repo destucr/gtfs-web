@@ -149,9 +149,23 @@ func Connect() {
 		DB.Migrator().DropTable("route_stops")
 	}
 
-	err = DB.AutoMigrate(&models.Agency{}, &models.Stop{}, &models.Route{}, &models.Trip{}, &models.ShapePoint{}, &models.TripStop{}, &models.ActivityLog{})
+	err = DB.AutoMigrate(&models.Agency{}, &models.Stop{}, &models.Route{}, &models.Trip{}, &models.ShapePoint{}, &models.TripStop{}, &models.ActivityLog{}, &models.Setting{})
 	if err != nil {
 		log.Fatal("Failed to migrate database!", err)
+	}
+
+	// Seed default settings if empty
+	var count int64
+	DB.Model(&models.Setting{}).Count(&count)
+	if count == 0 {
+		defaultSettings := []models.Setting{
+			{Key: "global_sign_style", Value: "standard"},
+			{Key: "dark_mode", Value: "false"},
+			{Key: "map_provider", Value: "carto"},
+			{Key: "autosave_delay", Value: "2000"},
+		}
+		DB.Create(&defaultSettings)
+		log.Println("Default settings seeded.")
 	}
 
 	log.Println("Database connected and migrated.")
