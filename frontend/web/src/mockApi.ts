@@ -3,7 +3,7 @@ import MockAdapter from 'axios-mock-adapter';
 import demoData from './demo-data.json';
 
 export const setupMockApi = (api: AxiosInstance) => {
-    const mock = new MockAdapter(api, { delayResponse: 500 });
+    const mock = new MockAdapter(api as any, { delayResponse: 500 });
 
     console.log('👷 Mocking API for Web Viewer Demo');
 
