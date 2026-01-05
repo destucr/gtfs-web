@@ -19,10 +19,13 @@ export const setupMockApi = (api: AxiosInstance) => {
     // Special Detail Handlers
     // Note: axios-mock-adapter matches against the relative URL (without baseURL)
     // So /shapes/SHP_K4 matches, not /api/shapes/SHP_K4
+    // filter(Boolean) handles trailing slashes
+    const extractId = (url: string) => url.split('/').filter(Boolean).pop()?.split('?')[0] || '';
+
     // Register shape handler BEFORE the fallback to ensure it catches shape requests
     mock.onGet(/^\/shapes\/[^\/]+$/).reply((config) => {
         const url = config.url || '';
-        const id = url.split('/').pop()?.split('?')[0] || '';
+        const id = extractId(url);
         const details = (demoData as any)['/shapes/detail'] || {};
         const detail = details[id];
         
@@ -39,7 +42,7 @@ export const setupMockApi = (api: AxiosInstance) => {
     // Also handle shapes with query params
     mock.onGet(/^\/shapes\/[^\/]+/).reply((config) => {
         const url = config.url || '';
-        const id = url.split('/').pop()?.split('?')[0] || '';
+        const id = extractId(url);
         const details = (demoData as any)['/shapes/detail'] || {};
         const detail = details[id];
         

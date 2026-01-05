@@ -17,7 +17,10 @@ const GTFS_WEB_ROOT = path.join(__dirname, '..');
 const CMS_DIR = path.join(GTFS_WEB_ROOT, 'frontend', 'cms');
 const CMS_DIST = path.join(CMS_DIR, 'dist');
 const PORTO_WEB_ROOT = '/Users/destucr/Desktop/porto-web';
-const PORTO_CMS_DIR = path.join(PORTO_WEB_ROOT, 'gtfs-cms');
+const DESTINATIONS = [
+    path.join(PORTO_WEB_ROOT, 'gtfs-cms'),
+    path.join(PORTO_WEB_ROOT, 'public', 'gtfs-cms')
+];
 
 // Cloudflare Pages redirects file content
 const REDIRECTS_CONTENT = `/* /index.html 200
@@ -82,26 +85,28 @@ function main() {
     }
     log('✅ Build output verified\n');
 
-    // Step 3: Clean destination directory (optional - comment out if you want to keep old files)
-    if (fs.existsSync(PORTO_CMS_DIR)) {
-        log('🧹 Cleaning existing porto-web/gtfs-cms directory...');
-        fs.rmSync(PORTO_CMS_DIR, { recursive: true, force: true });
-        log('✅ Cleaned\n');
+    // Step 3 & 4: Sync to all destinations
+    for (const dest of DESTINATIONS) {
+        log(`\n📂 Syncing to: ${dest}`);
+        
+        // Clean
+        if (fs.existsSync(dest)) {
+            log(`  🧹 Cleaning...`);
+            fs.rmSync(dest, { recursive: true, force: true });
+        }
+
+        // Copy
+        log(`  📋 Copying build output...`);
+        copyDir(CMS_DIST, dest);
+
+        // Redirects
+        log(`  📋 Ensuring _redirects...`);
+        const redirectsPath = path.join(dest, '_redirects');
+        fs.writeFileSync(redirectsPath, REDIRECTS_CONTENT);
     }
 
-    // Step 4: Copy dist to porto-web/gtfs-cms
-    log('📋 Step 2: Copying build output to porto-web/gtfs-cms...');
-    copyDir(CMS_DIST, PORTO_CMS_DIR);
-    log('✅ Files copied!\n');
-
-    // Step 5: Ensure _redirects file exists
-    log('📋 Step 3: Ensuring _redirects file for Cloudflare Pages...');
-    const redirectsPath = path.join(PORTO_CMS_DIR, '_redirects');
-    fs.writeFileSync(redirectsPath, REDIRECTS_CONTENT);
-    log('✅ _redirects file created/updated!\n');
-
-    log('🎉 Success! GTFS CMS is ready for Cloudflare Pages deployment.');
-    log(`📁 Output location: ${PORTO_CMS_DIR}`);
+    log('\n🎉 Success! GTFS CMS is ready for Cloudflare Pages deployment.');
+    log(`📁 Updated ${DESTINATIONS.length} locations.`);
     log('\n💡 Next steps:');
     log('   1. cd /Users/destucr/Desktop/porto-web');
     log('   2. Commit and push the changes');
