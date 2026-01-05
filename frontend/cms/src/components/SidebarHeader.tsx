@@ -11,28 +11,28 @@ interface SidebarHeaderProps {
 
 export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ title, Icon, onBack, actions, onToggleSidebar }) => {
   return (
-    <div className="p-6 border-b border-black/5 flex items-center justify-between shrink-0 bg-white sticky top-0 z-50">
+    <div className="h-14 px-4 border-b border-zinc-200 flex items-center justify-between shrink-0 bg-white sticky top-0 z-50 shadow-sm">
       <div className="flex items-center gap-3">
         {onBack ? (
-          <button onClick={onBack} className="p-2 -ml-2 hover:bg-black/5 rounded-lg transition-colors text-system-blue">
-            <ChevronLeft size={20} />
+          <button onClick={onBack} className="p-1.5 -ml-1.5 hover:bg-zinc-100 rounded-md transition-colors text-blue-600">
+            <ChevronLeft size={18} />
           </button>
         ) : (
-          <div className="w-8 h-8 bg-system-blue rounded-lg flex items-center justify-center text-white shadow-lg shadow-system-blue/20">
-            <Icon size={18} />
+          <div className="w-7 h-7 bg-white border border-zinc-200 rounded-md flex items-center justify-center text-zinc-700 shadow-sm">
+            <Icon size={16} />
           </div>
         )}
-        <h1 className="text-xl font-black tracking-tight leading-none text-black">{title}</h1>
+        <h1 className="text-sm font-bold tracking-tight text-zinc-900 uppercase">{title}</h1>
       </div>
       <div className="flex items-center gap-2">
         {actions}
         {onToggleSidebar && (
           <button 
             onClick={onToggleSidebar} 
-            className="p-2 hover:bg-black/5 rounded-lg transition-colors text-zinc-400 hover:text-black"
+            className="p-1.5 hover:bg-zinc-100 rounded-md transition-colors text-zinc-400 hover:text-zinc-900"
             title="Hide Sidebar"
           >
-            <PanelLeftClose size={18} />
+            <PanelLeftClose size={16} />
           </button>
         )}
       </div>

@@ -119,12 +119,12 @@ const Home: React.FC = () => {
   return (
     <div className="flex h-full bg-white text-zinc-900 overflow-hidden font-bold select-none animate-in fade-in duration-500 pointer-events-auto">
       {/* Registry Tree Sidebar */}
-      <div className="w-64 border-r border-zinc-100 flex flex-col bg-zinc-50/30 shrink-0">
-        <div className="p-4 border-b border-zinc-100 flex items-center justify-between text-zinc-500">
-          <div className="flex items-center gap-2"><Database size={14} /><span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Network Items</span></div>
+      <div className="w-64 border-r border-zinc-200 flex flex-col bg-white shrink-0">
+        <div className="h-10 px-3 border-b border-zinc-200 flex items-center justify-between text-zinc-500 bg-zinc-50">
+          <div className="flex items-center gap-2"><Database size={12} /><span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Explorer</span></div>
           <button onClick={fetchStats} className={`hover:text-zinc-900 transition-transform ${loading ? 'animate-spin' : 'active:rotate-180'}`}><RotateCcw size={12}/></button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {[
             { label: 'Operators', type: 'agencies', count: stats.agencies.length, icon: Globe },
             { label: 'Stops', type: 'stops', count: stats.stops.length, icon: MapPin },
@@ -134,13 +134,13 @@ const Home: React.FC = () => {
             <div 
               key={item.label} 
               onClick={() => setActiveType(item.type as any)} 
-              className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer ${activeType === item.type ? 'bg-white shadow-sm border border-zinc-100' : 'hover:bg-zinc-100 text-zinc-400 hover:text-zinc-900'}`}
+              className={`flex items-center justify-between px-3 py-1.5 rounded-md transition-all cursor-pointer group ${activeType === item.type ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900'}`}
             >
-              <div className="flex items-center gap-3">
-                <item.icon size={12} className={activeType === item.type ? 'text-system-blue' : ''} />
-                <span className={`text-[11px] uppercase tracking-tight ${activeType === item.type ? 'font-black text-zinc-900' : 'font-bold'}`}>{item.label}</span>
+              <div className="flex items-center gap-2.5">
+                <item.icon size={14} className={activeType === item.type ? 'text-blue-600' : 'text-zinc-400 group-hover:text-zinc-500'} />
+                <span className="text-[11px] tracking-tight">{item.label}</span>
               </div>
-              <span className={`text-[9px] font-mono font-black px-1.5 py-0.5 rounded border ${activeType === item.type ? 'text-system-blue border-system-blue/20 bg-system-blue/5' : 'text-zinc-300 border-zinc-50 bg-white'}`}>{loading ? '...' : item.count}</span>
+              <span className={`text-[10px] font-mono px-1.5 rounded ${activeType === item.type ? 'bg-blue-100 text-blue-700' : 'text-zinc-400 group-hover:bg-zinc-200'}`}>{loading ? '...' : item.count}</span>
             </div>
           ))}
           <div className="pt-6 px-3 pb-2 text-[8px] font-black text-zinc-300 uppercase tracking-[0.2em] border-t border-zinc-100 mt-4">System Status</div>
@@ -169,81 +169,80 @@ const Home: React.FC = () => {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Global Overview Snapshot Bar */}
-        <div className="px-6 py-4 flex items-center justify-between border-b border-zinc-100 bg-white shrink-0">
+        <div className="p-4 grid grid-cols-4 gap-4 border-b border-zinc-200 bg-zinc-50/50 shrink-0">
           {[
-            { label: 'Network Coverage', val: stats.stops.length, icon: Globe, col: 'text-blue-600' },
-            { label: 'Active Services', val: stats.routes.length, icon: RouteIcon, col: 'text-emerald-600' },
-            { label: 'Total Schedule', val: stats.trips.length, icon: Database, col: 'text-purple-600' },
-            { label: 'Data Integrity', val: integrityScore, icon: ShieldCheck, col: 'text-zinc-900', title: 'Calculated ratio of routes with assigned paths.' },
-          ].map((item, i) => (
-            <React.Fragment key={item.label}>
-              <div className="flex items-center gap-3" title={item.title}>
-                <div className={`${item.col} opacity-40`}><item.icon size={14} /></div>
-                <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">{item.label}</span>
-                  <span className="text-sm font-black text-zinc-900 leading-none">{loading ? '...' : item.val}</span>
-                </div>
+            { label: 'Network Coverage', val: stats.stops.length, icon: Globe, col: 'text-blue-600', sub: 'Total Stops' },
+            { label: 'Active Services', val: stats.routes.length, icon: RouteIcon, col: 'text-emerald-600', sub: 'Routes Online' },
+            { label: 'Total Schedule', val: stats.trips.length, icon: Database, col: 'text-purple-600', sub: 'Trip Entries' },
+            { label: 'Data Integrity', val: integrityScore, icon: ShieldCheck, col: 'text-zinc-900', title: 'Calculated ratio of routes with assigned paths.', sub: 'Health Score' },
+          ].map((item) => (
+            <div key={item.label} className="bg-white border border-zinc-200 shadow-sm rounded-md p-3 flex flex-col justify-between h-20" title={item.title}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{item.label}</span>
+                <item.icon size={14} className={`${item.col} opacity-80`} />
               </div>
-              {i < 3 && <div className="h-6 w-px bg-zinc-100 mx-4" />}
-            </React.Fragment>
+              <div className="flex items-end justify-between">
+                <span className="text-2xl font-bold text-zinc-900 tracking-tight leading-none">{loading ? '...' : item.val}</span>
+                <span className="text-[9px] font-medium text-zinc-400">{item.sub}</span>
+              </div>
+            </div>
           ))}
-          <div className="flex-1" />
         </div>
 
-        <div className="h-[45%] flex flex-col border-b border-zinc-100">
-          <div className="px-5 py-3 bg-zinc-50/50 border-b border-zinc-100 flex items-center justify-between">
+        <div className="flex-1 flex flex-col border-b border-zinc-200 min-h-0">
+          <div className="px-4 py-2 bg-white border-b border-zinc-200 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-zinc-400 font-black uppercase text-[9px] tracking-widest"><span>Viewing</span> <ChevronRight size={10}/> <span className="text-zinc-900">{activeType}</span></div>
+              <div className="flex items-center gap-2 text-zinc-500 font-bold uppercase text-[10px] tracking-wider"><span>Inventory</span> <ChevronRight size={10}/> <span className="text-zinc-900">{activeType}</span></div>
               <div className="h-4 w-px bg-zinc-200" />
               <div className="relative">
                 <Filter size={10} className="absolute left-2.5 top-2 text-zinc-400" />
-                <input className="bg-white border border-zinc-200 rounded-lg pl-7 pr-3 py-1 text-[10px] font-bold focus:ring-2 focus:ring-zinc-100 outline-none w-48" placeholder={`Search ${activeType}...`} value={filterQuery} onChange={e => setFilterQuery(e.target.value)} />
+                <input className="bg-zinc-50 border border-zinc-200 rounded-md pl-7 pr-3 py-1 text-[10px] font-medium focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none w-64 transition-all" placeholder={`Search ${activeType}...`} value={filterQuery} onChange={e => setFilterQuery(e.target.value)} />
               </div>
             </div>
-            <span className="text-[8px] font-black text-zinc-400 uppercase tracking-tighter">Inventory: {processedData.length} entries</span>
+            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">{processedData.length} RESULTS</span>
           </div>
-          <div className="flex-1 overflow-auto custom-scrollbar bg-white">
-            <table className="w-full border-collapse text-left">
-              <thead className="sticky top-0 bg-white z-10 border-b border-zinc-100 shadow-sm">
+          <div className="flex-1 overflow-auto custom-scrollbar bg-white relative">
+            <table className="w-full border-collapse text-left text-[11px]">
+              <thead className="sticky top-0 bg-zinc-50 z-10 border-b border-zinc-200">
                 <tr>
                   {headers[activeType].map(h => (
-                    <th key={h.label} onClick={() => setSortConfig({ key: h.key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="px-5 py-2.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-r border-zinc-100 cursor-pointer hover:bg-zinc-50 group">
+                    <th key={h.label} onClick={() => setSortConfig({ key: h.key, direction: sortConfig.direction === 'asc' ? 'desc' : 'asc' })} className="px-4 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-wider border-r border-zinc-200/50 cursor-pointer hover:bg-zinc-100 group select-none">
                       <div className="flex items-center justify-between">{h.label} <ArrowUpDown size={10} className={`opacity-0 group-hover:opacity-100 ${sortConfig.key === h.key ? 'opacity-100 text-zinc-900' : ''}`} /></div>
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-50 text-[11px]">
+              <tbody className="divide-y divide-zinc-100">
                 {processedData.map(item => (
-                  <tr key={item.id} onClick={() => handleRowClick(item)} className="hover:bg-zinc-50 transition-colors cursor-pointer group">
-                    <td className="px-5 py-2.5 font-mono text-zinc-300 border-r border-zinc-100 group-hover:text-zinc-900">#{item.id}</td>
+                  <tr key={item.id} onClick={() => handleRowClick(item)} className="hover:bg-blue-50/30 transition-colors cursor-pointer group">
+                    <td className="px-4 py-2 font-mono text-zinc-400 border-r border-zinc-100 group-hover:text-zinc-900">#{item.id}</td>
                     {activeType === 'routes' ? (
                       <>
-                        <td className="px-5 py-2.5 border-r border-zinc-100"><div className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-black text-white" style={{ backgroundColor: `#${(item.color || '007AFF').replace('#','')}` }}>{item.short_name}</div></td>
-                        <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100 truncate max-w-xs">{item.long_name}</td>
-                        <td className="px-5 py-2.5 text-zinc-400 uppercase">{stats.agencies.find(a => a.id === item.agency_id)?.name || '...'}</td>
+                        <td className="px-4 py-2 border-r border-zinc-100"><div className="w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-bold text-white shadow-sm" style={{ backgroundColor: `#${(item.color || '007AFF').replace('#','')}` }}>{item.short_name}</div></td>
+                        <td className="px-4 py-2 font-medium text-zinc-900 border-r border-zinc-100 truncate max-w-xs">{item.long_name}</td>
+                        <td className="px-4 py-2 text-zinc-500 uppercase text-[10px]">{stats.agencies.find(a => a.id === item.agency_id)?.name || '...'}</td>
                       </>
                     ) : activeType === 'stops' ? (
                       <>
-                        <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100">{item.name}</td>
-                        <td className="px-5 py-2.5 font-mono text-zinc-400 border-r border-zinc-100">
+                        <td className="px-4 py-2 font-medium text-zinc-900 border-r border-zinc-100">{item.name}</td>
+                        <td className="px-4 py-2 font-mono text-zinc-500 border-r border-zinc-100">
                           {typeof item.lat === 'number' && isFinite(item.lat) ? item.lat.toFixed(6) : '0.000000'}
                         </td>
-                        <td className="px-5 py-2.5 font-mono text-zinc-400">
+                        <td className="px-4 py-2 font-mono text-zinc-500">
                           {typeof item.lon === 'number' && isFinite(item.lon) ? item.lon.toFixed(6) : '0.000000'}
                         </td>
                       </>
                     ) : activeType === 'agencies' ? (
                       <>
-                        <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100">{item.name}</td>
-                        <td className="px-5 py-2.5 text-zinc-400 border-r border-zinc-100 truncate max-w-xs">{item.url}</td>
-                        <td className="px-5 py-2.5 text-zinc-400">{item.timezone}</td>
+                        <td className="px-4 py-2 font-medium text-zinc-900 border-r border-zinc-100">{item.name}</td>
+                        <td className="px-4 py-2 text-zinc-500 border-r border-zinc-100 truncate max-w-xs">{item.url}</td>
+                        <td className="px-4 py-2 text-zinc-500">{item.timezone}</td>
                       </>
                     ) : (
                       <>
-                        <td className="px-5 py-2.5 font-mono text-zinc-400 border-r border-zinc-100">L-{item.route_id}</td>
-                        <td className="px-5 py-2.5 font-bold text-zinc-900 border-r border-zinc-100">{item.headsign}</td>
-                        <td className="px-5 py-2.5 text-zinc-400 text-[9px] uppercase tracking-tighter">{item.shape_id}</td>
+                        <td className="px-4 py-2 font-mono text-zinc-500 border-r border-zinc-100">L-{item.route_id}</td>
+                        <td className="px-4 py-2 font-medium text-zinc-900 border-r border-zinc-100">{item.headsign}</td>
+                        <td className="px-4 py-2 text-zinc-500 text-[10px] uppercase tracking-wider">{item.shape_id}</td>
                       </>
                     )}
                   </tr>
@@ -253,20 +252,20 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col bg-zinc-50/10">
-          <div className="px-5 py-3 bg-white border-b border-zinc-100 flex items-center justify-between shrink-0">
-            <h3 className="text-[9px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2"><Clock size={12}/> Recent Activity</h3>
-            <div className="flex items-center gap-2 text-[8px] font-black text-emerald-500 uppercase tracking-widest"><div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" /> Live updates active</div>
+        <div className="h-64 flex flex-col bg-zinc-950 text-zinc-400 border-t border-zinc-800 shrink-0">
+          <div className="px-4 py-2 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between shrink-0">
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2"><Clock size={12}/> System Console</h3>
+            <div className="flex items-center gap-2 text-[9px] font-bold text-emerald-500 uppercase tracking-wider"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Live Stream</div>
           </div>
-          <div className="flex-1 overflow-y-auto p-5 font-mono text-[10px] space-y-3 custom-scrollbar text-zinc-500 bg-zinc-50/20 select-text">
+          <div className="flex-1 overflow-y-auto p-4 font-mono text-[10px] space-y-1 custom-scrollbar bg-black/50 select-text">
             {logs.map((log, i) => (
-              <div key={i} className="flex gap-6 opacity-70 hover:opacity-100 transition-opacity">
-                <span className="text-zinc-300 w-16 shrink-0 font-bold">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false })}</span>
-                <span className="font-black text-zinc-400 w-24 shrink-0 truncate" title={log.action}>{log.action}</span>
-                <span className="text-zinc-600 leading-relaxed">{log.details}</span>
+              <div key={i} className="flex gap-4 items-start hover:bg-zinc-900/50 p-0.5 rounded transition-colors">
+                <span className="text-zinc-600 w-20 shrink-0">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                <span className="font-bold text-blue-400 w-24 shrink-0 truncate uppercase">{log.action}</span>
+                <span className="text-zinc-400 leading-relaxed">{log.details}</span>
               </div>
             ))}
-            {logs.length === 0 && <div className="text-zinc-300 text-center py-4">No recent activity found.</div>}
+            {logs.length === 0 && <div className="text-zinc-600 italic px-2">Waiting for system events...</div>}
           </div>
         </div>
       </div>
@@ -333,7 +332,7 @@ const WorkspaceContainer: React.FC = () => {
   const { sidebarOpen, setSidebarOpen } = useWorkspace();
   const isHome = location.pathname === '/';
   return (
-    <div className="h-[calc(100vh-64px)] overflow-hidden relative text-black font-bold bg-system-background">
+    <div className="flex-1 h-full overflow-hidden relative text-zinc-900 font-bold bg-zinc-100">
       <FloatingFeedback />
       {!isHome && <div className="absolute inset-0 z-0"><UnifiedMap /></div>}
       {!isHome && <><MapHUD /><QuickActionMenu /></>}
@@ -363,10 +362,10 @@ function App() {
   return (
     <Router>
       <WorkspaceProvider>
-        <div className="min-h-screen bg-system-background flex flex-col">
+        <div className="flex h-screen w-screen overflow-hidden bg-zinc-100 text-zinc-900 font-sans">
           <Navigation />
-          <ShortcutManager />
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+            <ShortcutManager />
             <WorkspaceContainer />
           </main>
         </div>
