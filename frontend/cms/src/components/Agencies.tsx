@@ -205,33 +205,33 @@ const Agencies: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
-            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-zinc-100 pointer-events-auto shadow-2xl" style={{ width: 400 }}>
+            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black border-r border-zinc-200 pointer-events-auto shadow-none" style={{ width: 320 }}>
                 <SidebarHeader 
                     title="Operators" 
                     Icon={Landmark} 
                     onToggleSidebar={() => setSidebarOpen(false)}
-                    actions={<button onClick={handleAddNew} className="p-1.5 bg-system-blue/10 text-system-blue rounded-lg hover:bg-system-blue/20 transition-colors" title="System: Initializing new operator record."><Plus size={18} /></button>} 
+                    actions={<button onClick={handleAddNew} className="p-1.5 bg-blue-50 text-blue-600 rounded-sm hover:bg-blue-100 transition-colors" title="Add Operator"><Plus size={18} /></button>} 
                 />
                 <div className="p-4 px-6 border-b border-zinc-100 bg-white shrink-0 flex gap-2">
-                    <div className="relative flex-1"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search operators..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
-                    <button onClick={fetchInitialData} className="p-2 bg-zinc-50 rounded-lg text-zinc-400 hover:text-zinc-900 transition-colors"><RotateCcw size={18} /></button>
+                    <div className="relative flex-1"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="bg-zinc-50 border border-zinc-200 rounded-sm text-sm pl-9 py-2 font-bold w-full outline-none focus:border-blue-400 transition-colors" placeholder="Search operators..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
+                    <button onClick={fetchInitialData} className="p-2 bg-zinc-50 border border-zinc-200 rounded-sm text-zinc-400 hover:text-zinc-900 transition-colors"><RotateCcw size={18} /></button>
                 </div>
                 <div className="flex-1 overflow-y-auto divide-y divide-zinc-50">
                     {filteredAgencies.map(agency => (
-                        <div key={agency.id} className={`p-4 hover:bg-zinc-50 cursor-pointer transition-all group flex items-center justify-between ${selectedAgency?.id === agency.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`} onClick={() => handleSelectAgency(agency)}>
+                        <div key={agency.id} className={`p-4 hover:bg-zinc-50 cursor-pointer transition-colors duration-75 group flex items-center justify-between ${selectedAgency?.id === agency.id ? 'bg-blue-50/50 border-l-2 border-blue-600' : ''}`} onClick={() => handleSelectAgency(agency)}>
                             <div className="min-w-0">
-                                <div className="font-black text-sm tracking-tight text-zinc-900 leading-none mb-1 truncate">{agency.name}</div>
-                                <div className="flex items-center gap-2 text-[9px] font-black text-zinc-400 uppercase tracking-widest"><Globe size={10} /> {agency.timezone}</div>
+                                <div className="font-bold text-sm tracking-tight text-zinc-900 leading-none mb-1 truncate">{agency.name}</div>
+                                <div className="flex items-center gap-2 text-[9px] font-bold text-zinc-400 uppercase tracking-widest"><Globe size={10} /> {agency.timezone}</div>
                             </div>
                             <div className="flex items-center gap-1">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); if (window.confirm('Wipe this operator?')) api.delete(`/agencies/${agency.id}`).then(fetchInitialData); }}
-                                    className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+                                    className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-sm opacity-0 group-hover:opacity-100 transition-all duration-75"
                                     title="System: Terminating operator record."
                                 >
                                     <Trash2 size={14} />
                                 </button>
-                                <ChevronRight size={18} className={`text-zinc-300 transition-all ${selectedAgency?.id === agency.id ? 'translate-x-1 text-system-blue opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                                <ChevronRight size={18} className={`text-zinc-300 transition-all duration-75 ${selectedAgency?.id === agency.id ? 'translate-x-1 text-blue-600 opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                             </div>
                         </div>
                     ))}

@@ -448,7 +448,7 @@ const RouteStudio: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
-            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -400 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black pointer-events-auto shadow-2xl border-r border-zinc-100" style={{ width: 400 }}>
+            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white relative z-20 overflow-hidden text-black pointer-events-auto shadow-none border-r border-zinc-200" style={{ width: 320 }}>
                 <SidebarHeader 
                     title="Routes" 
                     Icon={Bus} 
@@ -457,7 +457,7 @@ const RouteStudio: React.FC = () => {
                         <button
                             onClick={handleAddNew}
                             disabled={agencies.length === 0}
-                            className={`p-1.5 rounded-lg transition-colors ${agencies.length === 0 ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-system-blue/10 text-system-blue hover:bg-system-blue/20'}`}
+                            className={`p-1.5 rounded-sm transition-colors ${agencies.length === 0 ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
                             title={agencies.length === 0 ? "Create an agency before adding routes" : "Add Route"}
                         >
                             {agencies.length === 0 ? <AlertCircle size={18} /> : <Plus size={18} />}
@@ -465,22 +465,22 @@ const RouteStudio: React.FC = () => {
                     } 
                 />
                 <div className="p-4 px-6 border-b border-zinc-100 bg-white shrink-0">
-                    <div className="relative"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="hig-input text-sm pl-9 py-2 font-bold" placeholder="Search routes..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
+                    <div className="relative"><Search size={14} className="absolute left-3 top-3 text-zinc-400" /><input className="bg-zinc-50 border border-zinc-200 rounded-sm text-sm pl-9 py-2 font-bold w-full outline-none focus:border-blue-400 transition-colors" placeholder="Search routes..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
                 </div>
                 <div className="flex-1 overflow-y-auto divide-y divide-zinc-50">
                     {filteredRoutes.map(r => (
-                        <div key={r.id} onMouseEnter={() => handleRouteHoverEffect(r.id)} onMouseLeave={() => handleRouteHoverEffect(null)} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-zinc-50 cursor-pointer transition-all flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-system-blue/5 border-l-4 border-system-blue' : ''}`}>
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm font-black text-[10px]" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#', '')}` }}>{r.short_name}</div>
-                            <div className="flex-1 min-w-0"><div className="text-sm text-black truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-zinc-400 uppercase tracking-tighter">Line #{r.id}</div></div>
+                        <div key={r.id} onMouseEnter={() => handleRouteHoverEffect(r.id)} onMouseLeave={() => handleRouteHoverEffect(null)} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-zinc-50 cursor-pointer transition-colors duration-75 flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-blue-50/50 border-l-2 border-blue-600' : ''}`}>
+                            <div className="w-8 h-8 rounded-sm flex items-center justify-center text-white shrink-0 shadow-none font-bold text-[10px]" style={{ backgroundColor: `#${(r.color || '007AFF').replace('#', '')}` }}>{r.short_name}</div>
+                            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-zinc-900 truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-zinc-400 uppercase tracking-tighter">Line #{r.id}</div></div>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); togglePersistentRoute(r.id); }}
-                                    className={`p-1.5 rounded-md transition-all ${persistentRouteIds.includes(r.id) ? 'bg-system-blue/10 text-system-blue' : 'text-zinc-300 hover:text-zinc-600'}`}
+                                    className={`p-1.5 rounded-sm transition-all ${persistentRouteIds.includes(r.id) ? 'bg-blue-100 text-blue-600' : 'text-zinc-300 hover:text-zinc-600'}`}
                                     title="Toggle persistent visibility on map"
                                 >
                                     {persistentRouteIds.includes(r.id) ? <Eye size={14} /> : <EyeOff size={14} />}
                                 </button>
-                                <ChevronRight size={14} className={`text-zinc-300 transition-all ${selectedRoute?.id === r.id ? 'translate-x-1 text-system-blue' : ''}`} />
+                                <ChevronRight size={14} className={`text-zinc-300 transition-all ${selectedRoute?.id === r.id ? 'translate-x-1 text-blue-600' : ''}`} />
                             </div>
                         </div>
                     ))}
