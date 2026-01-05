@@ -15,7 +15,7 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = () => {
     const navigate = useNavigate();
-    const { setSelectedEntityId } = useWorkspace();
+    const { setSelectedEntityId, settings, updateSetting } = useWorkspace();
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<'checking' | 'online' | 'error'>('checking');
     const [stats, setStats] = useState<{ agencies: any[], stops: any[], routes: any[], trips: any[] }>({ agencies: [], stops: [], routes: [], trips: [] });
@@ -202,6 +202,24 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                         </div>
                     ))}
                     
+                    <div className="pt-6 px-3 pb-2 text-[8px] font-black text-zinc-300 uppercase tracking-[0.2em] border-t border-zinc-100 mt-4">Global Settings</div>
+                    <div className="px-3 space-y-2">
+                        <div>
+                            <label className="text-[8px] font-bold text-zinc-400 uppercase mb-1 block">Transit Sign Style</label>
+                            <select 
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-sm text-[10px] py-1 px-1.5 outline-none focus:border-blue-400 transition-colors font-bold"
+                                value={settings['global_sign_style'] || 'standard'}
+                                onChange={(e) => updateSetting('global_sign_style', e.target.value)}
+                            >
+                                <option value="standard">Standard (Square)</option>
+                                <option value="singapore">Singapore (LTA)</option>
+                                <option value="london">London (TfL)</option>
+                                <option value="transjakarta">Transjakarta (Blue)</option>
+                                <option value="paris">Paris (Circle)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div className="pt-6 px-3 pb-2 text-[8px] font-black text-zinc-300 uppercase tracking-[0.2em] border-t border-zinc-100 mt-4">System Status</div>
                     <div className="px-3 py-2.5 flex items-center gap-3 bg-zinc-50 mx-2 rounded-sm border border-zinc-200">
                         <div className={`w-1.5 h-1.5 rounded-full ${health === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />

@@ -12,6 +12,8 @@ export interface WorkspaceContextType {
   setMapLayers: React.Dispatch<React.SetStateAction<MapLayers>>;
   status: WorkspaceStatus | null;
   setStatus: React.Dispatch<React.SetStateAction<WorkspaceStatus | null>>;
+  settings: Record<string, string>;
+  updateSetting: (key: string, value: string) => Promise<void>;
   quickMode: 'add-stop' | 'add-route' | null;
   setQuickMode: React.Dispatch<React.SetStateAction<'add-stop' | 'add-route' | null>>;
   sidebarOpen: boolean;

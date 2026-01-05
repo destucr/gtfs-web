@@ -68,6 +68,9 @@ func main() {
 
 		api.GET("/export/gtfs", handlers.ExportGTFS)
 		api.GET("/activity-logs", handlers.GetActivityLogs)
+
+		api.GET("/settings", handlers.GetSettings)
+		api.PUT("/settings", handlers.UpdateSetting)
 	}
 
 	r.Run(":8080")

@@ -17,6 +17,7 @@ import {
 } from '@mantine/core';
 import api from '../api';
 import { Stop, Route, Trip, ShapePoint, TripStop } from '../types';
+import { RouteSign } from './RouteSign';
 import 'leaflet/dist/leaflet.css';
 
 const busStopIcon = L.divIcon({
@@ -241,19 +242,7 @@ const MapComponent: React.FC = () => {
                                 >
                                     <Group justify="space-between" wrap="nowrap">
                                         <Group wrap="nowrap" gap="md">
-                                            {/* Badge: Swiss Pill Style */}
-                                            <Box
-                                                style={{
-                                                    minWidth: 42, height: 24,
-                                                    borderRadius: '12px',
-                                                    backgroundColor: `#${route.color}`,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    color: 'white', fontWeight: 700, fontSize: '11px',
-                                                    padding: '0 8px'
-                                                }}
-                                            >
-                                                {route.short_name}
-                                            </Box>
+                                            <RouteSign route={route} size="md" />
                                             {/* Text Info */}
                                             <Stack gap={0}>
                                                 <Text fw={700} size="14px" c={isDarkMode ? 'white' : 'black'} style={{ lineHeight: 1.2 }}>
@@ -404,22 +393,7 @@ const MapComponent: React.FC = () => {
                                     selectedStop.route_ids.map(rId => {
                                         const route = routes.find(r => r.id === rId);
                                         if (!route) return null;
-                                        return (
-                                            <Box
-                                                key={rId}
-                                                px={8} py={3}
-                                                style={{
-                                                    backgroundColor: `#${route.color}`,
-                                                    borderRadius: '4px',
-                                                    color: 'white',
-                                                    fontSize: '10px',
-                                                    fontWeight: 900,
-                                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                                                }}
-                                            >
-                                                {route.short_name}
-                                            </Box>
-                                        );
+                                        return <RouteSign key={rId} route={route} size="sm" />;
                                     })
                                 ) : (
                                     <Text size="11px" c="dimmed" fw={600} style={{ fontStyle: 'italic' }}>No buses at this time</Text>

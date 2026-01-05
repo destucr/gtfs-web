@@ -572,15 +572,6 @@ const RouteStudio: React.FC = () => {
                                             <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Short Name</label><input className="hig-input text-[11px] py-1.5 font-bold uppercase" value={selectedRoute.short_name} onChange={e => { setSelectedRoute({ ...selectedRoute, short_name: e.target.value }); }} /></div>
                                             <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Color</label><div className="flex gap-1.5 items-center"><input type="color" className="w-6 h-6 rounded cursor-pointer bg-transparent border-none p-0" value={`#${(selectedRoute.color || '007AFF').replace('#', '')}`} onChange={e => { setSelectedRoute({ ...selectedRoute, color: e.target.value.replace('#', '') }); }} /><input className="hig-input text-[10px] font-mono p-1 h-6 uppercase" value={selectedRoute.color} onChange={e => { setSelectedRoute({ ...selectedRoute, color: e.target.value.replace('#', '') }); }} /></div></div>
                                         </div>
-                                        <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Sign Style</label>
-                                            <select className="hig-input text-[11px] py-1.5 font-bold" value={selectedRoute.route_desc || 'standard'} onChange={e => { setSelectedRoute({ ...selectedRoute, route_desc: e.target.value }); }}>
-                                                <option value="standard">Standard (Square)</option>
-                                                <option value="singapore">Singapore (LTA)</option>
-                                                <option value="london">London (TfL)</option>
-                                                <option value="transjakarta">Transjakarta (Blue)</option>
-                                                <option value="paris">Paris (Circle)</option>
-                                            </select>
-                                        </div>
                                         <div><label className="text-[8px] font-black text-zinc-400 uppercase mb-1 block">Public Name</label><input className="hig-input text-[11px] py-1.5 font-bold" value={selectedRoute.long_name} onChange={e => { setSelectedRoute({ ...selectedRoute, long_name: e.target.value }); }} /></div>
                                         {selectedRoute.id !== 0 && (<div className="pt-4 mt-4 border-t border-zinc-100"><button type="button" onClick={() => { if (window.confirm('Delete record?')) api.delete(`/routes/${selectedRoute.id}`).then(() => { refreshData(); setSelectedRoute(null); setStatus({ message: 'Route deleted.', type: 'success' }); }).catch(err => setStatus({ message: 'Delete failed: ' + (err.response?.data?.error || err.message), type: 'error' })); }} className="w-full py-2 text-[8px] font-black text-rose-500/60 hover:text-rose-600 uppercase tracking-[0.2em] transition-colors">Delete Record</button></div>)}
                                     </div>

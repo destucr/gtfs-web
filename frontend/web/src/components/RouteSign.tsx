@@ -1,17 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Route } from '../types';
-import { useWorkspace } from '../context/useWorkspace';
+import api from '../api';
 
 interface RouteSignProps {
     route: Route;
     size?: 'sm' | 'md' | 'lg';
     className?: string;
-    templateOverride?: string;
 }
 
-export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', className = '', templateOverride }) => {
-    const { settings } = useWorkspace();
-    const template = templateOverride || settings['global_sign_style'] || 'standard';
+export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', className = '' }) => {
+    const [settings, setSettings] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        api.get('/settings').then(res => setSettings(res.data || {}));
+    }, []);
+
+    const template = settings['global_sign_style'] || 'standard';
     const color = `#${(route.color || '007AFF').replace('#', '')}`;
     const textColor = route.text_color ? `#${route.text_color.replace('#', '')}` : '#FFFFFF';
     
@@ -25,7 +29,6 @@ export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', classN
 
     switch (template) {
         case 'singapore':
-            // LTA style: Rounded rectangle with thicker borders or solid blocks
             return (
                 <div 
                     className={`${baseClasses} rounded-md border-2`} 
@@ -35,7 +38,6 @@ export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', classN
                 </div>
             );
         case 'london':
-            // TfL inspired: Roundel-ish or pill
             return (
                 <div 
                     className={`${baseClasses} rounded-full border-2 bg-white`} 
@@ -47,7 +49,6 @@ export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', classN
                 </div>
             );
         case 'transjakarta':
-            // Transjakarta style: Blueish header or specific border
             return (
                 <div 
                     className={`${baseClasses} rounded-sm`} 
@@ -57,7 +58,6 @@ export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', classN
                 </div>
             );
         case 'paris':
-            // RATP: Perfect circle
             return (
                 <div 
                     className={`${baseClasses} rounded-full`} 
