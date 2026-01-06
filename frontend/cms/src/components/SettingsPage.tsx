@@ -30,6 +30,12 @@ const SettingsPage: React.FC = () => {
 
     const handleToggleDarkMode = async () => {
         const newValue = !localDarkMode;
+        setLocalDarkMode(newValue);
+        if (newValue) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
         await updateSetting('dark_mode', String(newValue));
         setStatus({ message: `Theme switched to ${newValue ? 'Dark' : 'Light'}`, type: 'success' });
         setTimeout(() => setStatus(null), 2000);

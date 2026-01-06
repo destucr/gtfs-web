@@ -52,7 +52,8 @@ const MapEvents: React.FC = () => {
 };
 
 const UnifiedMap: React.FC = () => {
-  const { mapLayers, onShapePointMove, onShapePointDelete, onShapePointInsert, onMapClick } = useWorkspace();
+  const { mapLayers, onShapePointMove, onShapePointDelete, onShapePointInsert, onMapClick, settings } = useWorkspace();
+  const isDark = settings['dark_mode'] === 'true';
 
   return (
     <div className="w-full h-full relative bg-zinc-100 dark:bg-zinc-900">
@@ -66,7 +67,10 @@ const UnifiedMap: React.FC = () => {
         <MapController />
         <MapEvents />
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          url={isDark 
+            ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          }
           attribution="&copy; CARTO"
         />
 
