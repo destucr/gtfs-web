@@ -55,7 +55,7 @@ const UnifiedMap: React.FC = () => {
   const { mapLayers, onShapePointMove, onShapePointDelete, onShapePointInsert, onMapClick } = useWorkspace();
 
   return (
-    <div className="w-full h-full relative bg-zinc-100">
+    <div className="w-full h-full relative bg-zinc-100 dark:bg-zinc-900">
       <MapContainer
         center={[-7.393, 109.360] as [number, number]}
         zoom={14}

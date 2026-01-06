@@ -53,7 +53,7 @@ const SettingsPage: React.FC = () => {
     );
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-zinc-950 animate-in fade-in duration-300">
+        <div className="flex flex-col h-full bg-white dark:bg-zinc-900 animate-in fade-in duration-300">
             <SidebarHeader title="System Settings" Icon={SettingsIcon} />
             
             <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -74,7 +74,7 @@ const SettingsPage: React.FC = () => {
                             >
                                 <button 
                                     onClick={handleToggleDarkMode}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none border ${localDarkMode ? 'bg-blue-600 border-blue-700' : 'bg-zinc-200 border-zinc-300'}`}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none border ${localDarkMode ? 'bg-blue-600 border-blue-700' : 'bg-zinc-200 border-zinc-300 dark:bg-zinc-700 dark:border-zinc-600'}`}
                                 >
                                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${localDarkMode ? 'translate-x-6' : 'translate-x-1'}`} />
                                 </button>

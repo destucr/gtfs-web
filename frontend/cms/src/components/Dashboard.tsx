@@ -153,7 +153,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     const StatCard = ({ label, val, icon: Icon, sub, onClick }: any) => (
         <button
             onClick={onClick}
-            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-sm p-3 flex flex-col justify-between h-20 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors duration-75 text-left group active:bg-zinc-50 dark:active:bg-zinc-800"
+            className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-sm p-3 flex flex-col justify-between h-20 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors duration-75 text-left group active:bg-zinc-50 dark:active:bg-zinc-700"
         >
             <div className="flex items-center justify-between w-full mb-2">
                 <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors duration-75">{label}</span>
@@ -167,7 +167,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     );
 
     return (
-        <div className="flex h-full bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden font-bold select-none animate-in fade-in duration-500 relative">
+        <div className="flex h-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 overflow-hidden font-bold select-none animate-in fade-in duration-500 relative">
             {/* Ghost Resize Line */}
             {isResizing && resizingX !== null && (
                 <div
@@ -177,8 +177,8 @@ export const Dashboard: React.FC<DashboardProps> = () => {
             )}
 
             {/* Explorer Sidebar */}
-            <div className="w-64 border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-white dark:bg-zinc-950 shrink-0">
-                <div className="h-10 px-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50">
+            <div className="w-64 border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-white dark:bg-zinc-900 shrink-0">
+                <div className="h-10 px-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50">
                     <div className="flex items-center gap-2"><Database size={12} /><span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Explorer</span></div>
                     <button onClick={fetchStats} className={`hover:text-zinc-900 dark:hover:text-zinc-100 transition-transform ${loading ? 'animate-spin' : 'active:rotate-180'}`}><RotateCcw size={12} /></button>
                 </div>
@@ -221,7 +221,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                     </div>
 
                     <div className="pt-6 px-3 pb-2 text-[8px] font-black text-zinc-300 dark:text-zinc-600 uppercase tracking-[0.2em] border-t border-zinc-100 dark:border-zinc-800 mt-4">System Status</div>
-                    <div className="px-3 py-2.5 flex flex-col gap-2 bg-zinc-50 dark:bg-zinc-900/50 mx-2 rounded-sm border border-zinc-200 dark:border-zinc-800">
+                    <div className="px-3 py-2.5 flex flex-col gap-2 bg-zinc-50 dark:bg-zinc-800/50 mx-2 rounded-sm border border-zinc-200 dark:border-zinc-800">
                         <div className="flex items-center gap-3">
                             <div className={`w-1.5 h-1.5 rounded-full ${health === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
                             <span className="text-[10px] font-black text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">{health === 'online' ? 'All systems ready' : 'Server error'}</span>
@@ -239,9 +239,9 @@ export const Dashboard: React.FC<DashboardProps> = () => {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-zinc-950">
+            <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-zinc-900">
                 {/* Stats Grid */}
-                <div className="p-4 grid grid-cols-4 gap-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/20 shrink-0">
+                <div className="p-4 grid grid-cols-4 gap-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-800/20 shrink-0">
                     <StatCard label="Network Coverage" val={stats.stops.length} icon={Globe} sub="Total Stops" onClick={() => navigate('/stops')} />
                     <StatCard label="Active Services" val={stats.routes.length} icon={RouteIcon} sub="Routes Online" onClick={() => navigate('/routes')} />
                     <StatCard label="Total Schedule" val={stats.trips.length} icon={Database} sub="Trip Entries" onClick={() => navigate('/trips')} />
@@ -249,8 +249,8 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 </div>
 
                 {/* Table View */}
-                <div className="flex-1 flex flex-col border-b border-zinc-200 dark:border-zinc-800 min-h-0 bg-white dark:bg-zinc-950 relative">
-                    <div className="px-4 py-2 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
+                <div className="flex-1 flex flex-col border-b border-zinc-200 dark:border-zinc-800 min-h-0 bg-white dark:bg-zinc-900 relative">
+                    <div className="px-4 py-2 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 font-bold uppercase text-[10px] tracking-wider"><span>Inventory</span> <ChevronRight size={10} /> <span className="text-zinc-900 dark:text-zinc-100">{activeType}</span></div>
                             <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
@@ -262,9 +262,9 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                         <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">{processedData.length} RESULTS</span>
                     </div>
 
-                    <div className="flex-1 overflow-auto custom-scrollbar bg-white dark:bg-zinc-950 relative">
+                    <div className="flex-1 overflow-auto custom-scrollbar bg-white dark:bg-zinc-900 relative">
                         <table className="w-full border-collapse text-left text-[11px] table-fixed min-w-max">
-                            <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-900 z-10 border-b border-zinc-200 dark:border-zinc-800">
+                            <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-800 z-10 border-b border-zinc-200 dark:border-zinc-700">
                                 <tr>
                                     {headers[activeType].map((h: any) => {
                                         const width = columnWidths[h.key] || h.w || 100;
@@ -346,14 +346,14 @@ export const Dashboard: React.FC<DashboardProps> = () => {
 
                 {/* Console Log */}
                 <div
-                    className="flex flex-col bg-white dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 shrink-0"
+                    className="flex flex-col bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 shrink-0"
                     style={{ height: consoleHeight }}
                 >
-                    <div className="px-4 py-2 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
+                    <div className="px-4 py-2 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between shrink-0">
                         <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-2"><Clock size={12} /> Event Stream</h3>
                         <div className="flex items-center gap-2 text-[9px] font-bold text-emerald-500 uppercase tracking-wider"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Online</div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-1 font-mono text-[10px] space-y-0 custom-scrollbar bg-white dark:bg-zinc-950 select-text">
+                    <div className="flex-1 overflow-y-auto p-1 font-mono text-[10px] space-y-0 custom-scrollbar bg-white dark:bg-zinc-900 select-text">
                         {logs.map((log, i) => (
                             <div key={i} className="flex gap-4 items-start bg-transparent border-b border-zinc-50 dark:border-zinc-900 p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors duration-75">
                                 <span className="text-zinc-400 dark:text-zinc-600 w-20 shrink-0">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>

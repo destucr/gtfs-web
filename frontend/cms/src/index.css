@@ -35,7 +35,7 @@
   }
 
   body {
-    @apply bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 antialiased selection:bg-zinc-900 selection:text-white;
+    @apply bg-zinc-50 text-zinc-900 dark:bg-zinc-900 dark:text-zinc-200 antialiased selection:bg-zinc-900 selection:text-white;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 11px;
     /* High density base */
@@ -53,11 +53,11 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-zinc-300 rounded-full border-2 border-transparent bg-clip-content;
+    @apply bg-zinc-300 dark:bg-zinc-700 rounded-full border-2 border-transparent bg-clip-content;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-zinc-400;
+    @apply bg-zinc-400 dark:bg-zinc-600;
   }
 }
 
