@@ -16,7 +16,7 @@ const path = require('path');
 const GTFS_WEB_ROOT = path.join(__dirname, '..');
 const CMS_DIR = path.join(GTFS_WEB_ROOT, 'frontend', 'cms');
 const CMS_DIST = path.join(CMS_DIR, 'dist');
-const PORTO_WEB_ROOT = process.env.PORTO_WEB_ROOT || '../porto-web';
+const PORTO_WEB_ROOT = path.resolve(process.env.PORTO_WEB_ROOT || path.join(__dirname, '..', '..', 'porto-web'));
 const DESTINATIONS = [
     path.join(PORTO_WEB_ROOT, 'public', 'gtfs-cms')
 ];

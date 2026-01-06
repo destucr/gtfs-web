@@ -29,7 +29,7 @@ function runScript(scriptPath) {
 }
 
 function main() {
-    const PORTO_WEB_ROOT = process.env.PORTO_WEB_ROOT || '../porto-web';
+    const PORTO_WEB_ROOT = path.resolve(process.env.PORTO_WEB_ROOT || path.join(__dirname, '..', '..', 'porto-web'));
     log(`🚀 Building both GTFS CMS and Web Viewer for ${PORTO_WEB_ROOT}...\n`);
 
     // Build CMS
