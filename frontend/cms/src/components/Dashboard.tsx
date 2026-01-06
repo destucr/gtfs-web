@@ -167,7 +167,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     );
 
     return (
-        <div className="flex h-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 overflow-hidden font-bold select-none animate-in fade-in duration-500 relative">
+        <div className="flex h-full bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 overflow-hidden font-bold select-none animate-in fade-in duration-500 relative">
             {/* Ghost Resize Line */}
             {isResizing && resizingX !== null && (
                 <div
@@ -177,7 +177,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
             )}
 
             {/* Explorer Sidebar */}
-            <div className="w-64 border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-white dark:bg-zinc-900 shrink-0">
+            <div className="w-64 border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-white dark:bg-zinc-800 shrink-0">
                 <div className="h-10 px-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50">
                     <div className="flex items-center gap-2"><Database size={12} /><span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Explorer</span></div>
                     <button onClick={fetchStats} className={`hover:text-zinc-900 dark:hover:text-zinc-100 transition-transform ${loading ? 'animate-spin' : 'active:rotate-180'}`}><RotateCcw size={12} /></button>
@@ -192,13 +192,13 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                         <div
                             key={item.label}
                             onClick={() => setActiveType(item.type as any)}
-                            className={`flex items-center justify-between px-3 py-1.5 rounded-sm transition-colors duration-75 cursor-pointer group outline-none border ${activeType === item.type ? 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold' : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}
+                            className={`flex items-center justify-between px-3 py-1.5 rounded-sm transition-colors duration-75 cursor-pointer group outline-none border ${activeType === item.type ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold' : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}
                         >
                             <div className="flex items-center gap-2.5">
                                 <item.icon size={14} className={activeType === item.type ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-400'} />
                                 <span className="text-[11px] tracking-tight">{item.label}</span>
                             </div>
-                            <span className={`text-[10px] font-mono px-1.5 rounded-sm border border-zinc-200 dark:border-zinc-800 ${activeType === item.type ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-500 bg-zinc-50 dark:bg-zinc-900'}`}>{loading ? '...' : item.count}</span>
+                            <span className={`text-[10px] font-mono px-1.5 rounded-sm border border-zinc-200 dark:border-zinc-800 ${activeType === item.type ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-500 bg-zinc-50 dark:bg-zinc-800'}`}>{loading ? '...' : item.count}</span>
                         </div>
                     ))}
 
@@ -207,7 +207,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                         <div>
                             <label className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1 block">Transit Sign Style</label>
                             <select
-                                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-sm text-[10px] py-1 px-1.5 outline-none focus:border-blue-400 transition-colors font-bold dark:text-zinc-100"
+                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-sm text-[10px] py-1 px-1.5 outline-none focus:border-blue-400 transition-colors font-bold dark:text-zinc-100"
                                 value={settings['global_sign_style'] || 'standard'}
                                 onChange={(e) => updateSetting('global_sign_style', e.target.value)}
                             >
@@ -239,7 +239,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-zinc-900">
+            <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-zinc-800">
                 {/* Stats Grid */}
                 <div className="p-4 grid grid-cols-4 gap-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-800/20 shrink-0">
                     <StatCard label="Network Coverage" val={stats.stops.length} icon={Globe} sub="Total Stops" onClick={() => navigate('/stops')} />
@@ -249,20 +249,20 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 </div>
 
                 {/* Table View */}
-                <div className="flex-1 flex flex-col border-b border-zinc-200 dark:border-zinc-800 min-h-0 bg-white dark:bg-zinc-900 relative">
-                    <div className="px-4 py-2 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
+                <div className="flex-1 flex flex-col border-b border-zinc-200 dark:border-zinc-800 min-h-0 bg-white dark:bg-zinc-800 relative">
+                    <div className="px-4 py-2 bg-white dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 font-bold uppercase text-[10px] tracking-wider"><span>Inventory</span> <ChevronRight size={10} /> <span className="text-zinc-900 dark:text-zinc-100">{activeType}</span></div>
                             <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
                             <div className="relative">
                                 <Filter size={10} className="absolute left-2.5 top-2 text-zinc-400 dark:text-zinc-500" />
-                                <input className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-sm text-[10px] font-medium focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none w-64 transition-all duration-75 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 px-7 py-1" placeholder={`Search ${activeType}...`} value={filterQuery} onChange={e => setFilterQuery(e.target.value)} />
+                                <input className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-sm text-[10px] font-medium focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none w-64 transition-all duration-75 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-zinc-900 dark:text-zinc-100 px-7 py-1" placeholder={`Search ${activeType}...`} value={filterQuery} onChange={e => setFilterQuery(e.target.value)} />
                             </div>
                         </div>
                         <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">{processedData.length} RESULTS</span>
                     </div>
 
-                    <div className="flex-1 overflow-auto custom-scrollbar bg-white dark:bg-zinc-900 relative">
+                    <div className="flex-1 overflow-auto custom-scrollbar bg-white dark:bg-zinc-800 relative">
                         <table className="w-full border-collapse text-left text-[11px] table-fixed min-w-max">
                             <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-800 z-10 border-b border-zinc-200 dark:border-zinc-700">
                                 <tr>
@@ -292,7 +292,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                             </thead>
                             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                                 {processedData.map(item => (
-                                    <tr key={item.id} onClick={() => handleRowClick(item)} className="hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors duration-75 cursor-pointer group">
+                                    <tr key={item.id} onClick={() => handleRowClick(item)} className="hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors duration-75 cursor-pointer group">
                                         <td className="px-4 py-2 font-mono text-zinc-400 dark:text-zinc-500 border-r border-zinc-100 dark:border-zinc-800 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 truncate">#{item.id}</td>
                                         {activeType === 'routes' ? (
                                             <>
@@ -346,16 +346,16 @@ export const Dashboard: React.FC<DashboardProps> = () => {
 
                 {/* Console Log */}
                 <div
-                    className="flex flex-col bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 shrink-0"
+                    className="flex flex-col bg-white dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 shrink-0"
                     style={{ height: consoleHeight }}
                 >
                     <div className="px-4 py-2 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between shrink-0">
                         <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-2"><Clock size={12} /> Event Stream</h3>
                         <div className="flex items-center gap-2 text-[9px] font-bold text-emerald-500 uppercase tracking-wider"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Online</div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-1 font-mono text-[10px] space-y-0 custom-scrollbar bg-white dark:bg-zinc-900 select-text">
+                    <div className="flex-1 overflow-y-auto p-1 font-mono text-[10px] space-y-0 custom-scrollbar bg-white dark:bg-zinc-800 select-text">
                         {logs.map((log, i) => (
-                            <div key={i} className="flex gap-4 items-start bg-transparent border-b border-zinc-50 dark:border-zinc-900 p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors duration-75">
+                            <div key={i} className="flex gap-4 items-start bg-transparent border-b border-zinc-50 dark:border-zinc-900 p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors duration-75">
                                 <span className="text-zinc-400 dark:text-zinc-600 w-20 shrink-0">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                                 <span className="font-bold text-blue-600 dark:text-blue-400 w-24 shrink-0 truncate uppercase">{log.action}</span>
                                 <span className="text-zinc-600 dark:text-zinc-300 leading-relaxed">{log.details}</span>

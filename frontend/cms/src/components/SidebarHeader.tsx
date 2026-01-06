@@ -11,7 +11,7 @@ interface SidebarHeaderProps {
 
 export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ title, Icon, onBack, actions, onToggleSidebar }) => {
   return (
-    <div className="h-14 px-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-white dark:bg-zinc-950 sticky top-0 z-50">
+    <div className="h-14 px-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-white dark:bg-zinc-900 sticky top-0 z-50">
       <div className="flex items-center gap-3">
         {onBack ? (
           <button onClick={onBack} className="p-1.5 -ml-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-sm transition-colors text-blue-600">

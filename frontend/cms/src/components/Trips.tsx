@@ -135,14 +135,14 @@ const Trips: React.FC = () => {
             <div className="absolute inset-0 z-0 pointer-events-auto">
                 <UnifiedMap />
             </div>
-            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white dark:bg-zinc-950 relative z-20 overflow-hidden text-black dark:text-white border-r border-zinc-200 dark:border-zinc-800 pointer-events-auto shadow-none" style={{ width: 320 }}>
+            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white dark:bg-zinc-900 relative z-20 overflow-hidden text-black dark:text-white border-r border-zinc-200 dark:border-zinc-800 pointer-events-auto shadow-none" style={{ width: 320 }}>
                 <SidebarHeader
                     title="Bindings"
                     Icon={Database}
                     onToggleSidebar={() => setSidebarOpen(false)}
                     actions={<button onClick={handleAddNew} className="p-1.5 bg-blue-50 dark:bg-zinc-900 text-blue-600 rounded-sm hover:bg-blue-100 dark:hover:bg-zinc-800 transition-colors" title="Add a new binding"><Plus size={18} /></button>}
                 />
-                <div className="p-4 px-6 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0"><div className="relative"><Search size={14} className="hig-input-icon" /><input className="hig-input pl-8" placeholder="Search trips..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div></div>
+                <div className="p-4 px-6 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0"><div className="relative"><Search size={14} className="hig-input-icon" /><input className="hig-input pl-8" placeholder="Search trips..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div></div>
                 <div className="flex-1 overflow-y-auto divide-y divide-zinc-50 dark:divide-zinc-800">
                     {filteredTrips.map(trip => (
                         <div key={trip.id} className={`p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer transition-colors duration-75 group flex items-center justify-between ${selectedTrip?.id === trip.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-2 border-blue-600' : ''}`} onClick={() => handleSelectTrip(trip)}>
@@ -160,7 +160,7 @@ const Trips: React.FC = () => {
             </motion.div>
 
             {selectedTrip && (
-                <motion.div drag dragMomentum={false} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} className={`absolute top-6 z-[3000] w-[320px] bg-white dark:bg-zinc-900 rounded-[1.5rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] border border-black/5 dark:border-white/5 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`} style={{ right: 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }} initial={{ opacity: 0, x: 20 }} animate={{ opacity: (quickMode && !isHovered ? 0.2 : 1), x: 0 }}>
+                <motion.div drag dragMomentum={false} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} className={`absolute top-6 z-[3000] w-[320px] bg-white dark:bg-zinc-800 rounded-[1.5rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] border border-black/5 dark:border-white/5 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`} style={{ right: 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }} initial={{ opacity: 0, x: 20 }} animate={{ opacity: (quickMode && !isHovered ? 0.2 : 1), x: 0 }}>
                     <div className="p-4 pb-3 flex items-center justify-between shrink-0 cursor-move border-b border-black/[0.03] dark:border-white/[0.03]">
                         <div className="flex items-center gap-3 flex-1 min-w-0"><div className="w-8 h-8 rounded-lg flex items-center justify-center bg-system-blue text-white shadow-lg shrink-0"><Database size={16} /></div><div className="min-w-0"><h2 className="text-sm font-black tracking-tight truncate leading-none mb-0.5 dark:text-zinc-100">{formData.headsign || 'New'}</h2><p className="text-[8px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest truncate">Mapping</p></div></div>
                         <div className="flex items-center gap-0.5"><button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zinc-400">{isCollapsed ? <Maximize2 size={14} /> : <Minimize2 size={14} />}</button><button onClick={() => setSelectedTrip(null)} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zinc-400 transition-all hover:rotate-90"><X size={16} /></button></div>

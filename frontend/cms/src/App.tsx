@@ -121,7 +121,7 @@ const WorkspaceContainer: React.FC = () => {
   const isHome = location.pathname === '/';
   const isSettings = location.pathname === '/settings';
   return (
-    <div className="flex-1 h-full overflow-hidden relative text-zinc-900 font-bold bg-zinc-100">
+    <div className="flex-1 h-full overflow-hidden relative text-zinc-900 dark:text-zinc-100 font-bold bg-zinc-50 dark:bg-zinc-900">
       <FloatingFeedback />
       {!isHome && !isSettings && <><MapHUD /><QuickActionMenu /></>}
       <div className={`absolute inset-0 ${isHome || isSettings ? 'z-30 pointer-events-auto' : 'z-20 pointer-events-none'}`}>
@@ -163,7 +163,7 @@ function App() {
   return (
     <Router>
       <WorkspaceProvider>
-        <div className="flex h-full w-full overflow-hidden bg-zinc-100 text-zinc-900 font-sans">
+        <div className="flex h-full w-full overflow-hidden bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-sans">
           <Navigation />
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             <ShortcutManager />
