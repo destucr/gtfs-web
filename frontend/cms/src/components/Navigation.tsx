@@ -1,12 +1,12 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-    LayoutDashboard, 
-    Globe, 
-    MapPin, 
-    Route as RouteIcon, 
-    Database, 
-    Settings, 
+import {
+    LayoutDashboard,
+    Globe,
+    MapPin,
+    Route as RouteIcon,
+    Database,
+    Settings,
     Box
 } from 'lucide-react';
 
@@ -25,7 +25,7 @@ const Navigation: React.FC = () => {
     ];
 
     return (
-        <aside className="w-[64px] hover:w-[240px] h-full bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 flex flex-col border-r border-zinc-200 dark:border-zinc-800 transition-all duration-200 ease-in-out shrink-0 z-50 group/sidebar overflow-hidden">
+        <aside className="w-[64px] hover:w-[240px] h-full bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 flex flex-col border-r border-zinc-200 dark:border-zinc-800 transition-all duration-200 ease-in-out shrink-0 z-50 group/sidebar overflow-hidden">
             {/* Brand / Header */}
             <div className="h-14 flex items-center px-[18px] border-b border-zinc-200 dark:border-zinc-800 shrink-0">
                 <div className="w-7 h-7 bg-blue-600 rounded-sm flex items-center justify-center text-white shrink-0">
@@ -52,14 +52,14 @@ const Navigation: React.FC = () => {
                             to={item.path!}
                             className={({ isActive }) => `
                                 flex items-center h-10 rounded-sm transition-colors duration-75 group relative px-[10px] outline-none border
-                                ${isActive 
-                                    ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-blue-600' 
-                                    : 'border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100'
+                                ${isActive
+                                    ? 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-blue-600'
+                                    : 'border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
                                 }
                             `}
                         >
                             <Icon size={18} strokeWidth={2} className={`${isActive ? 'text-blue-600' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-500 dark:group-hover:text-zinc-300'} shrink-0`} />
-                            
+
                             <span className="ml-3 text-xs font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                                 {item.label}
                             </span>
@@ -75,7 +75,7 @@ const Navigation: React.FC = () => {
 
             {/* Footer / User */}
             <div className="p-2 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
-                <button className="w-full h-10 flex items-center px-2 rounded-sm hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors duration-75 group relative">
+                <button className="w-full h-10 flex items-center px-2 rounded-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors duration-75 group relative">
                     <div className="w-7 h-7 rounded-sm bg-white dark:bg-zinc-800 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300">
                         <span className="text-[10px] font-bold">JD</span>
                     </div>

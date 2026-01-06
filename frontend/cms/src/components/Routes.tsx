@@ -6,6 +6,7 @@ import api from '../api';
 import { SidebarHeader } from './SidebarHeader';
 import { RouteSign } from './RouteSign';
 import { Route, Agency, Trip, ShapePoint, TripStop } from '../types';
+import UnifiedMap from './UnifiedMap';
 
 const RouteStudio: React.FC = () => {
     const { settings, setMapLayers, setStatus, quickMode, setQuickMode, sidebarOpen, setSidebarOpen, selectedEntityId, setSelectedEntityId, setHoveredEntityId, setOnMapClick, setOnShapePointMove, setOnShapePointDelete, setOnShapePointInsert } = useWorkspace();
@@ -89,6 +90,17 @@ const RouteStudio: React.FC = () => {
     };
 
     const handleSelectRoute = async (route: Route) => {
+        if (selectedRoute?.id === route.id) {
+            if (isDirty) await saveChanges(true);
+            setSelectedRoute(null);
+            setOriginalRoute(null);
+            setShapePoints([]);
+            setOriginalShape([]);
+            setAssignedStops([]);
+            setOriginalAssignedStops([]);
+            setFocusType(null);
+            return;
+        }
         setQuickMode(null);
         setFocusType('select');
         if (isDirty) await saveChanges(true);
@@ -114,12 +126,14 @@ const RouteStudio: React.FC = () => {
             }
         } catch (e) {
             setStatus({ message: 'Failed to load route data', type: 'error' });
+            setTimeout(() => setStatus(null), 3000);
         }
     };
 
     const handleAddNew = useCallback(() => {
         if (agencies.length === 0) {
             setStatus({ message: 'Create an operator first.', type: 'error' });
+            setTimeout(() => setStatus(null), 3000);
             return;
         }
         setFocusType('select');
@@ -164,6 +178,66 @@ const RouteStudio: React.FC = () => {
         }
     }, [selectedEntityId, routes, setSelectedEntityId]);
 
+    // Auto-load all routes in demo mode
+    useEffect(() => {
+        if (import.meta.env.VITE_DEMO_MODE !== 'true' || routes.length === 0) return;
+
+        const loadAllRoutes = async () => {
+            console.log('🚀 [Demo Mode] Loading all routes for Routes page...');
+            try {
+                const tripsRes = await api.get('/trips');
+                const trips = tripsRes.data || [];
+                console.log(`📦 [Demo Mode] Found ${trips.length} trips`);
+                
+                // Get unique route IDs that have trips with shapes
+                const routeIdsWithShapes = new Set<number>();
+                const shapeIdToRouteId = new Map<string, number>();
+                
+                trips.forEach((trip: Trip) => {
+                    if (trip.route_id && trip.shape_id) {
+                        routeIdsWithShapes.add(trip.route_id);
+                        shapeIdToRouteId.set(trip.shape_id, trip.route_id);
+                    }
+                });
+
+                console.log(`🗺️ [Demo Mode] Found ${routeIdsWithShapes.size} routes with shapes`);
+
+                // Set all routes as persistent first (so they show up even while loading)
+                setPersistentRouteIds(Array.from(routeIdsWithShapes));
+
+                // Use bulk API to load all shapes at once (more efficient)
+                const shapeIds = Array.from(shapeIdToRouteId.keys());
+                if (shapeIds.length > 0) {
+                    try {
+                        console.log(`📥 [Demo Mode] Loading ${shapeIds.length} shapes in bulk...`);
+                        const bulkRes = await api.post('/shapes/bulk', shapeIds);
+                        const bulkData: Record<string, ShapePoint[]> = bulkRes.data || {};
+                        
+                        // Map shapes to routes
+                        const newShapes: Record<number, [number, number][]> = {};
+                        Object.keys(bulkData).forEach(shapeId => {
+                            const routeId = shapeIdToRouteId.get(shapeId);
+                            if (routeId) {
+                                const points = bulkData[shapeId].sort((a, b) => a.sequence - b.sequence);
+                                newShapes[routeId] = points.map(p => [p.lat, p.lon] as [number, number]);
+                            }
+                        });
+                        
+                        console.log(`✅ [Demo Mode] Loaded ${Object.keys(newShapes).length} route shapes`);
+                        setPersistentRouteShapes(prev => ({ ...prev, ...newShapes }));
+                    } catch (e) {
+                        console.error('❌ [Demo Mode] Failed to load shapes in bulk:', e);
+                    }
+                }
+            } catch (e) {
+                console.error('❌ [Demo Mode] Failed to load routes:', e);
+            }
+        };
+
+        loadAllRoutes();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [routes.length]); // Only depend on routes.length to avoid infinite loops
+
     const saveChanges = useCallback(async (isAuto = false) => {
         if (!selectedRoute) return;
         if (!isAuto) setStatus({ message: 'Saving Changes...', type: 'loading' });
@@ -195,7 +269,10 @@ const RouteStudio: React.FC = () => {
             }
             if (!isAuto) { setStatus({ message: 'Changes committed.', type: 'success' }); setTimeout(() => setStatus(null), 2000); }
             await refreshAllData();
-        } catch (e) { setStatus({ message: 'Save failed', type: 'error' }); }
+        } catch (e) { 
+            setStatus({ message: 'Save failed', type: 'error' }); 
+            setTimeout(() => setStatus(null), 3000);
+        }
     }, [selectedRoute, shapePoints, assignedStops, refreshAllData, setStatus]);
 
     useEffect(() => {
@@ -213,8 +290,8 @@ const RouteStudio: React.FC = () => {
             return;
         }
 
-        // Use cache if available
-        if (persistentRouteShapes[routeId]) {
+        // Use cache if available (this should always be available in demo mode after auto-load)
+        if (persistentRouteShapes[routeId] && persistentRouteShapes[routeId].length > 0) {
             setMapLayers(prev => ({
                 ...prev,
                 previewRoutes: [{
@@ -224,6 +301,13 @@ const RouteStudio: React.FC = () => {
                     isFocused: true
                 }]
             }));
+            return;
+        }
+
+        // Only try to fetch if not in demo mode (in demo mode, shapes should already be loaded)
+        if (import.meta.env.VITE_DEMO_MODE === 'true') {
+            // In demo mode, if shape is not in cache, just don't show preview
+            setMapLayers(prev => ({ ...prev, previewRoutes: [] }));
             return;
         }
 
@@ -248,7 +332,8 @@ const RouteStudio: React.FC = () => {
                 }));
             }
         } catch (e) {
-            console.error('Hover preview error', e);
+            // Silently fail - don't show preview if shape can't be loaded
+            console.warn('Hover preview: shape not available for route', routeId);
         }
     }, [routes, setHoveredEntityId, setMapLayers, persistentRouteShapes]);
 
@@ -277,6 +362,7 @@ const RouteStudio: React.FC = () => {
             setTimeout(() => setStatus(null), 2000);
         } else {
             setStatus({ message: 'Snapping failed.', type: 'error' });
+            setTimeout(() => setStatus(null), 3000);
         }
     };
 
@@ -319,6 +405,10 @@ const RouteStudio: React.FC = () => {
                 id, color: routes.find(r => r.id === id)?.color || '007AFF',
                 positions: persistentRouteShapes[id] || [], isFocused: false
             })).filter(pr => pr.positions.length > 0);
+
+        if (import.meta.env.VITE_DEMO_MODE === 'true' && pRoutes.length > 0) {
+            console.log(`🗺️ [Routes] Setting ${pRoutes.length} persistent routes on map`);
+        }
 
         setMapLayers(prev => ({
             ...prev,
@@ -375,17 +465,20 @@ const RouteStudio: React.FC = () => {
 
     return (
         <div className="absolute inset-0 flex overflow-visible pointer-events-none font-bold">
-            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white dark:bg-zinc-950 relative z-20 overflow-hidden text-black dark:text-white border-r border-zinc-200 dark:border-zinc-800 pointer-events-auto shadow-none" style={{ width: 320 }}>
-                <SidebarHeader title="Routes" Icon={Bus} onToggleSidebar={() => setSidebarOpen(false)} actions={<button onClick={handleAddNew} disabled={agencies.length === 0} className={`p-1.5 rounded-sm transition-colors ${agencies.length === 0 ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed' : 'bg-blue-50 dark:bg-zinc-900 text-blue-600 hover:bg-blue-100 dark:hover:bg-zinc-800'}`}>{agencies.length === 0 ? <AlertCircle size={18} /> : <Plus size={18} />}</button>} />
-                <div className="p-4 px-6 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0">
+            <div className="absolute inset-0 z-0 pointer-events-auto">
+                <UnifiedMap />
+            </div>
+            <motion.div initial={false} animate={{ x: sidebarOpen ? 0 : -320 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex flex-col h-full bg-white dark:bg-zinc-900 relative z-20 overflow-hidden text-black dark:text-white border-r border-zinc-200 dark:border-zinc-800 pointer-events-auto shadow-none" style={{ width: 320 }}>
+                <SidebarHeader title="Routes" Icon={Bus} onToggleSidebar={() => setSidebarOpen(false)} actions={<button onClick={handleAddNew} disabled={agencies.length === 0} className={`p-1.5 rounded-sm transition-colors ${agencies.length === 0 ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-blue-50 dark:bg-zinc-800 text-blue-600 hover:bg-blue-100 dark:hover:bg-zinc-700'}`}>{agencies.length === 0 ? <AlertCircle size={18} /> : <Plus size={18} />}</button>} />
+                <div className="p-4 px-6 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-800 shrink-0">
                     <div className="relative"><Search size={14} className="hig-input-icon" /><input className="hig-input pl-8" placeholder="Search routes..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
                 </div>
                 <div className="flex-1 overflow-y-auto divide-y divide-zinc-50 dark:divide-zinc-800">
                     {filteredRoutes.map(r => (
-                        <div key={r.id} onMouseEnter={() => handleRouteHoverEffect(r.id)} onMouseLeave={() => handleRouteHoverEffect(null)} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer transition-colors duration-75 flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-2 border-blue-600' : ''}`}>
+                        <div key={r.id} onMouseEnter={() => handleRouteHoverEffect(r.id)} onMouseLeave={() => handleRouteHoverEffect(null)} onClick={() => handleSelectRoute(r)} className={`p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-colors duration-75 flex items-center gap-3 group ${selectedRoute?.id === r.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-2 border-blue-600' : ''}`}>
                             <RouteSign key={settings['global_sign_style']} route={r} size="md" />
                             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate leading-tight">{r.long_name}</div><div className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-tighter">Line #{r.id}</div></div>
-                            <div className={`flex items-center gap-1 transition-all ${persistentRouteIds.includes(r.id) || selectedRoute?.id === r.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                            <div className={`flex items-center gap-1 transition-all ${persistentRouteIds.includes(r.id) || selectedRoute?.id === r.id || import.meta.env.VITE_DEMO_MODE === 'true' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                                 <button onClick={(e) => { e.stopPropagation(); togglePersistentRoute(r.id); }} className={`p-1.5 rounded-sm transition-all ${persistentRouteIds.includes(r.id) || selectedRoute?.id === r.id ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' : 'text-zinc-300 hover:text-zinc-600'}`}>
                                     {persistentRouteIds.includes(r.id) || selectedRoute?.id === r.id ? <Eye size={14} /> : <EyeOff size={14} />}
                                 </button>
@@ -397,15 +490,15 @@ const RouteStudio: React.FC = () => {
             </motion.div>
 
             {selectedRoute && (
-                <motion.div drag dragMomentum={false} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} className={`absolute top-6 z-[3000] w-[320px] bg-white dark:bg-zinc-950 rounded-sm shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`} style={{ right: 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }} initial={{ opacity: 0, x: 20 }} animate={{ opacity: (quickMode && !isHovered ? 0.2 : 1), x: 0 }}>
-                    <div className="p-3 flex items-center justify-between shrink-0 cursor-move border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+                <motion.div drag dragMomentum={false} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} className={`absolute top-6 z-[3000] w-[320px] bg-white dark:bg-zinc-800 rounded-sm shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col transition-all duration-500 pointer-events-auto ${quickMode && !isHovered ? 'opacity-20 pointer-events-none scale-95 blur-sm' : 'opacity-100'}`} style={{ right: 24, height: isCollapsed ? 'auto' : 'calc(100vh - 120px)' }} initial={{ opacity: 0, x: 20 }} animate={{ opacity: (quickMode && !isHovered ? 0.2 : 1), x: 0 }}>
+                    <div className="p-3 flex items-center justify-between shrink-0 cursor-move border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
                         <div className="flex items-center gap-2.5 flex-1 min-w-0"><div className="w-7 h-7 rounded-sm flex items-center justify-center bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shrink-0 shadow-none"><Bus size={14} /></div><div className="min-w-0"><h2 className="text-xs font-bold tracking-tight truncate leading-none mb-0.5 dark:text-zinc-100">{selectedRoute.short_name || 'New Route'}</h2><p className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest truncate">Flow Designer</p></div></div>
-                        <div className="flex items-center gap-0.5"><button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-sm text-zinc-400">{isCollapsed ? <Maximize2 size={14} /> : <Minimize2 size={14} />}</button><button onClick={() => setSelectedRoute(null)} className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-sm text-zinc-400 transition-all hover:rotate-90"><X size={16} /></button></div>
+                        <div className="flex items-center gap-0.5"><button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-sm text-zinc-400">{isCollapsed ? <Maximize2 size={14} /> : <Minimize2 size={14} />}</button><button onClick={() => setSelectedRoute(null)} className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-sm text-zinc-400 transition-all hover:rotate-90"><X size={16} /></button></div>
                     </div>
                     {!isCollapsed && (
                         <>
-                            <div className="px-4 py-2 shrink-0 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950"><div className="bg-zinc-100 dark:bg-zinc-900 p-1 rounded-sm flex gap-0.5 border border-zinc-200 dark:border-zinc-800">{(['info', 'path', 'sequence'] as const).map((tab) => (<button key={tab} onClick={() => setActiveSection(tab)} className={`flex-1 py-1.5 rounded-sm text-[9px] font-bold uppercase transition-all duration-75 ${activeSection === tab ? 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-blue-600' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}>{tab === 'info' ? 'Details' : tab === 'path' ? 'Path' : 'Stops'}</button>))}</div></div>
-                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-white dark:bg-zinc-950">
+                            <div className="px-4 py-2 shrink-0 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900"><div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-sm flex gap-0.5 border border-zinc-200 dark:border-zinc-800">{(['info', 'path', 'sequence'] as const).map((tab) => (<button key={tab} onClick={() => setActiveSection(tab)} className={`flex-1 py-1.5 rounded-sm text-[9px] font-bold uppercase transition-all duration-75 ${activeSection === tab ? 'bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 text-blue-600' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}>{tab === 'info' ? 'Details' : tab === 'path' ? 'Path' : 'Stops'}</button>))}</div></div>
+                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-white dark:bg-zinc-900">
                                 {activeSection === 'sequence' && (
                                     <div className="space-y-4 animate-in fade-in duration-300">
                                         <div className="p-3 bg-zinc-900 dark:bg-zinc-800 text-white rounded-sm border border-zinc-800 dark:border-zinc-700 flex items-center justify-between mb-2">
@@ -423,8 +516,8 @@ const RouteStudio: React.FC = () => {
                                                     const travelDur = prevDep !== null ? Math.floor((currentArr - prevDep) / 60) : 0;
                                                     return (
                                                         <React.Fragment key={rs.stop_id}>
-                                                            {i > 0 && (<div className="flex items-center gap-2 pl-8 py-1"><div className="h-3 w-px bg-zinc-200 dark:bg-zinc-800" /><div className="flex items-center gap-1.5"><span className="text-[7px] font-bold text-zinc-300 dark:text-zinc-600 uppercase">Travel:</span><input type="number" min="1" className="w-8 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-sm p-0.5 text-[9px] font-bold text-blue-600 text-center" value={travelDur} onChange={(e) => setTravelDuration(i, parseInt(e.target.value) || 1)} /><span className="text-[7px] font-bold text-zinc-300 dark:text-zinc-600 uppercase">min</span></div></div>)}
-                                                            <Reorder.Item value={rs} className="flex flex-col gap-2 p-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-sm cursor-grab active:cursor-grabbing hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors">
+                                                            {i > 0 && (<div className="flex items-center gap-2 pl-8 py-1"><div className="h-3 w-px bg-zinc-200 dark:bg-zinc-800" /><div className="flex items-center gap-1.5"><span className="text-[7px] font-bold text-zinc-300 dark:text-zinc-600 uppercase">Travel:</span><input type="number" min="1" className="w-8 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 rounded-sm p-0.5 text-[9px] font-bold text-blue-600 text-center" value={travelDur} onChange={(e) => setTravelDuration(i, parseInt(e.target.value) || 1)} /><span className="text-[7px] font-bold text-zinc-300 dark:text-zinc-600 uppercase">min</span></div></div>)}
+                                                            <Reorder.Item value={rs} className="flex flex-col gap-2 p-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 rounded-sm cursor-grab active:cursor-grabbing hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors">
                                                                 <div className="flex items-center justify-between"><div className="flex items-center gap-2.5"><div className="w-4 h-4 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-[7px] font-bold text-zinc-400">{i + 1}</div><div className="text-[10px] font-bold text-zinc-900 dark:text-zinc-100 uppercase truncate w-28">{rs.stop?.name}</div></div><div className="flex flex-col items-end"><input type="time" step="1" className="bg-transparent border-none p-0 text-[10px] font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:ring-0 outline-none text-right w-20" value={rs.arrival_time || '08:00:00'} onChange={(e) => updateFlow(i, e.target.value, 'arrival')} /></div></div>
                                                             </Reorder.Item>
                                                         </React.Fragment>
@@ -450,16 +543,16 @@ const RouteStudio: React.FC = () => {
                                 )}
                                 {activeSection === 'path' && (
                                     <div className="space-y-4 animate-in fade-in duration-300">
-                                        <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 rounded-sm border border-zinc-100 dark:border-zinc-800"><div className="flex items-center gap-2"><Zap size={12} className={autoRoute ? "text-blue-600" : "text-zinc-400"} /><span className="text-[9px] font-bold uppercase tracking-tight">Auto-snap to roads</span></div><button onClick={() => setAutoRoute(!autoRoute)} className={`w-8 h-4 rounded-full transition-all relative ${autoRoute ? 'bg-blue-600' : 'bg-zinc-200 dark:bg-zinc-800'}`}><div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${autoRoute ? 'left-4.5' : 'left-0.5'}`} /></button></div>
+                                        <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-sm border border-zinc-100 dark:border-zinc-800"><div className="flex items-center gap-2"><Zap size={12} className={autoRoute ? "text-blue-600" : "text-zinc-400"} /><span className="text-[9px] font-bold uppercase tracking-tight">Auto-snap to roads</span></div><button onClick={() => setAutoRoute(!autoRoute)} className={`w-8 h-4 rounded-full transition-all relative ${autoRoute ? 'bg-blue-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}><div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${autoRoute ? 'left-4.5' : 'left-0.5'}`} /></button></div>
                                         <div className="grid grid-cols-2 gap-2">
                                             <button onClick={() => setShapePoints([])} className="py-2.5 bg-rose-600 text-white rounded-sm font-bold text-[9px] uppercase">Clear Path</button>
-                                            <button onClick={handleSnapAnchors} className="py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-sm font-bold text-[9px] uppercase">Snap to Stops</button>
+                                            <button onClick={handleSnapAnchors} className="py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-sm font-bold text-[9px] uppercase">Snap to Stops</button>
                                         </div>
-                                        <div className="p-3 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-sm border border-zinc-100 dark:border-zinc-800"><p className="text-[9px] text-zinc-400 dark:text-zinc-500 leading-relaxed font-bold italic text-center">Click map to add stops. Drag to move. Right-click to remove.</p></div>
+                                        <div className="p-3 bg-zinc-50/50 dark:bg-zinc-800/50 rounded-sm border border-zinc-100 dark:border-zinc-800"><p className="text-[9px] text-zinc-400 dark:text-zinc-500 leading-relaxed font-bold italic text-center">Click map to add stops. Drag to move. Right-click to remove.</p></div>
                                     </div>
                                 )}
                             </div>
-                            <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 sticky bottom-0 flex justify-center"><button onClick={() => saveChanges()} disabled={!isDirty} className="w-full py-2 bg-blue-600 text-white rounded-sm font-bold text-[10px] flex items-center justify-center gap-2 hover:bg-blue-700 transition-all duration-75 disabled:opacity-30 active:scale-95 tracking-widest uppercase shadow-none"><Save size={14} /> Commit Changes</button></div>
+                            <div className="p-4 bg-zinc-50 dark:bg-zinc-800 border-t border-zinc-100 dark:border-zinc-800 sticky bottom-0 flex justify-center"><button onClick={() => saveChanges()} disabled={!isDirty} className="w-full py-2 bg-blue-600 text-white rounded-sm font-bold text-[10px] flex items-center justify-center gap-2 hover:bg-blue-700 transition-all duration-75 disabled:opacity-30 active:scale-95 tracking-widest uppercase shadow-none"><Save size={14} /> Commit Changes</button></div>
                         </>
                     )}
                 </motion.div>

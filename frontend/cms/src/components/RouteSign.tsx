@@ -58,7 +58,7 @@ export const RouteSign: React.FC<RouteSignProps> = ({ route, size = 'sm', classN
             // RATP Metro Style: Circle with specific border
             return (
                 <div 
-                    className={`${baseClasses} rounded-full border-2 bg-white`} 
+                    className={`${baseClasses} rounded-full border-2 bg-white dark:bg-zinc-900`} 
                     style={{ borderColor: color, color: '#000000' }}
                 >
                     <div className="w-[85%] h-[85%] flex items-center justify-center rounded-full" style={{ backgroundColor: color, color: textColor }}>

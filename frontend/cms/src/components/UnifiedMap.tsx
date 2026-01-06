@@ -52,10 +52,11 @@ const MapEvents: React.FC = () => {
 };
 
 const UnifiedMap: React.FC = () => {
-  const { mapLayers, onShapePointMove, onShapePointDelete, onShapePointInsert, onMapClick } = useWorkspace();
+  const { mapLayers, onShapePointMove, onShapePointDelete, onShapePointInsert, onMapClick, settings } = useWorkspace();
+  const isDark = settings['dark_mode'] === 'true';
 
   return (
-    <div className="w-full h-full relative bg-zinc-100">
+    <div className="w-full h-full relative bg-zinc-100 dark:bg-zinc-900">
       <MapContainer
         center={[-7.393, 109.360] as [number, number]}
         zoom={14}
@@ -66,15 +67,19 @@ const UnifiedMap: React.FC = () => {
         <MapController />
         <MapEvents />
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          url={isDark 
+            ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          }
           attribution="&copy; CARTO"
         />
 
         {/* Halo Layer */}
-        {mapLayers.previewRoutes?.map(route => (
+        {mapLayers.previewRoutes?.map(route => route.positions.length > 0 && (
           <Polyline
-            key={`halo-${route.id}`}
+            key={`halo-${route.id}-${route.positions.length}`}
             positions={route.positions}
+            smoothFactor={0}
             pathOptions={{
               color: 'white',
               weight: 8,
@@ -85,31 +90,41 @@ const UnifiedMap: React.FC = () => {
         ))}
 
         {/* Preview Layer */}
-        {mapLayers.previewRoutes?.map(route => (
-          <Polyline
-            key={`preview-${route.id}`}
-            positions={route.positions}
-            pathOptions={{
-              color: `#${route.color.replace('#', '')}`,
-              weight: 4,
-              opacity: 0.8,
-              lineCap: 'round'
-            }}
-          />
-        ))}
+        {mapLayers.previewRoutes?.map(route => {
+          if (!route.positions || route.positions.length === 0) return null;
+          const color = route.color ? (route.color.startsWith('#') ? route.color : `#${route.color}`) : '#007AFF';
+          return (
+            <Polyline
+              key={`preview-${route.id}-${route.positions.length}`}
+              positions={route.positions}
+              smoothFactor={0}
+              pathOptions={{
+                color: color,
+                weight: 4,
+                opacity: 0.8,
+                lineCap: 'round'
+              }}
+            />
+          );
+        })}
 
         {/* Registry Routes */}
-        {mapLayers.routes.map(route => (
-          <Polyline
-            key={route.id}
-            positions={route.positions}
-            pathOptions={{
-              color: `#${route.color.replace('#', '')}`,
-              weight: 4,
-              opacity: route.isFocused ? 1 : 0.3
-            }}
-          />
-        ))}
+        {mapLayers.routes.map(route => {
+          if (!route.positions || route.positions.length === 0) return null;
+          const color = route.color ? (route.color.startsWith('#') ? route.color : `#${route.color}`) : '#007AFF';
+          return (
+            <Polyline
+              key={`route-${route.id}-${route.positions.length}`}
+              positions={route.positions}
+              smoothFactor={0}
+              pathOptions={{
+                color: color,
+                weight: 4,
+                opacity: route.isFocused ? 1 : 0.3
+              }}
+            />
+          );
+        })}
 
         {/* Registry Stops */}
         {mapLayers.stops

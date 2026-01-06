@@ -170,7 +170,7 @@ const MapComponent: React.FC = () => {
                 }}
             >
                 {/* 1. Header Area: Masthead Style */}
-                <Stack gap={0} bg={isDarkMode ? '#000' : '#000'} py={16} px={16}>
+                <Stack gap={0} bg={isDarkMode ? '#18181b' : '#000'} py={16} px={16}>
                     <Group justify="space-between" align="start">
                         <Stack gap={4}>
                             <Text fw={900} size="24px" c="white" style={{ letterSpacing: '-0.5px', lineHeight: 1 }}>
@@ -197,7 +197,7 @@ const MapComponent: React.FC = () => {
                 </Stack>
 
                 {/* 2. Integrated Search */}
-                <Box px={16} py={12} style={{ borderBottom: `1px solid ${isDarkMode ? '#333' : '#eee'}` }}>
+                <Box px={16} py={12} style={{ borderBottom: `1px solid ${isDarkMode ? '#27272a' : '#eee'}` }}>
                     <TextInput
                         placeholder="Find a route or stop..."
                         leftSection={<Search size={14} strokeWidth={3} />}
@@ -207,7 +207,7 @@ const MapComponent: React.FC = () => {
                         onChange={(e) => setSearchQuery(e.currentTarget.value)}
                         styles={{
                             input: {
-                                backgroundColor: isDarkMode ? '#222' : '#f4f4f4',
+                                backgroundColor: isDarkMode ? '#27272a' : '#f4f4f4',
                                 border: 'none',
                                 fontWeight: 600,
                                 fontSize: '12px',
@@ -235,8 +235,8 @@ const MapComponent: React.FC = () => {
                                     py={12}
                                     px={16}
                                     style={{
-                                        backgroundColor: isSelected ? (isDarkMode ? '#222' : '#f8f9fa') : 'transparent',
-                                        borderBottom: `1px solid ${isDarkMode ? '#222' : '#f0f0f0'}`,
+                                        backgroundColor: isSelected ? (isDarkMode ? '#27272a' : '#f8f9fa') : 'transparent',
+                                        borderBottom: `1px solid ${isDarkMode ? '#27272a' : '#f0f0f0'}`,
                                         transition: 'background-color 0.1s ease'
                                     }}
                                 >
@@ -264,8 +264,8 @@ const MapComponent: React.FC = () => {
                 {/* 4. Pinned Status Footer */}
                 <Box
                     p={16}
-                    bg={isDarkMode ? '#1a1a1a' : '#f8f9fa'}
-                    style={{ borderTop: `1px solid ${isDarkMode ? '#333' : '#ddd'}` }}
+                    bg={isDarkMode ? '#18181b' : '#f8f9fa'}
+                    style={{ borderTop: `1px solid ${isDarkMode ? '#27272a' : '#ddd'}` }}
                 >
                     <Group justify="space-between" align="center" mb={4}>
                         <Text size="11px" fw={800} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.5px' }}>
@@ -356,13 +356,13 @@ const MapComponent: React.FC = () => {
                         width: 320,
                         borderRadius: '12px',
                         boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
-                        backgroundColor: isDarkMode ? '#1a1a1a' : '#fff',
-                        border: `1px solid ${isDarkMode ? '#333' : '#eee'}`,
+                        backgroundColor: isDarkMode ? '#18181b' : '#fff',
+                        border: `1px solid ${isDarkMode ? '#27272a' : '#eee'}`,
                         overflow: 'hidden'
                     }}
                 >
                     <Stack gap={0}>
-                        <Box p={16} bg={isDarkMode ? '#000' : '#f8f9fa'} style={{ borderBottom: `1px solid ${isDarkMode ? '#333' : '#eee'}` }}>
+                        <Box p={16} bg={isDarkMode ? '#27272a' : '#f8f9fa'} style={{ borderBottom: `1px solid ${isDarkMode ? '#333' : '#eee'}` }}>
                             <Group justify="space-between" align="start" wrap="nowrap">
                                 <Stack gap={2}>
                                     <Text fw={900} size="16px" c={isDarkMode ? 'white' : 'black'} style={{ lineHeight: 1.2, letterSpacing: '-0.5px' }}>
@@ -400,7 +400,7 @@ const MapComponent: React.FC = () => {
                                 )}
                             </Group>
 
-                            <Divider my={16} color={isDarkMode ? '#333' : '#eee'} />
+                            <Divider my={16} color={isDarkMode ? '#27272a' : '#eee'} />
 
                             <Text size="11px" fw={700} c="dimmed" tt="uppercase" mb={10} style={{ letterSpacing: '0.5px' }}>
                                 Daily Schedule
@@ -417,7 +417,7 @@ const MapComponent: React.FC = () => {
                                     selectedStopSchedule.map((item, i) => {
                                         const route = routes.find(r => r.id === item.trip?.route_id);
                                         return (
-                                            <Paper key={i} p={8} bg={isDarkMode ? 'rgba(255,255,255,0.03)' : '#fcfcfc'} withBorder style={{ borderColor: isDarkMode ? '#333' : '#eee' }}>
+                                            <Paper key={i} p={8} bg={isDarkMode ? 'rgba(255,255,255,0.03)' : '#fcfcfc'} withBorder style={{ borderColor: isDarkMode ? '#27272a' : '#eee' }}>
                                                 <Group justify="space-between" wrap="nowrap">
                                                     <Group gap={8} wrap="nowrap">
                                                         <Box w={4} h={16} style={{ backgroundColor: `#${route?.color || 'ddd'}`, borderRadius: 2 }} />
@@ -439,7 +439,7 @@ const MapComponent: React.FC = () => {
                                 )}
                             </Stack>
 
-                            <Divider my={16} color={isDarkMode ? '#333' : '#eee'} />
+                            <Divider my={16} color={isDarkMode ? '#27272a' : '#eee'} />
 
                             <Group justify="space-between">
                                 <Stack gap={0}>

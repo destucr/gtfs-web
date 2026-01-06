@@ -16,7 +16,9 @@ const PAGES = [
 ];
 
 const OUTPUT_DIR = path.join(__dirname, '..', 'assets', 'screenshots');
-const PORTFOLIO_DIR = '/Users/destucr/Desktop/porto-web/public/images/gtfs-web';
+const PORTFOLIO_DIR = process.env.PORTO_WEB_PATH ? 
+    path.join(process.env.PORTO_WEB_PATH, 'public', 'images', 'gtfs-web') : 
+    path.join(__dirname, '..', '..', 'porto-web', 'public', 'images', 'gtfs-web');
 const CWEBP_PATH = '/opt/homebrew/bin/cwebp';
 
 (async () => {
