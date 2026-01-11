@@ -8,7 +8,9 @@
     "seed": "docker exec -i gtfs_postgres psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} < backend/seed_purbalingga.sql",
     "build:cms:porto": "node scripts/build-cms-for-porto.js",
     "build:web:porto": "node scripts/build-web-for-porto.js",
-    "build:all:porto": "node scripts/build-all-for-porto.js"
+    "build:all:porto": "node scripts/build-all-for-porto.js",
+    "validate:gtfs": "node scripts/validate_gtfs.js",
+    "validate:official": "./scripts/run_mobilitydata_validator.sh"
   },
   "repository": {
     "type": "git",
